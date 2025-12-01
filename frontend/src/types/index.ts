@@ -1,0 +1,233 @@
+// User types
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: 'admin' | 'manager' | 'annotator' | 'viewer';
+  avatar?: string;
+  is_active: boolean;
+  date_joined: string;
+}
+
+export interface UserMinimal {
+  id: number;
+  username: string;
+  full_name: string;
+  avatar?: string;
+}
+
+// Project types
+export interface Project {
+  id: number;
+  name: string;
+  description: string;
+  task_type: TaskType;
+  settings: ProjectSettings;
+  default_labels: string[];
+  is_active: boolean;
+  created_by: UserMinimal;
+  created_at: string;
+  updated_at: string;
+  labels: Label[];
+  member_count: number;
+  document_count: number;
+}
+
+export type TaskType =
+  | 'key_value'
+  | 'table'
+  | 'classification'
+  | 'ocr'
+  | 'ner'
+  | 'custom';
+
+export interface ProjectSettings {
+  metrics?: string[];
+  comparison_rules?: {
+    ignore_whitespace?: boolean;
+    case_sensitive?: boolean;
+    numeric_tolerance?: number;
+  };
+  required_fields?: string[];
+}
+
+export interface ProjectStats {
+  total_documents: number;
+  approved_documents: number;
+  pending_documents: number;
+  total_test_runs: number;
+  latest_accuracy: number | null;
+  open_issues: number;
+}
+
+export interface Label {
+  id: number;
+  name: string;
+  color: string;
+  description: string;
+  is_default: boolean;
+  created_at: string;
+}
+
+// Document types
+export interface Document {
+  id: string;
+  project: number;
+  name: string;
+  description: string;
+  source_file?: string;
+  source_file_url?: string;
+  file_type: FileType;
+  file_size?: number;
+  metadata: Record<string, unknown>;
+  status: DocumentStatus;
+  current_gt_version?: GTVersion;
+  version_count: number;
+  created_by: UserMinimal;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'other';
+export type DocumentStatus = 'draft' | 'in_review' | 'approved' | 'archived';
+
+export interface GTVersion {
+  id: string;
+  version_number: number;
+  gt_data: Record<string, unknown>;
+  change_summary: string;
+  changes_from_previous: {
+    added?: string[];
+    removed?: string[];
+    modified?: string[];
+  };
+  is_approved: boolean;
+  approved_at?: string;
+  approved_by?: UserMinimal;
+  source_type: string;
+  source_reference: string;
+  created_by: UserMinimal;
+  created_at: string;
+}
+
+export interface DocumentComment {
+  id: number;
+  content: string;
+  field_reference?: string;
+  parent?: number;
+  is_resolved: boolean;
+  created_by: UserMinimal;
+  created_at: string;
+  replies?: DocumentComment[];
+}
+
+// Test types
+export interface TestRun {
+  id: string;
+  project: number;
+  name: string;
+  description: string;
+  status: TestRunStatus;
+  triggered_by: TriggerType;
+  config: Record<string, unknown>;
+  summary_metrics: Record<string, number>;
+  s3_output_path?: string;
+  started_at?: string;
+  completed_at?: string;
+  error_message?: string;
+  created_at: string;
+}
+
+export type TestRunStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+export type TriggerType = 'manual' | 'api' | 'scheduled' | 'ci_cd';
+
+export interface TestResult {
+  id: string;
+  test_run: string;
+  document: string;
+  gt_version?: string;
+  status: TestResultStatus;
+  extracted_data: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+  diff_data: DiffData;
+  debug_data: Record<string, unknown>;
+  error_message?: string;
+}
+
+export type TestResultStatus = 'pass' | 'fail' | 'error' | 'skipped';
+
+export interface DiffData {
+  matched?: string[];
+  mismatched?: Array<{ field: string; expected: unknown; actual: unknown }>;
+  missing?: string[];
+  extra?: string[];
+}
+
+// Issue types
+export interface Issue {
+  id: string;
+  project: number;
+  title: string;
+  description: string;
+  status: IssueStatus;
+  priority: IssuePriority;
+  issue_type: IssueType;
+  labels: Label[];
+  assignees: UserMinimal[];
+  due_date?: string;
+  parent_issue?: string;
+  auto_generated: boolean;
+  error_category?: string;
+  resolved_at?: string;
+  resolved_by?: UserMinimal;
+  resolution_notes?: string;
+  created_by: UserMinimal;
+  created_at: string;
+  updated_at: string;
+}
+
+export type IssueStatus =
+  | 'open'
+  | 'in_progress'
+  | 'in_review'
+  | 'resolved'
+  | 'closed'
+  | 'wont_fix';
+export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
+export type IssueType =
+  | 'bug'
+  | 'task'
+  | 'improvement'
+  | 'gt_correction'
+  | 'auto_generated';
+
+// API types
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface ApiError {
+  detail?: string;
+  [key: string]: unknown;
+}
+
+// Auth types
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface AuthTokens {
+  access: string;
+  refresh: string;
+}

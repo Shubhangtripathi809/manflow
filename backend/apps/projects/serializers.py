@@ -1,0 +1,127 @@
+"""
+Serializers for Projects app.
+"""
+from django.contrib.auth import get_user_model
+from rest_framework import serializers
+
+from apps.users.serializers import UserMinimalSerializer
+
+from .models import Label, Project, ProjectMembership
+
+User = get_user_model()
+
+
+class LabelSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Label model.
+    """
+    class Meta:
+        model = Label
+        fields = ["id", "name", "color", "description", "is_default", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class ProjectMembershipSerializer(serializers.ModelSerializer):
+    """
+    Serializer for ProjectMembership.
+    """
+    user = UserMinimalSerializer(read_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source="user",
+        write_only=True,
+    )
+    
+    class Meta:
+        model = ProjectMembership
+        fields = ["id", "user", "user_id", "role", "joined_at"]
+        read_only_fields = ["id", "joined_at"]
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Project model.
+    """
+    created_by = UserMinimalSerializer(read_only=True)
+    labels = LabelSerializer(many=True, read_only=True)
+    member_count = serializers.SerializerMethodField()
+    document_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Project
+        fields = [
+            "id", "name", "description", "task_type",
+            "project_settings", "default_labels", "is_active",
+            "created_by", "created_at", "updated_at",
+            "labels", "member_count", "document_count",
+        ]
+        read_only_fields = ["id", "created_by", "created_at", "updated_at"]
+    
+    def get_member_count(self, obj):
+        return obj.members.count()
+    
+    def get_document_count(self, obj):
+        return obj.documents.count() if hasattr(obj, "documents") else 0
+
+
+class ProjectDetailSerializer(ProjectSerializer):
+    """
+    Detailed serializer for Project with members.
+    """
+    members = serializers.SerializerMethodField()
+    default_assignees = UserMinimalSerializer(many=True, read_only=True)
+    
+    class Meta(ProjectSerializer.Meta):
+        fields = ProjectSerializer.Meta.fields + ["members", "default_assignees"]
+    
+    def get_members(self, obj):
+        memberships = ProjectMembership.objects.filter(project=obj).select_related("user")
+        return ProjectMembershipSerializer(memberships, many=True).data
+
+
+class ProjectCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating projects.
+    """
+    default_assignee_ids = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    
+    class Meta:
+        model = Project
+        fields = [
+            "name", "description", "task_type",
+            "project_settings", "default_labels", "default_assignee_ids",
+        ]
+    
+    def create(self, validated_data):
+        default_assignees = validated_data.pop("default_assignee_ids", [])
+        project = Project.objects.create(**validated_data)
+        
+        if default_assignees:
+            project.default_assignees.set(default_assignees)
+        
+        # Add creator as owner
+        user = self.context["request"].user
+        ProjectMembership.objects.create(
+            project=project,
+            user=user,
+            role=ProjectMembership.Role.OWNER,
+        )
+        
+        return project
+
+
+class ProjectStatsSerializer(serializers.Serializer):
+    """
+    Serializer for project statistics.
+    """
+    total_documents = serializers.IntegerField()
+    approved_documents = serializers.IntegerField()
+    pending_documents = serializers.IntegerField()
+    total_test_runs = serializers.IntegerField()
+    latest_accuracy = serializers.FloatField(allow_null=True)
+    open_issues = serializers.IntegerField()
