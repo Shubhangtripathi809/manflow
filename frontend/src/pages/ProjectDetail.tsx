@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -21,7 +21,10 @@ import { projectsApi, documentsApi } from '@/services/api';
 import { formatDate, getStatusColor } from '@/lib/utils';
 import type { Project, Document } from '@/types';
 
+
 export function ProjectDetail() {
+  const navigate = useNavigate();
+
   const { id } = useParams<{ id: string }>();
 
   const { data: project, isLoading: projectLoading } = useQuery({
@@ -181,8 +184,8 @@ export function ProjectDetail() {
                     <tr
                       key={doc.id}
                       className="border-b hover:bg-muted/50 cursor-pointer"
-                      onClick={() => window.location.href = `/documents/${doc.id}`}
-                    >
+                      onClick={() => navigate(`/documents/${doc.id}`)}
+                      >
                       <td className="py-3 px-4">
                         <div className="font-medium">{doc.name}</div>
                         {doc.description && (
