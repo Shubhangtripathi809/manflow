@@ -88,6 +88,7 @@ export interface Document {
   created_by: UserMinimal;
   created_at: string;
   updated_at: string;
+  labels?: Label[];
 }
 
 export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'other';

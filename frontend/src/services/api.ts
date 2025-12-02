@@ -139,6 +139,17 @@ export const projectsApi = {
     const response = await api.get(`/projects/${id}/stats/`);
     return response.data;
   },
+
+  // Add inside projectsApi object:
+  createLabel: async (projectId: number, data: { name: string; color: string }) => {
+    const response = await api.post(`/projects/${projectId}/labels/`, data);
+    return response.data;
+  },
+
+  deleteLabel: async (projectId: number, labelId: number) => {
+    const response = await api.delete(`/projects/${projectId}/labels/${labelId}/`);
+    return response.data;
+  },
 };
 
 // Documents API
@@ -209,6 +220,16 @@ export const documentsApi = {
     const response = await api.post(`/documents/${id}/approve/`, {
       version_id: versionId,
     });
+    return response.data;
+  },
+  // Add inside documentsApi object:
+  addLabel: async (documentId: string, labelId: number) => {
+    const response = await api.post(`/documents/${documentId}/labels/`, { label_id: labelId });
+    return response.data;
+  },
+
+  removeLabel: async (documentId: string, labelId: number) => {
+    const response = await api.delete(`/documents/${documentId}/labels/${labelId}/`);
     return response.data;
   },
 };
