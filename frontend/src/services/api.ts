@@ -1,7 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens } from '@/types';
+import type { AuthTokens, User as AppUser, PaginatedResponse } from '@/types'; 
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.16:8002/api/v1';
+
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -78,7 +79,6 @@ export const authApi = {
       password,
     });
     setTokens(response.data);
-    // Update the default header immediately for subsequent requests
     api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
     return response.data;
   },
@@ -268,5 +268,36 @@ export const issuesApi = {
     return response.data;
   },
 };
+
+// NEW: Users API
+export const usersApi = {
+ list: async () => {
+    const response = await api.get<PaginatedResponse<AppUser>>('/auth/users/');
+    return response.data;
+  },
+
+  create: async (data: {
+    username: string;
+    email: string;
+    password: string;
+    password_confirm: string;
+    first_name: string; 
+    last_name: string; 
+    role: AppUser['role']; 
+  }) => {
+    const response = await api.post<AppUser>('/auth/create-user/', data);
+    return response.data;
+  },
+
+  updateRole: async (id: number, role: AppUser['role']) => {
+    const response = await api.patch<AppUser>(`/users/${id}/`, { role });
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await api.delete(`/users/${id}/`);
+  },
+};
+
 
 export default api;

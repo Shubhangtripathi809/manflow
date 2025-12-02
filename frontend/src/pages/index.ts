@@ -5,3 +5,4 @@ export { ProjectCreate } from './ProjectCreate';
 export { ProjectDetail } from './ProjectDetail';
 export { DocumentCreate } from './DocumentCreate';
 export { DocumentDetail } from './DocumentDetail';
+export { UserManagement } from './userManagement/UserManagement'
