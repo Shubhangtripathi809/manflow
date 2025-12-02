@@ -6,6 +6,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.permissions import IsAdminUser
 
 from .serializers import UserCreateSerializer, UserSerializer
 
@@ -20,6 +21,15 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = UserCreateSerializer
     permission_classes = [permissions.AllowAny]
 
+class UserCreateView(generics.CreateAPIView):
+    """
+    Admin-only view to create new users/employees.
+    Only users with is_staff/is_superuser can access this.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserCreateSerializer
+    # Change permission from AllowAny to IsAdminUser
+    permission_classes = [permissions.IsAdminUser]
 
 class MeView(APIView):
     """
