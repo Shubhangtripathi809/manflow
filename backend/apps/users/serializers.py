@@ -47,7 +47,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-
+class UserRoleUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['role']
+        
+    def validate_role(self, value):
+        # Optional: Add extra logic if you want to prevent changing to 'admin' 
+        # unless the requester is a superuser. For now, we allow it.
+        if value not in User.Role.values:
+             raise serializers.ValidationError("Invalid role selected.")
+        return value
+    
 class UserMinimalSerializer(serializers.ModelSerializer):
     """
     Minimal serializer for user references.
