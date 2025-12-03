@@ -10,7 +10,6 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   hasRole: (role: User['role']) => boolean;
-  // NEW: Check if the user's role is in a list of allowed roles
   isAllowed: (roles: User['role'][]) => boolean;
 }
 
@@ -72,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // NEW: Check if user role is in the provided list
   const isAllowed = (roles: User['role'][]) => {
     const userRole = user?.role;
-    // The role must exist and be present in the allowed list
     const result = !!userRole && roles.includes(userRole);
     console.log(`[Auth] isAllowed check (Roles: ${roles.join(',')}) - User Role='${userRole}', Result=${result}`);
     return result;
@@ -87,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         hasRole, 
-        isAllowed, // Export the new function
+        isAllowed,
       }}
     >
       {children}

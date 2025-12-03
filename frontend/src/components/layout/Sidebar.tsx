@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   Users,
+  CheckSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,9 +16,11 @@ import { useAuth } from '@/hooks/useAuth';
 const baseNavigation = [ 
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
+  { name: 'My Tasks', href: '/taskboard', icon: CheckSquare},
   { name: 'Documents', href: '/documents', icon: FileText },
   { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
   { name: 'Issues', href: '/issues', icon: AlertCircle },
+  
 ];
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator']; 

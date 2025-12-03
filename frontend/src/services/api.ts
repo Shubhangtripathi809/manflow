@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, PaginatedResponse } from '@/types'; 
+import type { AuthTokens, User as AppUser, PaginatedResponse } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.16:8002/api/v1';
 
@@ -269,11 +269,45 @@ export const issuesApi = {
   },
 };
 
-// NEW: Users API
+// Add New Task API
+export const taskApi = {
+  list: async () => {
+    const response = await api.get('/tasksite/');
+    return response.data;
+  },
+
+  // Create a new task
+  create: async (data: {
+    heading: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+    assigned_to: number[];
+    status: string;
+    priority: string;
+    project_name?: string;
+  }) => {
+    const response = await api.post('/tasksite/', data);
+    return response.data;
+  },
+
+  update: async (taskId: number, data: Partial<{ status: string }>) => {
+    const response = await api.patch(`/tasksite/${taskId}/`, data);
+    return response.data;
+},
+
+};
+
+
+// User ManagementAPI
 export const usersApi = {
- list: async () => {
+  list: async () => {
     const response = await api.get<PaginatedResponse<AppUser>>('/auth/users/');
     return response.data;
+  },
+  listAll: async () => {
+    const response = await api.get<any>('/tasksite/all-users/');
+    return response.data.users;
   },
 
   create: async (data: {
@@ -281,16 +315,16 @@ export const usersApi = {
     email: string;
     password: string;
     password_confirm: string;
-    first_name: string; 
-    last_name: string; 
-    role: AppUser['role']; 
+    first_name: string;
+    last_name: string;
+    role: AppUser['role'];
   }) => {
     const response = await api.post<AppUser>('/auth/create-user/', data);
     return response.data;
   },
 
   updateRole: async (id: number, role: AppUser['role']) => {
-    const response = await api.patch<AppUser>(`/users/${id}/`, { role });
+    const response = await api.patch<AppUser>(`/auth/update-role/${id}/`, { role });
     return response.data;
   },
 

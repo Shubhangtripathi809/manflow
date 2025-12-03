@@ -9,7 +9,9 @@ import { Dashboard,
          ProjectDetail,
          DocumentCreate,
          DocumentDetail,
-         UserManagement 
+         UserManagement,
+         MyTask,
+         CreateTask
         } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -89,6 +91,28 @@ function AppRoutes() {
               <UserManagement />
             </AdminRoute>
           }
+        />
+        
+      </Route>
+
+     <Route 
+        path="/taskboard" 
+        element={
+          <ProtectedRoute>
+            <MyTask />
+          </ProtectedRoute>
+        } 
+      >
+        <Route index element={null} />
+        
+        {/* Nested Route 2: Create Task Page */}
+        <Route 
+          path="create" 
+          element={
+            <AdminRoute>
+              <CreateTask />
+            </AdminRoute>
+          } 
         />
         
       </Route>
