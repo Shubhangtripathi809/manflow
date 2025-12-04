@@ -11,7 +11,9 @@ import { Dashboard,
          DocumentDetail,
          UserManagement,
          MyTask,
-         CreateTask
+         CreateTask,
+         Documents,
+         ProjectSettings
         } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -71,16 +73,22 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/projects/:projectId/documents/new" element={<DocumentCreate />} />
-        <Route path="/documents" element={<div>Documents (Phase 1)</div>} />
+        <Route path="/projects/:id/settings" element={<ProjectSettings />} />
+
+        <Route path="/documents" element={<Documents />} />
         <Route path="/documents/:id" element={<DocumentDetail />} />
+
         <Route path="/test-runs" element={<div>Test Runs (Phase 2)</div>} />
         <Route path="/test-runs/:id" element={<div>Test Run Detail (Phase 2)</div>} />
+
         <Route path="/issues" element={<div>Issues (Phase 3)</div>} />
         <Route path="/issues/:id" element={<div>Issue Detail (Phase 3)</div>} />
+
         <Route path="/settings" element={<div>Settings</div>} />
         
         {/* Admin-only route for User Management */}
@@ -114,7 +122,6 @@ function AppRoutes() {
             </AdminRoute>
           } 
         />
-        
       </Route>
     </Routes>
   );

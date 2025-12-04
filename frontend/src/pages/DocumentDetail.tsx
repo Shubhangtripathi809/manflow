@@ -19,9 +19,11 @@ import {
   CardContent,
   Badge,
 } from '@/components/common';
-import { documentsApi } from '@/services/api';
+import { documentsApi, projectsApi } from '@/services/api';
 import { formatDate, formatDateTime, getStatusColor } from '@/lib/utils';
 import type { Document, GTVersion } from '@/types';
+import { DiffViewer } from '@/components/DiffViewer';
+import { LabelSelector } from '@/components/LabelSelector';
 
 function SourcePreview({ doc }: { doc: Document }) {
   if (!doc.source_file) {
@@ -75,6 +77,8 @@ export function DocumentDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [jsonError, setJsonError] = useState('');
   const [activeTab, setActiveTab] = useState<'editor' | 'versions'>('editor');
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<GTVersion | null>(null);
 
   const { data: document, isLoading } = useQuery({
     queryKey: ['document', id],
@@ -86,6 +90,12 @@ export function DocumentDetail() {
     queryKey: ['document-versions', id],
     queryFn: () => documentsApi.getVersions(id!),
     enabled: !!id,
+  });
+
+  const { data: project } = useQuery({
+    queryKey: ['project', document?.project],
+    queryFn: () => projectsApi.get(Number(document?.project)),
+    enabled: !!document?.project,
   });
 
   useEffect(() => {
@@ -196,6 +206,14 @@ export function DocumentDetail() {
               <span>Type: {doc.file_type}</span>
               <span>Versions: {doc.version_count || 0}</span>
               <span>Created: {formatDate(doc.created_at)}</span>
+            </div>
+            {/* Labels */}
+            <div className="mt-3">
+              <LabelSelector
+                documentId={doc.id}
+                currentLabels={doc.labels || []}
+                availableLabels={project?.labels || []}
+              />
             </div>
           </div>
         </div>
@@ -342,16 +360,59 @@ export function DocumentDetail() {
 
       {activeTab === 'versions' && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Version History</CardTitle>
+            {versionList.length >= 2 && (
+              <Button
+                variant={compareMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setCompareMode(!compareMode);
+                  setSelectedVersion(null);
+                }}
+              >
+                {compareMode ? 'Exit Compare' : 'Compare Versions'}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
+            {compareMode && selectedVersion && doc.current_gt_version && (
+              <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium">
+                    Comparing v{selectedVersion.version_number} → v{doc.current_gt_version.version_number}
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedVersion(null)}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <DiffViewer
+                  oldData={selectedVersion.gt_data as Record<string, unknown>}
+                  newData={doc.current_gt_version.gt_data as Record<string, unknown>}
+                  oldLabel={`v${selectedVersion.version_number}`}
+                  newLabel={`v${doc.current_gt_version.version_number} (Current)`}
+                />
+              </div>
+            )}
+
+            {compareMode && !selectedVersion && (
+              <div className="mb-6 p-4 border rounded-lg bg-blue-50 text-blue-800 text-sm">
+                Select a version below to compare with the current version
+              </div>
+            )}
+
             {versionList.length > 0 ? (
               <div className="space-y-4">
                 {versionList.map((version: GTVersion) => (
                   <div
                     key={version.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+                    className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 ${
+                      selectedVersion?.id === version.id ? 'ring-2 ring-primary' : ''
+                    }`}
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-bold">
@@ -375,9 +436,24 @@ export function DocumentDetail() {
                         </p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => loadVersion(version)}>
-                      Load
-                    </Button>
+                    <div className="flex gap-2">
+                      {compareMode && doc.current_gt_version?.id !== version.id && (
+                        <Button
+                          variant={selectedVersion?.id === version.id ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setSelectedVersion(
+                            selectedVersion?.id === version.id ? null : version
+                          )}
+                        >
+                          {selectedVersion?.id === version.id ? 'Selected' : 'Compare'}
+                        </Button>
+                      )}
+                      {!compareMode && (
+                        <Button variant="outline" size="sm" onClick={() => loadVersion(version)}>
+                          Load
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
