@@ -4,8 +4,10 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
+from django.db.models import Count, Q
 
-from apps.users.models import User # CORRECTION: Imported from users.models
+# Ensure this import matches your project structure
+from apps.users.models import User
 from .models import Task
 from .serializers import TaskSerializer, TaskStatusUpdateSerializer, UserManagementSerializer
 
@@ -14,18 +16,13 @@ class AllUsersListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """
-        GET: Retrieve a list of all users.
-        Only accessible by Admin or Manager.
-        """
-        # Updated to allow Managers to see the user list to assign tasks
         if not request.user.is_manager:
              return Response(
                 {"detail": "You do not have permission to view users."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        users = User.objects.all().order_by('username') # CORRECTION: Changed CustomUser to User
+        users = User.objects.all().order_by('username')
         serializer = UserManagementSerializer(users, many=True)
         return Response({
             "message": "All users retrieved successfully",
@@ -37,12 +34,6 @@ class TaskListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """
-        GET: List tasks.
-        Admins/Managers see ALL tasks. 
-        Annotators/Viewers see only tasks assigned to them.
-        """
-        # Use the 'is_manager' property from your User model
         if request.user.is_manager:
             tasks = Task.objects.all()
         else:
@@ -55,11 +46,6 @@ class TaskListCreateView(APIView):
         }, status=status.HTTP_200_OK)
 
     def post(self, request):
-        """
-        POST: Create a new task. 
-        Only accessible by Admins and Managers.
-        """
-        # Permission Check
         if not request.user.is_manager:
             return Response(
                 {"detail": "You do not have permission to create tasks."},
@@ -68,7 +54,6 @@ class TaskListCreateView(APIView):
         
         serializer = TaskSerializer(data=request.data)
         if serializer.is_valid():
-            # Automatically assign the creator (Admin or Manager)
             serializer.save(assigned_by=request.user)
             return Response({
                 "message": "Task created successfully",
@@ -82,12 +67,8 @@ class TaskRetrieveUpdateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, task_id):
-        """
-        GET: Retrieve a single task by ID.
-        """
         task = get_object_or_404(Task, id=task_id)
 
-        # Allow if user is Manager OR if the task is assigned to the user
         if not request.user.is_manager and not task.assigned_to.filter(id=request.user.id).exists():
             return Response(
                 {"detail": "You do not have permission to view this task."},
@@ -101,25 +82,18 @@ class TaskRetrieveUpdateView(APIView):
         }, status=status.HTTP_200_OK)
 
     def patch(self, request, task_id):
-        """
-        PATCH: Update a task.
-        Admins/Managers: Can update ANY field.
-        Annotators/Viewers: Can ONLY update 'status' of assigned tasks.
-        """
         task = get_object_or_404(Task, id=task_id)
 
         if request.user.is_manager:
-            # Managers/Admins use the full serializer (can update anything)
             serializer = TaskSerializer(task, data=request.data, partial=True)
         else:
-            # Regular users must be assigned to the task
             if not task.assigned_to.filter(id=request.user.id).exists():
                 return Response(
                     {"detail": "You do not have permission to update this task."},
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # Restrict updates to 'status' only
+            # Allow status updates
             if len(request.data) > 1 or ('status' in request.data and len(request.data) == 1):
                 pass
             else:
@@ -138,13 +112,8 @@ class TaskRetrieveUpdateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, task_id): 
-        """
-        DELETE: Delete a task by ID.
-        Only Admins and Managers can delete tasks.
-        """
         task = get_object_or_404(Task, id=task_id)
 
-        # Only Managers/Admins can delete
         if not request.user.is_manager:
              return Response(
                 {"detail": "You do not have permission to delete tasks."},
@@ -155,3 +124,49 @@ class TaskRetrieveUpdateView(APIView):
         return Response({
             "message": "Task deleted successfully"
         }, status=status.HTTP_204_NO_CONTENT)
+
+# --- CORRECTED PERFORMANCE VIEW ---
+class UserPerformanceView(APIView):
+    """
+    GET: Retrieve detailed performance metrics for a specific user.
+    Only accessible by Admins and Managers.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        # 1. Permission Check
+        if not request.user.is_manager:
+            return Response(
+                {"detail": "You do not have permission to view team performance."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 2. Get the target user
+        target_user = get_object_or_404(User, id=user_id)
+        
+        # 3. Get all tasks assigned to this user
+        user_tasks = Task.objects.filter(assigned_to=target_user)
+        
+        # 4. Calculate Metrics
+        total_tasks = user_tasks.count()
+        
+        # FIX: Used '__iexact' to match status regardless of case (pending vs PENDING)
+        metrics = {
+            "total": total_tasks,
+            "pending": user_tasks.filter(status__iexact='pending').count(),
+            "in_progress": user_tasks.filter(status__iexact='in_progress').count(),
+            "completed": user_tasks.filter(status__iexact='completed').count(),
+            "deployed": user_tasks.filter(status__iexact='deployed').count(),
+            "deferred": user_tasks.filter(status__iexact='deferred').count(),
+        }
+        
+        # 5. Serialize the task list for detailed history
+        task_serializer = TaskSerializer(user_tasks, many=True)
+        user_serializer = UserManagementSerializer(target_user)
+
+        return Response({
+            "user": user_serializer.data,
+            "performance_metrics": metrics,
+            "task_history": task_serializer.data
+        }, status=status.HTTP_200_OK)
