@@ -8,6 +8,7 @@ export { DocumentDetail } from './DocumentDetail';
 export { UserManagement } from './userManagement/UserManagement'
 export { MyTask } from './MyTask/MyTask';
 export { CreateTask } from './MyTask/CreateTask'
+export { TeamPerformance } from './MyTask/TeamPerformance';
 export { Documents } from './Documents';
 export { ProjectSettings } from './ProjectSettings';
 

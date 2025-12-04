@@ -483,13 +483,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeFilter, onFilterChange, onBackT
                     })}
                 </nav>
                 {isCreationAllowed && (
-                    <button
-                        onClick={onAddNewTask}
-                        className="w-full flex items-center mt-6 px-4 py-3 text-left text-sm font-medium rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
-                    >
-                        <Plus className="w-5 h-5 mr-3" />
-                        Add New Task
-                    </button>
+                    <>
+                        <button
+                            onClick={onAddNewTask}
+                            className="w-full flex items-center mt-6 px-4 py-3 text-left text-sm font-medium rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
+                        >
+                            <Plus className="w-5 h-5 mr-3" />
+                            Add New Task
+                        </button>
+                        <a 
+                            href="/team-performance"
+                            className="w-full flex items-center mt-2 px-4 py-3 text-left text-sm font-medium rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
+                        >
+                            <Users className="w-5 h-5 mr-3" />
+                            Team Performance
+                        </a>
+                    </>
                 )}
             </div>
         </div>
@@ -509,8 +518,6 @@ export const MyTask: React.FC<MyTaskProps> = () => {
     const [activeFilter, setActiveFilter] = useState<string>('ALL');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
-
-    // To hold the task that is currently selected for detail view
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
     // Function to fetch tasks data

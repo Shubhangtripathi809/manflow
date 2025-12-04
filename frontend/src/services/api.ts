@@ -315,7 +315,58 @@ export const taskApi = {
   update: async (taskId: number, data: Partial<{ status: string }>) => {
     const response = await api.patch(`/tasksite/${taskId}/`, data);
     return response.data;
-},
+  },
+
+  getPerformance: async (userId: number) => {
+    const response = await api.get(`/tasksite/performance/${userId}/`);
+    const apiData = response.data;
+    const performanceMetrics = apiData.performance_metrics || {};
+
+    const mappedPerformance = {
+      completed_tasks_count: performanceMetrics.completed ?? 0,
+      in_progress_tasks_count: performanceMetrics.in_progress ?? 0,
+      pending_tasks_count: performanceMetrics.pending ?? 0,
+      total_tasks_count: performanceMetrics.total ?? 0,
+
+      performance_score: performanceMetrics.total
+        ? Math.round((performanceMetrics.completed / performanceMetrics.total) * 100)
+        : 0,
+    };
+
+    const taskHistory = apiData.task_history || [];
+    const projectDistributionMap: Record<string, { task_count: number }> = {};
+
+    taskHistory.forEach((task: any) => {
+      const projectName = task.project_name || 'Unassigned Project';
+      if (!projectDistributionMap[projectName]) {
+        projectDistributionMap[projectName] = { task_count: 0 };
+      }
+      projectDistributionMap[projectName].task_count += 1;
+    });
+
+    // NOTE: We cannot calculate total_project_tasks from this endpoint, 
+    // so we assume project_distribution is based on tasks assigned to the user.
+    const projectDistribution = Object.keys(projectDistributionMap).map(name => ({
+      project_name: name,
+      task_count: projectDistributionMap[name].task_count,
+      total_project_tasks: apiData.performance_metrics.total,
+    }));
+
+    const recentActivity = taskHistory.map((task: any) => ({
+      task_name: task.heading,
+      project_name: task.project_name || 'Unassigned Project',
+      status: task.status,
+      timestamp: task.updated_at,
+    })).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+
+    return {
+      ...mappedPerformance,
+      project_distribution: projectDistribution,
+      recent_activity: recentActivity,
+    };
+
+  },
 
 };
 
@@ -327,7 +378,7 @@ export const usersApi = {
     return response.data;
   },
   listAll: async () => {
-    const response = await api.get<any>('/tasksite/all-users/');
+    const response = await api.get<{ message: string, users: AppUser[] }>('/tasksite/all-users/');
     return response.data.users;
   },
 

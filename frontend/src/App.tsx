@@ -1,25 +1,27 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from '@/hooks/useAuth'; 
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout';
-import type { User as AppUser } from '@/types'; 
-import { Dashboard,
-         Login, 
-         Projects, 
-         ProjectCreate, 
-         ProjectDetail,
-         DocumentCreate,
-         DocumentDetail,
-         UserManagement,
-         MyTask,
-         CreateTask,
-         Documents,
-         ProjectSettings
-        } from '@/pages';
+import type { User as AppUser } from '@/types';
+import {
+  Dashboard,
+  Login,
+  Projects,
+  ProjectCreate,
+  ProjectDetail,
+  DocumentCreate,
+  DocumentDetail,
+  Documents,
+  ProjectSettings,
+  UserManagement,
+  MyTask,
+  CreateTask,
+  TeamPerformance
+} from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAllowed, isLoading } = useAuth();
-  const ALLOWED_ROLES: AppUser['role'][] = ['admin', 'manager', 'annotator']; 
-  const isAuthorized = isAllowed(ALLOWED_ROLES); 
+  const ALLOWED_ROLES: AppUser['role'][] = ['admin', 'manager', 'annotator'];
+  const isAuthorized = isAllowed(ALLOWED_ROLES);
 
   if (isLoading) {
     return (
@@ -30,7 +32,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthorized) {
-    return <Navigate to="/" replace />; 
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
@@ -73,7 +75,7 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<Dashboard />} />
-        
+
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
@@ -90,7 +92,7 @@ function AppRoutes() {
         <Route path="/issues/:id" element={<div>Issue Detail (Phase 3)</div>} />
 
         <Route path="/settings" element={<div>Settings</div>} />
-        
+
         {/* Admin-only route for User Management */}
         <Route
           path="/users"
@@ -100,29 +102,41 @@ function AppRoutes() {
             </AdminRoute>
           }
         />
-        
+
       </Route>
 
-     <Route 
-        path="/taskboard" 
+      <Route
+        path="/taskboard"
         element={
           <ProtectedRoute>
             <MyTask />
           </ProtectedRoute>
-        } 
+        }
       >
         <Route index element={null} />
-        
-        {/* Nested Route 2: Create Task Page */}
-        <Route 
-          path="create" 
+
+        {/* Nested Route : Create Task Page */}
+        <Route
+          path="create"
           element={
             <AdminRoute>
               <CreateTask />
             </AdminRoute>
-          } 
+          }
         />
       </Route>
+
+      {/* FULL-PAGE ROUTE: Team Performance 👈 New Full Page Route */}
+      <Route
+        path="/team-performance"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <TeamPerformance />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }
