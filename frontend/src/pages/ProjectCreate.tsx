@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { ArrowLeft, X } from 'lucide-react';
 import {
   Button,
   Input,
@@ -9,8 +9,80 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
+  Badge,
 } from '@/components/common';
-import { projectsApi } from '@/services/api';
+import { projectsApi, usersApi } from '@/services/api';
+import type { User as AppUser } from '@/types';
+
+interface MultiSelectProps {
+  label: string;
+  options: { value: number; label: string }[];
+  selectedValues: number[];
+  onChange: (values: number[]) => void;
+  placeholder: string;
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({
+  label,
+  options,
+  selectedValues,
+  onChange,
+  placeholder,
+}) => {
+  const selectedLabels = options
+    .filter((option) => selectedValues.includes(option.value))
+    .map((option) => option.label);
+
+  const availableOptions = options.filter(
+    (option) => !selectedValues.includes(option.value)
+  );
+
+  const handleSelect = (value: number) => {
+    onChange([...selectedValues, value]);
+  };
+
+  const handleDeselect = (value: number) => {
+    onChange(selectedValues.filter((v) => v !== value));
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="border border-input rounded-md p-2 min-h-[40px] flex flex-wrap gap-2 items-center">
+        {selectedLabels.length === 0 && (
+          <span className="text-muted-foreground text-sm">{placeholder}</span>
+        )}
+        {selectedValues.map((value) => {
+          const labelText = options.find((opt) => opt.value === value)?.label || 'Unknown';
+          return (
+            <Badge key={value} className="flex items-center gap-1">
+              {labelText}
+              <button type="button" onClick={() => handleDeselect(value)} className="ml-1 text-xs">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          );
+        })}
+
+        <select
+          className="flex-1 min-w-[100px] h-full bg-transparent text-sm focus:outline-none"
+          value="" 
+          onChange={(e) => handleSelect(Number(e.target.value))}
+          disabled={availableOptions.length === 0}
+        >
+          <option value="" disabled>
+            {availableOptions.length > 0 ? 'Select users...' : 'All users selected'}
+          </option>
+          {availableOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+};
 
 const TASK_TYPES = [
   { value: 'key_value', label: 'Key-Value Extraction' },
@@ -28,10 +100,21 @@ export function ProjectCreate() {
     description: '',
     task_type: 'key_value',
   });
+  const [assignedTo, setAssignedTo] = useState<number[]>([]);
   const [error, setError] = useState('');
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ['allUsers'],
+    queryFn: usersApi.listAll,
+    select: (data: AppUser[]) =>
+      data.map((user) => ({
+        value: user.id,
+        label: user.username, 
+      })),
+  });
 
   const createMutation = useMutation({
-    mutationFn: projectsApi.create,
+    mutationFn: (data: typeof formData & { assigned_to: number[] }) => 
+      projectsApi.create(data),
     onSuccess: () => {
       navigate('/projects');
     },
@@ -49,7 +132,7 @@ export function ProjectCreate() {
       return;
     }
 
-    createMutation.mutate(formData);
+    createMutation.mutate({ ...formData, assigned_to: assignedTo });
   };
 
   const handleChange = (
@@ -59,6 +142,11 @@ export function ProjectCreate() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  // New handler for the MultiSelect component
+  const handleAssignedToChange = (values: number[]) => {
+    setAssignedTo(values);
   };
 
   return (
@@ -141,6 +229,21 @@ export function ProjectCreate() {
                 Select the type of extraction or classification task
               </p>
             </div>
+            {/* Assigned To Multi-select */}
+            {usersLoading ? (
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Assigned To</label>
+                    <Input placeholder="Loading users..." disabled />
+                </div>
+            ) : (
+                <MultiSelect
+                    label="Assigned To"
+                    options={usersData || []}
+                    selectedValues={assignedTo}
+                    onChange={handleAssignedToChange}
+                    placeholder="Select users to assign the project"
+                />
+            )}
 
             <div className="flex gap-3 pt-4">
               <Button

@@ -9,6 +9,11 @@ export { UserManagement } from './userManagement/UserManagement'
 export { MyTask } from './MyTask/MyTask';
 export { CreateTask } from './MyTask/CreateTask'
 export { TeamPerformance } from './MyTask/TeamPerformance';
+export { ToolsHub } from './Tools/Tools';
+export { PdfVsHtmlViewer } from './Tools/PdfVsHtmlViewer';
+// export { SuperscriptChecker } from './SuperscriptChecker';
+// export { JsonViewer } from './JsonViewer';
+export { PivotTableExtractor } from './Tools/PivotTableExtractor';
 export { Documents } from './Documents';
 export { ProjectSettings } from './ProjectSettings';
 

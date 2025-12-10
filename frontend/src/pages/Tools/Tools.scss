@@ -1,0 +1,665 @@
+.tools-hub {
+  display: flex;
+  height: 100vh;
+  background: #f5f5f7;
+
+  .tools-sidebar {
+    width: 230px;
+    background: #1e293b;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #334155;
+
+    .sidebar-header {
+      padding: 1.5rem 1rem;
+      border-bottom: 1px solid #334155;
+
+      .header-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+
+        .back-arrow {
+          background: transparent;
+          border: none;
+          color: white;
+          cursor: pointer;
+          padding: 0.5rem;
+          border-radius: 0.375rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          flex-shrink: 0;
+
+          &:hover {
+            background: #334155;
+          }
+        }
+      }
+
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 0.25rem 0;
+      }
+
+      p {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin: 0;
+      }
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 1rem 0.75rem;
+      overflow-y: auto;
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.625rem 0.75rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+
+        &:hover {
+          background: #334155;
+        }
+
+        &.active {
+          background: #3b82f6;
+          color: white;
+        }
+
+        svg {
+          flex-shrink: 0;
+        }
+      }
+
+      .nav-section {
+        margin-top: 1.5rem;
+
+        .nav-section-title {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #64748b;
+          padding: 0.5rem 0.75rem;
+          letter-spacing: 0.05em;
+        }
+      }
+    }
+  }
+
+  .tools-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+
+    .tools-header {
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        color: #1e293b;
+      }
+
+      p {
+        font-size: 1rem;
+        color: #64748b;
+        margin: 0;
+      }
+
+      .view-toggle {
+        display: flex;
+        gap: 0.5rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 0.25rem;
+
+        button {
+          padding: 0.5rem;
+          border: none;
+          background: transparent;
+          border-radius: 0.375rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          color: #64748b;
+
+          &:hover {
+            background: #f1f5f9;
+          }
+
+          &.active {
+            background: #3b82f6;
+            color: white;
+          }
+        }
+      }
+    }
+
+    .tools-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      align-items: center;
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+
+      &.list {
+        grid-template-columns: 1fr;
+      }
+
+      .tool-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+
+        &:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+          border-color: #3b82f6;
+        }
+
+        .tool-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 0.75rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          flex-shrink: 0;
+
+          &.bg-blue-500 {
+            background: #3b82f6;
+          }
+
+          &.bg-green-500 {
+            background: #22c55e;
+          }
+
+          &.bg-purple-500 {
+            background: #a855f7;
+          }
+
+          &.bg-orange-500 {
+            background: #f97316;
+          }
+        }
+
+        .tool-content {
+          flex: 1;
+
+          h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0 0 0.5rem 0;
+            color: #1e293b;
+          }
+
+          p {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin: 0 0 0.75rem 0;
+            line-height: 1.5;
+          }
+
+          .tool-category {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #f1f5f9;
+            color: #475569;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Tool Viewer Layout
+.tool-viewer {
+  display: flex;
+  height: 100vh;
+  background: #f5f5f7;
+
+  .tool-viewer-sidebar {
+    width: 230px;
+    background: #1e293b;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #334155;
+
+    .sidebar-header {
+      padding: 1.5rem 1rem;
+      border-bottom: 1px solid #334155;
+
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 0.25rem 0;
+      }
+
+      p {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin: 0;
+      }
+    }
+
+    .back-button {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: transparent;
+      border: none;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      text-align: left;
+      font-size: 0.875rem;
+
+      &:hover {
+        background: #334155;
+      }
+    }
+  }
+
+  .viewer-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    &--full {
+      background: #fff;
+    }
+
+    .viewer-header {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 1rem 2rem;
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+        color: #1e293b;
+      }
+    }
+
+    .comparison-main {
+      flex: 1;
+      display: flex;
+      gap: 1px;
+      background: #e2e8f0;
+      overflow: hidden;
+
+      .comparison-panel {
+        flex: 1;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+    }
+
+    .viewer-main {
+      flex: 1;
+      display: flex;
+      gap: 1px;
+      background: #e2e8f0;
+
+      .viewer-panel {
+        flex: 1;
+        background: white;
+        display: flex;
+        flex-direction: column;
+
+        .panel-header {
+          padding: 1rem 1.5rem;
+          border-bottom: 1px solid #e2e8f0;
+          background: #f8fafc;
+          font-weight: 600;
+          color: #1e293b;
+          font-size: 0.875rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .panel-content {
+          flex: 1;
+          padding: 1.5rem;
+          overflow-y: auto;
+
+          .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.75rem;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+
+            &:hover {
+              border-color: #3b82f6;
+              background: #f8fafc;
+            }
+
+            svg {
+              margin: 0 auto 1rem;
+              color: #94a3b8;
+            }
+
+            p {
+              color: #64748b;
+              margin: 0;
+
+              &:first-of-type {
+                font-weight: 600;
+                color: #1e293b;
+                margin-bottom: 0.5rem;
+              }
+            }
+
+            input {
+              display: none;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+$viewer-bg: #ffffff;
+$content-area-bg: #f9fafb;
+$spinner-color: #2563eb;
+$page-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); // Corresponds to shadow-lg
+
+.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: $viewer-bg;
+
+  // The scrollable area holding the PDF document
+  &__content-area {
+    flex: 1;
+    overflow: auto;
+    background-color: $content-area-bg;
+    padding: 1rem;
+    display: flex;
+    // justify-content: center;
+  }
+
+  // Container for the loading spinner
+  &__loader-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+
+  // The loading spinner animation
+  &__spinner {
+    height: 3rem;
+    width: 3rem;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-bottom-color: $spinner-color;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  // Wrapper for the iframe to handle scaling/zoom
+  &__iframe-wrapper {
+    position: relative;
+    transition: transform 0.2s ease-in-out;
+    transform-origin: top left;
+    width: 100%;
+    height: 100%;
+  }
+
+  // The iframe element itself
+  &__iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    background-color: $viewer-bg;
+  }
+
+  .react-pdf__Document {}
+
+  .react-pdf__Page {
+    box-shadow: $page-shadow;
+    margin-inline: auto;
+
+    canvas {
+      max-width: none !important;
+    }
+
+  }
+}
+
+
+// Color and style variables for the PDF navigation component
+$pdf-nav-bg: #f9fafb; // gray-50
+$pdf-nav-border: #e5e7eb; // gray-200
+$pdf-nav-text: #1f2937; // gray-800
+$pdf-nav-text-secondary: #4b5563; // gray-600
+$pdf-nav-button-bg: #ffffff;
+$pdf-nav-button-bg-hover: #f3f4f6; // gray-100
+$pdf-nav-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+.pdf-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem, 0.75rem;
+  background-color: $pdf-nav-bg;
+  border-bottom: 1px solid $pdf-nav-border;
+
+  // Left section for the title
+  &__left {
+    flex: 1;
+  }
+
+  // Title styling
+  &__title {
+    font-weight: 600;
+    color: $pdf-nav-text;
+  }
+
+  // Center section for zoom controls
+  &__center {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  // Right section for the reset button
+  &__right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  // Zoom level display
+  &__scale-display {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: $pdf-nav-text-secondary;
+    padding: 0 0.5rem;
+    width: 4rem;
+    text-align: center;
+  }
+
+  // General button styles for the nav bar
+  &__button {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    background-color: $pdf-nav-button-bg;
+    border: 1px solid $pdf-nav-border;
+    box-shadow: $pdf-nav-shadow;
+    transition: background-color 0.2s ease-in-out;
+    cursor: pointer;
+    color: $pdf-nav-text;
+
+    &:hover {
+      background-color: $pdf-nav-button-bg-hover;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+$viewer-bg: #ffffff;
+$content-bg: #f9fafb;
+$spinner-color: #16a34a;
+$error-bg: #fef2f2;
+$error-border: #fecaca;
+$error-title-text: #991b1b;
+$error-message-text: #dc2626;
+$highlight-bg: rgba(255, 0, 0, 0.4);
+
+// Main container for the viewer
+.html-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: $viewer-bg;
+
+  // Area where the iframe content is displayed
+  &__content-area {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: auto;
+    background-color: $content-bg;
+    padding: 1rem;
+  }
+
+  // Container for the loading spinner
+  &__loader-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+
+  // The loading spinner animation
+  &__spinner {
+    height: 3rem;
+    width: 3rem;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-bottom-color: $spinner-color;
+    animation: spin 1s linear infinite;
+  }
+
+  // Keyframes for the spinner animation
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  // Styling for the error message box
+  &__error-box {
+    background-color: $error-bg;
+    border: 1px solid $error-border;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+
+  // Styling for the error title
+  &__error-title {
+    color: $error-title-text;
+    font-weight: 600;
+  }
+
+  // Styling for the error message text
+  &__error-message {
+    color: $error-message-text;
+    margin-top: 0.25rem;
+  }
+
+  // Wrapper for the iframe to handle scaling/zoom
+  &__iframe-wrapper {
+    position: relative;
+    transition: transform 0.2s ease-in-out;
+    transform-origin: top left;
+    width: 100%;
+    height: 100%;
+  }
+
+  // The iframe element itself
+  &__iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    background-color: $viewer-bg;
+  }
+
+  // Overlay for displaying highlights
+  &__highlight-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; 
+  }
+
+  // Individual highlight box
+  &__highlight {
+    position: absolute;
+    background-color: $highlight-bg;
+    border-radius: 2px;
+  }
+}
+

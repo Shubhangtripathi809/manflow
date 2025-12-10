@@ -231,3 +231,44 @@ export interface AuthTokens {
   access: string;
   refresh: string;
 }
+
+export interface ToolDocumentListPayload {
+  documents: string[];
+}
+
+export interface StyleCounts {
+  bold: number;
+  italic: number;
+  boldItalic: number;
+  superscript: number;
+}
+
+export interface Highlight {
+  id: string;
+  pageNumber: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface GroundTruthEntry {
+  id: string;
+  docName?: string; 
+  pageNumber: number;
+  issueType: string;
+  location: string;
+  description: string;
+}
+
+export interface DocumentDetailResponse {
+  pdf_base64: string;
+  html_url: string;
+}
+
+export interface GroundTruthApiResponse {
+  pageNumber: number;
+  issueType: string;
+  location: string;
+  description: string;
+}

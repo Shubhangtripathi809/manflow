@@ -1,7 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, PaginatedResponse } from '@/types';
+import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.16:8002/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
 
 
 export const api = axios.create({
@@ -10,6 +11,12 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+export const fileApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
 
 // Token management
 const TOKEN_KEY = 'zanflow_tokens';
@@ -344,8 +351,6 @@ export const taskApi = {
       projectDistributionMap[projectName].task_count += 1;
     });
 
-    // NOTE: We cannot calculate total_project_tasks from this endpoint, 
-    // so we assume project_distribution is based on tasks assigned to the user.
     const projectDistribution = Object.keys(projectDistributionMap).map(name => ({
       project_name: name,
       task_count: projectDistributionMap[name].task_count,
@@ -405,5 +410,52 @@ export const usersApi = {
   },
 };
 
+// export const getDocuments = async () => {
+//   const res = await fileApi.get("/documents/");
+//   console.log("📌 API Raw Response:", res.data);
+//   const docs = res.data.documents || [];
+//   console.log("📌 Extracted Docs:", docs);
+//   return docs;
+// };
 
+// Tools PdfVsHtml API
+export const toolApi = {
+  //fetch the list of project folders
+  getProjectFolders: async () => {
+    const res = await fileApi.get<ToolDocumentListPayload>("/documents/");
+    return res.data.documents || [];
+  },
+
+  // all documents within a specific project folder
+  getDocumentsInProject: async (projectName: string) => {
+    const res = await fileApi.get<ToolDocumentListPayload>(`/documents/${projectName}/`);
+    return res.data.documents || [];
+  },
+
+  // fetch the PDF base64 and HTML URL for a specific document
+  getDocumentDetail: async (projectName: string, docName: string) => {
+    const res = await fileApi.get<DocumentDetailResponse>(`/documents/${projectName}/${docName}/`);
+    return res.data;
+  },
+
+  // fetch all existing ground truth entries
+  getAllGroundTruth: async () => {
+    const res = await fileApi.get<{ documents: Omit<GroundTruthEntry, 'id'>[] } | GroundTruthEntry[]>("/ground_truth/all");
+    const serverEntries = Array.isArray(res.data) 
+                         ? res.data 
+                         : (res.data as any)?.documents || [];
+
+    return serverEntries.map((entry: any, index: number) => ({
+      ...entry, 
+      id: `gt-server-${Date.now()}-${index}`,
+      docName: entry.docName || entry.document
+    })) as GroundTruthEntry[];
+  },
+
+  //submit a new ground truth entry
+  submitGroundTruth: async (docName: string, entry: Omit<GroundTruthApiResponse, 'id' | 'docName'>) => {
+    const res = await fileApi.post(`/ground_truth/${docName}/`, entry);
+    return res.data;
+  }
+};
 export default api;

@@ -9,24 +9,26 @@ import {
   LogOut,
   Users,
   CheckSquare,
+  Cog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
-const baseNavigation = [ 
+const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
-  { name: 'My Tasks', href: '/taskboard', icon: CheckSquare},
+  { name: 'My Tasks', href: '/taskboard', icon: CheckSquare },
   { name: 'Documents', href: '/documents', icon: FileText },
   { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
   { name: 'Issues', href: '/issues', icon: AlertCircle },
-  
+  { name: 'Tools', href: '/tools', icon: Cog },
+
 ];
 
-const ADMIN_ROLES = ['admin', 'manager', 'annotator']; 
+const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
 
 export function Sidebar() {
-  const { user, logout, isLoading, hasRole } = useAuth(); 
+  const { user, logout, isLoading, hasRole } = useAuth();
   const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
 
   console.log(`[Sidebar] State: isLoading=${isLoading}, userRole='${user?.role}', showAdminLink=${shouldShowAdminLink}`);
@@ -34,7 +36,7 @@ export function Sidebar() {
   const navigation = [
     ...baseNavigation,
     ...(shouldShowAdminLink
-      ? [{ name: 'User Management', href: '/users', icon: Users }] 
+      ? [{ name: 'User Management', href: '/users', icon: Users }]
       : []),
   ];
 

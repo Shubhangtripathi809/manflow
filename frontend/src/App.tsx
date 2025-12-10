@@ -15,7 +15,12 @@ import {
   UserManagement,
   MyTask,
   CreateTask,
-  TeamPerformance
+  TeamPerformance,
+  ToolsHub,
+  PdfVsHtmlViewer,
+  // SuperscriptChecker,
+  // JsonViewer,
+  PivotTableExtractor
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -67,6 +72,8 @@ function AppRoutes() {
           isAuthenticated ? <Navigate to="/users" replace /> : <Login />
         }
       />
+      
+      {/* Routes WITH Sidebar (Inside Layout) */}
       <Route
         element={
           <ProtectedRoute>
@@ -91,9 +98,11 @@ function AppRoutes() {
         <Route path="/issues" element={<div>Issues (Phase 3)</div>} />
         <Route path="/issues/:id" element={<div>Issue Detail (Phase 3)</div>} />
 
+        {/* REMOVE THIS LINE - Tools should not be inside Layout */}
+        {/* <Route path="/tools" element={<div>Tools Page</div>} /> */}
+
         <Route path="/settings" element={<div>Settings</div>} />
 
-        {/* Admin-only route for User Management */}
         <Route
           path="/users"
           element={
@@ -102,9 +111,9 @@ function AppRoutes() {
             </AdminRoute>
           }
         />
-
       </Route>
 
+      {/* Taskboard Routes */}
       <Route
         path="/taskboard"
         element={
@@ -114,8 +123,6 @@ function AppRoutes() {
         }
       >
         <Route index element={null} />
-
-        {/* Nested Route : Create Task Page */}
         <Route
           path="create"
           element={
@@ -126,7 +133,7 @@ function AppRoutes() {
         />
       </Route>
 
-      {/* FULL-PAGE ROUTE: Team Performance 👈 New Full Page Route */}
+      {/* FULL-PAGE ROUTE: Team Performance */}
       <Route
         path="/team-performance"
         element={
@@ -134,6 +141,48 @@ function AppRoutes() {
             <AdminRoute>
               <TeamPerformance />
             </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* FULL-PAGE ROUTES: Tools Hub - WITHOUT ZanFlow Sidebar */}
+      <Route
+        path="/tools"
+        element={
+          <ProtectedRoute>
+            <ToolsHub />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tools/pdf-vs-html"
+        element={
+          <ProtectedRoute>
+            <PdfVsHtmlViewer />
+          </ProtectedRoute>
+        }
+      />
+      {/* <Route
+        path="/tools/superscript-checker"
+        element={
+          <ProtectedRoute>
+            <SuperscriptChecker />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tools/json-viewer"
+        element={
+          <ProtectedRoute>
+            <JsonViewer />
+          </ProtectedRoute>
+        }
+      /> */}
+      <Route
+        path="/tools/pivot-table"
+        element={
+          <ProtectedRoute>
+            <PivotTableExtractor />
           </ProtectedRoute>
         }
       />
