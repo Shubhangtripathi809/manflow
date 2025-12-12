@@ -1,6 +1,7 @@
 """
 Views for Ground Truth app.
 """
+from django.conf import settings  # Import settings for AWS URL construction
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -59,6 +60,66 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return DocumentDetailSerializer
         return DocumentSerializer
     
+    # --- MODIFIED CREATE METHOD ---
+    def create(self, request, *args, **kwargs):
+        """
+        Overridden to handle 's3_key' from direct client uploads.
+        """
+        # Check if this is a Direct S3 Upload confirmation
+        if "s3_key" in request.data:
+            return self.create_from_s3(request)
+            
+        # Standard flow (fallback)
+        return super().create(request, *args, **kwargs)
+
+    def create_from_s3(self, request):
+        """
+        Custom handler for creating documents after S3 direct upload.
+        """
+        data = request.data
+        project_id = data.get("project_id")
+        s3_key = data.get("s3_key")
+        name = data.get("name")
+        file_size = data.get("file_size", 0)
+        file_type = data.get("file_type", "application/pdf") # Default or required
+
+        if not project_id or not s3_key:
+            return Response(
+                {"detail": "project_id and s3_key are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Construct the full URL for frontend access
+        # Ensure AWS_S3_CUSTOM_DOMAIN or standard S3 URL format is used
+        if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
+            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{s3_key}"
+        else:
+            file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
+
+        # Create the Document manually
+        # Note: Ensure your Document model has fields for 's3_key' or 'file_url'
+        document = Document.objects.create(
+            project_id=project_id,
+            name=name,
+            # We explicitly set the S3 path/URL here. 
+            # If your model uses a FileField, you might need to assign the path string relative to MEDIA_ROOT
+            # or save it to a separate CharField like 's3_key'.
+            metadata={"s3_key": s3_key, "url": file_url}, 
+            file_size=file_size,
+            file_type=file_type, 
+            created_by=request.user,
+            updated_by=request.user,
+            status=Document.Status.UPLOADED, # Assuming you have an UPLOADED status
+        )
+
+        # Log the action
+        log_action(document, "create", new_value={"name": document.name, "s3_key": s3_key})
+
+        # Return the standard serialized data
+        serializer = DocumentSerializer(document)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    # ------------------------------
+
     def perform_create(self, serializer):
         document = serializer.save()
         log_action(document, "create", new_value={"name": document.name})
