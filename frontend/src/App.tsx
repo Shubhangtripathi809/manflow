@@ -2,6 +2,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout';
 import type { User as AppUser } from '@/types';
+import { ContentCreation } from '@/pages/TaskType/ContentCreation';
+import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { projectsApi } from '@/services/api';
 import {
   Dashboard,
   Login,
@@ -61,6 +65,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ProjectDetailWrapper() {
+  const { id } = useParams<{ id: string }>();
+  const { data: project } = useQuery({
+    queryKey: ['project', id],
+    queryFn: () => projectsApi.get(Number(id)),
+    enabled: !!id,
+  });
+
+  if (project?.task_type === 'content_creation') {
+    return <ContentCreation />;
+  }
+
+  return <ProjectDetail />;
+}
+
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
 
@@ -85,7 +104,7 @@ function AppRoutes() {
 
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
-        <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/projects/:id" element={<ProjectDetailWrapper />} />
         <Route path="/projects/:projectId/documents/new" element={<DocumentCreate />} />
         <Route path="/projects/:id/settings" element={<ProjectSettings />} />
 

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
     X,
     Calendar,
-    // Users,
     Info,
     CheckCircle,
     AlertCircle,
@@ -11,8 +10,7 @@ import {
     Briefcase,
     ListTodo,
 } from 'lucide-react';
-import { taskApi, usersApi, projectsApi } from '@/services/api';
-// import { useAuth } from '@/hooks/useAuth'
+import { taskApi, usersApi } from '@/services/api';
 
 interface UserOption {
     value: string;
@@ -20,8 +18,17 @@ interface UserOption {
     id: number;
 }
 
+interface CreateTaskProps {
+    onClose?: () => void;
+    onSuccess?: () => void;
+    isModal?: boolean;
+}
 
-export const CreateTask: React.FC = () => {
+export const CreateTask: React.FC<CreateTaskProps> = ({ 
+    onClose, 
+    onSuccess,
+    isModal = false 
+}) => {
     const navigate = useNavigate();
     const [heading, setHeading] = useState('');
     const [description, setDescription] = useState('');
@@ -64,7 +71,6 @@ export const CreateTask: React.FC = () => {
                     id: user.id,
                 }));
                 setAllUserOptions(mappedUsers);
-
             } catch (err) {
                 console.error("Failed to load dynamic data for task creation:", err);
                 setError("Failed to load required user/project lists. Please try refreshing.");
@@ -75,6 +81,13 @@ export const CreateTask: React.FC = () => {
         fetchDynamicData();
     }, []);
 
+    const handleClose = () => {
+        if (isModal && onClose) {
+            onClose();
+        } else {
+            navigate('/taskboard');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -104,9 +117,14 @@ export const CreateTask: React.FC = () => {
 
             await taskApi.create(payload);
 
-            setSuccess('Task created successfully! Redirecting to Taskboard...');
+            setSuccess('Task created successfully!');
+            
             setTimeout(() => {
-                navigate('/taskboard');
+                if (isModal && onSuccess) {
+                    onSuccess();
+                } else {
+                    navigate('/taskboard');
+                }
             }, 1500);
 
         } catch (err: any) {
@@ -126,22 +144,23 @@ export const CreateTask: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8 flex justify-center">
+        <div className={isModal ? "" : "min-h-screen bg-gray-50 p-8 flex justify-center"}>
             <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden">
-
                 {/* Header Section */}
                 <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <button
-                            onClick={() => navigate('/taskboard')}
-                            className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
-                        >
-                            <ArrowLeft className="w-6 h-6" />
-                        </button>
+                        {!isModal && (
+                            <button
+                                onClick={handleClose}
+                                className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
+                            >
+                                <ArrowLeft className="w-6 h-6" />
+                            </button>
+                        )}
                         <h1 className="text-3xl font-bold text-white">Create New Task</h1>
                     </div>
                     <button
-                        onClick={() => navigate('/taskboard')}
+                        onClick={handleClose}
                         className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
                     >
                         <X className="w-6 h-6" />
@@ -151,13 +170,13 @@ export const CreateTask: React.FC = () => {
                 {/* Form Body */}
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
                     {error && (
-                        <div className={`p-3 rounded-lg bg-red-100 text-red-800 flex items-start text-sm`}>
+                        <div className="p-3 rounded-lg bg-red-100 text-red-800 flex items-start text-sm">
                             <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                             {error}
                         </div>
                     )}
                     {success && (
-                        <div className={`p-3 rounded-lg bg-green-100 text-green-800 flex items-start text-sm`}>
+                        <div className="p-3 rounded-lg bg-green-100 text-green-800 flex items-start text-sm">
                             <CheckCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                             {success}
                         </div>
@@ -196,7 +215,7 @@ export const CreateTask: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Start Date - Using native date input */}
+                        {/* Start Date */}
                         <div>
                             <label htmlFor="startDate" className="block text-lg font-semibold mb-2 text-gray-800">
                                 Start Date <span className="text-red-500">*</span>
@@ -214,7 +233,7 @@ export const CreateTask: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* End Date - Using native date input */}
+                        {/* End Date */}
                         <div>
                             <label htmlFor="endDate" className="block text-lg font-semibold mb-2 text-gray-800">
                                 End Date <span className="text-red-500">*</span>
@@ -234,7 +253,7 @@ export const CreateTask: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Assigned To - Custom Multi Select */}
+                        {/* Assigned To */}
                         <div className="relative">
                             <label className="block text-lg font-semibold mb-2 text-gray-800">
                                 Assigned To <span className="text-red-500">*</span>
@@ -286,8 +305,9 @@ export const CreateTask: React.FC = () => {
                                         return (
                                             <div
                                                 key={user.id}
-                                                className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${isSelected ? "bg-blue-50" : ""
-                                                    }`}
+                                                className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${
+                                                    isSelected ? "bg-blue-50" : ""
+                                                }`}
                                                 onClick={() => {
                                                     if (isSelected) {
                                                         setAssignedToList(
@@ -307,8 +327,7 @@ export const CreateTask: React.FC = () => {
                             )}
                         </div>
 
-
-
+                        {/* Project */}
                         <div>
                             <label htmlFor="project" className="block text-lg font-semibold mb-2 text-gray-800">
                                 Project <span className="text-red-500">*</span>
@@ -329,6 +348,7 @@ export const CreateTask: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Status */}
                         <div>
                             <label htmlFor="status" className="block text-lg font-semibold mb-2 text-gray-800">
                                 Status
@@ -349,6 +369,8 @@ export const CreateTask: React.FC = () => {
                                 <ListTodo className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
+
+                        {/* Priority */}
                         <div>
                             <label htmlFor="priority" className="block text-lg font-semibold mb-2 text-gray-800">
                                 Priority
@@ -373,8 +395,8 @@ export const CreateTask: React.FC = () => {
                     <div className="flex justify-end space-x-4 pt-6">
                         <button
                             type="button"
-                            onClick={() => navigate('/taskboard')}
-                            className={`px-8 py-3 rounded-lg text-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300`}
+                            onClick={handleClose}
+                            className="px-8 py-3 rounded-lg text-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300"
                             disabled={loading}
                         >
                             Cancel

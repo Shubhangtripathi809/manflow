@@ -40,7 +40,8 @@ export type TaskType =
   | 'classification'
   | 'ocr'
   | 'ner'
-  | 'custom';
+  | 'custom'
+  | 'content-creation';
 
 export interface ProjectSettings {
   metrics?: string[];

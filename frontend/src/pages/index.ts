@@ -14,6 +14,7 @@ export { PdfVsHtmlViewer } from './Tools/PdfVsHTML/PdfVsHtmlViewer';
 // export { SuperscriptChecker } from './SuperscriptChecker';
 export { PdfJson } from './Tools/JsonViewer/PdfJson';
 export { PivotTableExtractor } from './Tools/PivotTableExtractor';
+export { ContentCreation } from './TaskType/ContentCreation';
 export { Documents } from './Documents';
 export { ProjectSettings } from './ProjectSettings';
 

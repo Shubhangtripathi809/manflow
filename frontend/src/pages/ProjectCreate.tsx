@@ -91,6 +91,7 @@ const TASK_TYPES = [
   { value: 'ocr', label: 'OCR' },
   { value: 'ner', label: 'Named Entity Recognition' },
   { value: 'custom', label: 'Custom' },
+  { value: 'content_creation', label: 'Content Creation' },
 ];
 
 export function ProjectCreate() {
