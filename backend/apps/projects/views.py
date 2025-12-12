@@ -58,7 +58,33 @@ class ProjectViewSet(viewsets.ModelViewSet):
         ).distinct()
     
     def perform_create(self, serializer):
+        # 1. Save the project first
         project = serializer.save(created_by=self.request.user)
+        
+        # 2. Automatically add the Creator as an OWNER
+        # This ensures the creator can always see their own project
+        ProjectMembership.objects.get_or_create(
+            project=project,
+            user=self.request.user,
+            defaults={"role": ProjectMembership.Role.OWNER}
+        )
+        
+        # 3. Handle "Assigned To" users from the frontend
+        # Assuming your frontend sends a list of IDs in a field called 'assigned_to'
+        # (Check your browser network tab to confirm the exact key name)
+        assigned_user_ids = self.request.data.get('assigned_to', []) 
+        
+        if assigned_user_ids:
+            # Loop through IDs and create Member entries
+            for user_id in assigned_user_ids:
+                # Skip the creator (already added above)
+                if str(user_id) != str(self.request.user.id):
+                    ProjectMembership.objects.get_or_create(
+                        project=project,
+                        user_id=user_id,
+                        defaults={"role": ProjectMembership.Role.MEMBER}
+                    )
+
         log_action(project, "create", new_value=serializer.data)
     
     def perform_update(self, serializer):
@@ -179,10 +205,14 @@ class LabelViewSet(viewsets.ModelViewSet):
     serializer_class = LabelSerializer
     
     def get_queryset(self):
-        project_id = self.kwargs.get("project_pk")
-        if project_id:
-            return Label.objects.filter(project_id=project_id)
-        return Label.objects.none()
+        user = self.request.user
+        if user.is_admin:
+            return Project.objects.all()  # Admins see everything
+        
+        # Regular users only see projects where they are Members OR the Creator
+        return Project.objects.filter(
+            Q(members=user) | Q(created_by=user)
+        ).distinct()
     
     def perform_create(self, serializer):
         project_id = self.kwargs.get("project_pk")

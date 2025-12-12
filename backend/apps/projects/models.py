@@ -18,7 +18,7 @@ class Project(UserStampedModel):
         DOCUMENT_CLASSIFICATION = "classification", "Document Classification"
         OCR = "ocr", "OCR"
         NER = "ner", "Named Entity Recognition"
-        CUSTOM = "custom", "Custom"
+        CONTENT_CREATION = "content_creation", "Content Creation"
     
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
