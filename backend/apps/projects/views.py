@@ -1,12 +1,13 @@
 """
 Views for Projects app.
 """
-from django.db.models import Count, Q
+import boto3
+from botocore.exceptions import ClientError
+from django.conf import settings
 from django_filters import rest_framework as filters
-from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-
+from rest_framework import status, viewsets
 from apps.audit.services import get_object_history, log_action
 
 from .models import Label, Project, ProjectMembership
@@ -95,7 +96,56 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         log_action(instance, "delete", old_value=ProjectSerializer(instance).data)
         instance.delete()
-    
+    @action(detail=True, methods=["post"], url_path="get-upload-url")
+    def get_upload_url(self, request, pk=None):
+        """
+        Generates a Presigned Post URL.
+        """
+        project = self.get_object()
+        
+        file_name = request.data.get("file_name")
+        file_type = request.data.get("file_type")
+        
+        if not file_name or not file_type:
+            return Response(
+                {"detail": "file_name and file_type are required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 1. Define the specific path where this file will live
+        s3_key = f"projects/{project.id}/documents/{file_name}"
+
+        # 2. Initialize the S3 client using credentials from settings.py
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME,
+        )
+
+        try:
+            # 3. Generate the secure URL (The "Permission Slip")
+            presigned_data = s3_client.generate_presigned_post(
+                Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                Key=s3_key,
+                Fields={
+                    "Content-Type": file_type,
+                },
+                Conditions=[
+                    {"Content-Type": file_type},
+                    ["content-length-range", 0, 524288000],  # Max 500MB
+                ],
+                ExpiresIn=3600,  # Valid for 1 hour
+            )
+        except ClientError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 4. Return URL to frontend
+        return Response({
+            "url": presigned_data["url"],
+            "fields": presigned_data["fields"],
+            "file_key": s3_key
+        })
     @action(detail=True, methods=["get"])
     def stats(self, request, pk=None):
         """
