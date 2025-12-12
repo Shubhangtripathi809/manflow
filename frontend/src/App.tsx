@@ -18,8 +18,8 @@ import {
   TeamPerformance,
   ToolsHub,
   PdfVsHtmlViewer,
+  PdfJson,
   // SuperscriptChecker,
-  // JsonViewer,
   PivotTableExtractor
 } from '@/pages';
 
@@ -169,15 +169,15 @@ function AppRoutes() {
             <SuperscriptChecker />
           </ProtectedRoute>
         }
-      />
+      /> */}
       <Route
         path="/tools/json-viewer"
         element={
           <ProtectedRoute>
-            <JsonViewer />
+            <PdfJson />
           </ProtectedRoute>
         }
-      /> */}
+      />
       <Route
         path="/tools/pivot-table"
         element={

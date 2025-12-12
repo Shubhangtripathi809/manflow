@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry } from '@/types';
+import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
@@ -410,52 +410,76 @@ export const usersApi = {
   },
 };
 
-// export const getDocuments = async () => {
-//   const res = await fileApi.get("/documents/");
-//   console.log("📌 API Raw Response:", res.data);
-//   const docs = res.data.documents || [];
-//   console.log("📌 Extracted Docs:", docs);
-//   return docs;
-// };
-
 // Tools PdfVsHtml API
 export const toolApi = {
-  //fetch the list of project folders
   getProjectFolders: async () => {
     const res = await fileApi.get<ToolDocumentListPayload>("/documents/");
     return res.data.documents || [];
   },
-
-  // all documents within a specific project folder
   getDocumentsInProject: async (projectName: string) => {
     const res = await fileApi.get<ToolDocumentListPayload>(`/documents/${projectName}/`);
     return res.data.documents || [];
   },
 
-  // fetch the PDF base64 and HTML URL for a specific document
   getDocumentDetail: async (projectName: string, docName: string) => {
     const res = await fileApi.get<DocumentDetailResponse>(`/documents/${projectName}/${docName}/`);
     return res.data;
   },
 
-  // fetch all existing ground truth entries
   getAllGroundTruth: async () => {
-    const res = await fileApi.get<{ documents: Omit<GroundTruthEntry, 'id'>[] } | GroundTruthEntry[]>("/ground_truth/all");
-    const serverEntries = Array.isArray(res.data) 
-                         ? res.data 
-                         : (res.data as any)?.documents || [];
-
-    return serverEntries.map((entry: any, index: number) => ({
-      ...entry, 
+    const res = await fileApi.get<{ documents: Omit<GroundTruthEntry, 'id'>[] }>("/ground_truth/all");
+    return res.data.documents.map((entry: any, index: number) => ({
+      ...entry,
       id: `gt-server-${Date.now()}-${index}`,
       docName: entry.docName || entry.document
     })) as GroundTruthEntry[];
   },
 
-  //submit a new ground truth entry
+  // New function to submit a new ground truth entry
   submitGroundTruth: async (docName: string, entry: Omit<GroundTruthApiResponse, 'id' | 'docName'>) => {
     const res = await fileApi.post(`/ground_truth/${docName}/`, entry);
     return res.data;
-  }
+  },
+
+
+// Tools JSONViewer API
+  getTableCellsFileNames: async () => {
+    const res = await fileApi.post<GetTableCellsResponse>("/backend/get_table_cells", { load_json: [] }, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    return res.data;
+  },
+  fetchPageContentJson: async (fileName: string) => {
+    const data = {
+      elastic_indx: "10k", 
+      select_fields: [
+        "page",
+        "table",
+        "image",
+        "text",
+        "cell",
+        "entity",
+        "key_value",
+        "table_np",
+      ],
+      PDF: [
+        fileName,
+      ],
+      highlight_words: [],
+    };
+    const res = await fileApi.post<PageContentResponse | PageContentErrorResponse>("/backend/get_page_content", data, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    return res.data;
+  },
 };
+
+
+
+
+
 export default api;

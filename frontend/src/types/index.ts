@@ -232,6 +232,7 @@ export interface AuthTokens {
   refresh: string;
 }
 
+// Tool: PdfVsHtml types
 export interface ToolDocumentListPayload {
   documents: string[];
 }
@@ -271,4 +272,120 @@ export interface GroundTruthApiResponse {
   issueType: string;
   location: string;
   description: string;
+}
+
+// Corresponds to the entry in the dropdown list
+export interface JsonViewerFile {
+  fileName: string;
+  owner: string;
+}
+
+// Type for the nested metadata inside GetTableCellsResponse
+export interface TableCellMetadata {
+  owner: string;
+  date_created: string;
+  description: string;
+  validation_description: string;
+  validated_by: string;
+  date_time_last_modified: string;
+  date_time_completed: string;
+  validation_status: string;
+  excel: boolean;
+  PDF: string[];
+}
+
+// Structure of the response from the /get_table_cells endpoint
+export interface GetTableCellsResponse {
+    ok: boolean;
+    error: string;
+    columns: any[];
+    data: {
+        myTableCells: Array<Record<string, TableCellMetadata>>;
+    };
+    payload: Record<string, any>;
+}
+
+// Base for selectable elements (Text, Table, Cell)
+export interface SelectableBaseElement {
+    id: string;
+    PDF: string;
+    page: number;
+    top: number;
+    left: number;
+    bottom: number;
+    right: number;
+}
+
+export interface SelectableTextElement extends SelectableBaseElement {
+    type: 'text';
+    text: string;
+    words_pos: string; // Exists in standalone project type, keeping it.
+}
+
+export interface SelectableTableElement extends SelectableBaseElement {
+    type: 'table';
+    table_num_cols: number;
+    table_num_rows: number;
+    table_last_header_row: number;
+    table_last_header_col: number;
+    caption_text: string | null;
+    label: string;
+    ids_table_merge: string | null;
+    table_np: string;
+}
+
+export interface SelectableCellElement extends SelectableBaseElement {
+    type: 'cell';
+    text: string;
+}
+
+export type SelectableElement = SelectableTextElement | SelectableTableElement | SelectableCellElement;
+
+// Response structure for /get_page_content
+export interface PageContentResponse {
+    ok: true;
+    error: string;
+    columns: any;
+    data: {
+        [pageKey: string]: { 
+            page?: Array<{
+                id: string;
+                PDF: string;
+                page: number;
+                width: number;
+                height: number;
+                page_pdf: string; 
+                page_json?: string;
+            }>;
+            text?: Array<SelectableTextElement>; 
+            table?: Array<SelectableTableElement>; 
+            image?: any[];
+            cell?: Array<SelectableCellElement>; 
+            entity?: any[];
+            key_value?: any[];
+            table_np?: any[];
+        };
+    };
+}
+
+export interface PageContentErrorResponse {
+    ok: boolean;
+    error: string;
+    payload?: any;
+    data?: null;
+}
+
+// Data structure used internally by the PDFJsonViewer component
+export interface ProcessedPageData {
+    page_num: number;
+    page_b64: string;
+    json_metadata: Record<string, any>; 
+    selectable_elements: SelectableElement[];
+}
+
+// Updated interface to hold ANY selected element data
+export interface SelectedElementData {
+    id: string;
+    type: SelectableElement['type'];
+    data: Omit<SelectableElement, 'type'>;
 }
