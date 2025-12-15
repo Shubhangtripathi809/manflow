@@ -9,15 +9,17 @@ import {
   Settings,
   LogOut,
   Users,
-  CheckSquare,
   Cog,
   ChevronDown,
   ChevronUp,
   Plus,
+  CheckSquare,
   CheckCircle,
   Clock,
   PlayCircle,
   Pause,
+  Crown,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,7 +31,6 @@ const baseNavigation = [
   { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
   { name: 'Issues', href: '/issues', icon: AlertCircle },
   { name: 'Tools', href: '/tools', icon: Cog },
-
 ];
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
@@ -100,14 +101,14 @@ const TaskAccordion = () => {
                         </NavLink>
                     ))}
                     
-                    {/* ADD: Add New Task Link */}
+                    {/* Add New Task Link */}
                     {isCreationAllowed && (
                          <NavLink
                             to="/taskboard/create"
                             className={({ isActive }) =>
                                 cn(
                                     'flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                                    isCreateRoute || isActive // Highlight if on /create route
+                                    isCreateRoute || isActive 
                                         ? 'bg-primary/20 text-primary-foreground'
                                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                                 )
@@ -123,24 +124,92 @@ const TaskAccordion = () => {
     );
 };
 
+// UserManagementAccordion
+const userManagementNavigation = [
+    { id: 'USER_ROLES', name: 'User Roles', href: '/admin/user-roles', icon: Users },
+    { id: 'TEAM_PERFORMANCE', name: 'Team Performance', href: '/admin/team-performance', icon: TrendingUp },
+];
+
+const UserManagementAccordion = () => {
+    const location = useLocation();
+    const isAdminRoute = location.pathname.startsWith('/admin');
+    const [isOpen, setIsOpen] = useState(isAdminRoute);
+
+    useMemo(() => {
+        if (isAdminRoute) {
+            setIsOpen(true);
+        }
+    }, [isAdminRoute]);
+
+    const AccordionIcon = isOpen ? ChevronUp : ChevronDown;
+
+    return (
+        <div className="space-y-1">
+            {/* User Management Header */}
+            <div
+                className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
+                    isAdminRoute
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <Crown className="h-5 w-5" />
+                <span className="flex-1">Team Management</span>
+                <AccordionIcon className="h-4 w-4" />
+            </div>
+
+            {/* Collapsible Menu (Accordion Content) */}
+            {isOpen && (
+                <div className="ml-4 border-l pl-2 space-y-1">
+                    {userManagementNavigation.map((item) => (
+                        <NavLink
+                            key={item.id}
+                            to={item.href}
+                            className={({ isActive }) =>
+                                cn(
+                                    'flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                                    isActive
+                                        ? 'bg-primary/20 text-primary-foreground'
+                                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                                )
+                            }
+                        >
+                            <item.icon className="h-4 w-4" />
+                            {item.name}
+                        </NavLink>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export function Sidebar() {
   const { user, logout, isLoading, hasRole } = useAuth();
   const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
 
-  const myTaskItem = { name: 'My Tasks', href: '/taskboard', icon: CheckSquare }; // ADD
+  const myTaskItem = { name: 'My Tasks', href: '/taskboard', icon: CheckSquare }; 
+  const adminItem = { name: 'Team Management', href: '/admin/user-roles', icon: Crown }; 
 
   console.log(`[Sidebar] State: isLoading=${isLoading}, userRole='${user?.role}', showAdminLink=${shouldShowAdminLink}`);
 
-  const navigation = [
+  let navigation = [
     ...baseNavigation.slice(0, 2),
     myTaskItem, 
     ...baseNavigation.slice(2),
-    ...(shouldShowAdminLink
-      ? [{ name: 'User Management', href: '/users', icon: Users }]
-      : []),
   ];
 
-  console.log(`[Sidebar] Final navigation length: ${navigation.length}`);
+  // Insert Team Management placeholder if user is allowed
+  if (shouldShowAdminLink) {
+    const toolIndex = navigation.findIndex(item => item.name === 'Tools');
+    if (toolIndex !== -1) {
+        navigation.splice(toolIndex + 1, 0, adminItem);
+    } else {
+        navigation.push(adminItem);
+    }
+  }
 
 
   return (
@@ -158,6 +227,9 @@ export function Sidebar() {
           navigation.map((item) => {
             if (item.name === 'My Tasks') {
                 return <TaskAccordion key="my-tasks" />; 
+            }
+            if (item.name === 'Team Management') {
+                return <UserManagementAccordion key="admin-tools" />; 
             }
             
             return (

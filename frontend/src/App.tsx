@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout';
 import type { User as AppUser } from '@/types';
@@ -80,6 +80,13 @@ function ProjectDetailWrapper() {
   return <ProjectDetail />;
 }
 
+// Helper component to render the Admin UI for nested routes
+const AdminDashboard = () => (
+  <AdminRoute>
+    <Outlet />
+  </AdminRoute>
+);
+
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
 
@@ -118,16 +125,7 @@ function AppRoutes() {
         <Route path="/issues/:id" element={<div>Issue Detail (Phase 3)</div>} />
         <Route path="/settings" element={<div>Settings</div>} />
 
-        <Route
-          path="/users"
-          element={
-            <AdminRoute>
-              <UserManagement />
-            </AdminRoute>
-          }
-        />
-
-        {/* START ADDED: Taskboard Routes MOVED INSIDE Layout */}
+        {/* Taskboard Routes */}
         <Route path="/taskboard" element={<MyTask />}>
           <Route index element={null} />
           <Route path="completed" element={null} />
@@ -145,11 +143,19 @@ function AppRoutes() {
           />
         </Route>
 
+        {/* NEW: Admin Accordion Routes (User Management & Team Performance) */}
+        <Route path="/admin" element={<AdminDashboard />}>
+            <Route path="user-roles" element={<UserManagement />} />
+            <Route path="team-performance" element={<TeamPerformance />} />
+            {/* Redirect /admin to /admin/user-roles by default */}
+            <Route index element={<Navigate to="user-roles" replace />} /> 
+        </Route>
+
       </Route>
 
 
-      {/* FULL-PAGE ROUTE: Team Performance */}
-      <Route
+      {/* REMOVED: Old standalone Team Performance Route */}
+      {/* <Route
         path="/team-performance"
         element={
           <ProtectedRoute>
@@ -158,7 +164,7 @@ function AppRoutes() {
             </AdminRoute>
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       {/* FULL-PAGE ROUTES: Tools Hub - WITHOUT ZanFlow Sidebar */}
       <Route
