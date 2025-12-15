@@ -116,10 +116,6 @@ function AppRoutes() {
 
         <Route path="/issues" element={<div>Issues (Phase 3)</div>} />
         <Route path="/issues/:id" element={<div>Issue Detail (Phase 3)</div>} />
-
-        {/* REMOVE THIS LINE - Tools should not be inside Layout */}
-        {/* <Route path="/tools" element={<div>Tools Page</div>} /> */}
-
         <Route path="/settings" element={<div>Settings</div>} />
 
         <Route
@@ -130,27 +126,27 @@ function AppRoutes() {
             </AdminRoute>
           }
         />
+
+        {/* START ADDED: Taskboard Routes MOVED INSIDE Layout */}
+        <Route path="/taskboard" element={<MyTask />}>
+          <Route index element={null} />
+          <Route path="completed" element={null} />
+          <Route path="pending" element={null} />
+          <Route path="in_progress" element={null} />
+          <Route path="deployed" element={null} />
+          <Route path="deferred" element={null} />
+          <Route
+            path="create"
+            element={
+              <AdminRoute>
+                <CreateTask />
+              </AdminRoute>
+            }
+          />
+        </Route>
+
       </Route>
 
-      {/* Taskboard Routes */}
-      <Route
-        path="/taskboard"
-        element={
-          <ProtectedRoute>
-            <MyTask />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={null} />
-        <Route
-          path="create"
-          element={
-            <AdminRoute>
-              <CreateTask />
-            </AdminRoute>
-          }
-        />
-      </Route>
 
       {/* FULL-PAGE ROUTE: Team Performance */}
       <Route
