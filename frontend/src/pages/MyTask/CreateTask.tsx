@@ -10,12 +10,18 @@ import {
     Briefcase,
     ListTodo,
 } from 'lucide-react';
-import { taskApi, usersApi } from '@/services/api';
+import { taskApi, usersApi, projectsApi } from '@/services/api';
+import { ProjectMinimal } from '@/types';
 
 interface UserOption {
     value: string;
     label: string;
     id: number;
+}
+
+interface ProjectOption {
+    id: number;
+    name: string;
 }
 
 interface CreateTaskProps {
@@ -24,10 +30,10 @@ interface CreateTaskProps {
     isModal?: boolean;
 }
 
-export const CreateTask: React.FC<CreateTaskProps> = ({ 
-    onClose, 
+export const CreateTask: React.FC<CreateTaskProps> = ({
+    onClose,
     onSuccess,
-    isModal = false 
+    isModal = false
 }) => {
     const navigate = useNavigate();
     const [heading, setHeading] = useState('');
@@ -36,7 +42,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [endDate, setEndDate] = useState('');
     const [assignedToList, setAssignedToList] = useState<number[]>([]);
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [project, setProject] = useState<string>('');
+    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
+    const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+    const [allProjectOptions, setAllProjectOptions] = useState<ProjectOption[]>([]);
     const [status, setStatus] = useState('pending');
     const [priority, setPriority] = useState('medium');
     const [loading, setLoading] = useState(false);
@@ -59,11 +67,12 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         { value: 'deferred', label: 'Deferred' },
     ];
 
-    // Fetch dynamic user lists
+    // Fetch dynamic user and project lists
     useEffect(() => {
         const fetchDynamicData = async () => {
             setIsDataLoading(true);
             try {
+                // 1. Fetch Users
                 const userData = await usersApi.listAll();
                 const mappedUsers: UserOption[] = userData.map((user: any) => ({
                     value: String(user.id),
@@ -71,6 +80,15 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                     id: user.id,
                 }));
                 setAllUserOptions(mappedUsers);
+
+                // 2. Fetch Projects
+                const projectData = await projectsApi.list();
+                const mappedProjects: ProjectOption[] = projectData.results.map((project: ProjectMinimal) => ({
+                    id: project.id,
+                    name: project.name,
+                }));
+                setAllProjectOptions(mappedProjects);
+
             } catch (err) {
                 console.error("Failed to load dynamic data for task creation:", err);
                 setError("Failed to load required user/project lists. Please try refreshing.");
@@ -96,11 +114,19 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         setSuccess(null);
 
         // --- VALIDATION ---
-        if (!heading || !description || !startDate || !endDate || assignedToList.length === 0 || !project.trim()) {
-            setError('Please fill in all required fields (including Project).');
+        if (!heading || !description || !startDate || !endDate || assignedToList.length === 0 || selectedProjects.length === 0) {
+            setError('Please fill in all required fields (Task Heading, Description, Dates, Assigned To, and Project).');
             setLoading(false);
             return;
         }
+
+        // Map selected project IDs to their names
+        const projectNames = allProjectOptions
+            .filter(project => selectedProjects.includes(project.id))
+            .map(project => project.name);
+
+        // API payload must be an array of project names for multi-select
+        const project_names = projectNames;
 
         // --- API CALL ---
         try {
@@ -112,13 +138,13 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 assigned_to: assignedToList,
                 status,
                 priority,
-                project_name: project.trim(),
+                project_name: project_names.join(', '),
             };
 
             await taskApi.create(payload);
 
             setSuccess('Task created successfully!');
-            
+
             setTimeout(() => {
                 if (isModal && onSuccess) {
                     onSuccess();
@@ -252,7 +278,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Assigned To */}
                         <div className="relative">
                             <label className="block text-lg font-semibold mb-2 text-gray-800">
@@ -305,9 +331,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                         return (
                                             <div
                                                 key={user.id}
-                                                className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${
-                                                    isSelected ? "bg-blue-50" : ""
-                                                }`}
+                                                className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${isSelected ? "bg-blue-50" : ""
+                                                    }`}
                                                 onClick={() => {
                                                     if (isSelected) {
                                                         setAssignedToList(
@@ -327,23 +352,83 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                             )}
                         </div>
 
-                        {/* Project */}
-                        <div>
-                            <label htmlFor="project" className="block text-lg font-semibold mb-2 text-gray-800">
+                        {/* Project Multi-Select Dropdown - Start of the fix */}
+                        <div className="relative">
+                            <label className="block text-lg font-semibold mb-2 text-gray-800">
                                 Project <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    id="project"
-                                    value={project}
-                                    onChange={(e) => setProject(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Enter project name..."
-                                    required
-                                />
+
+                            {/* Project Tag Input Box */}
+                            <div
+                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 cursor-pointer flex flex-wrap gap-2 min-h-[50px]"
+                                onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                            >
+                                {selectedProjects.length === 0 && (
+                                    <span className="text-gray-500">Select projects...</span>
+                                )}
+
+                                {/* Selected Project Tags */}
+                                {selectedProjects.map((projectId) => {
+                                    const project = allProjectOptions.find(p => p.id === projectId);
+                                    if (!project) return null;
+
+                                    return (
+                                        <span
+                                            key={projectId}
+                                            className="px-2 py-1 bg-gray-200 text-gray-800 rounded-md flex items-center gap-1"
+                                        >
+                                            {project.name}
+                                            <button
+                                                type="button"
+                                                className="text-gray-600 hover:text-red-500"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedProjects(
+                                                        selectedProjects.filter(id => id !== projectId)
+                                                    );
+                                                }}
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    );
+                                })}
                                 <Briefcase className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                             </div>
+
+                            {/* Project Dropdown List */}
+                            {projectDropdownOpen && (
+                                <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                    {allProjectOptions.length === 0 ? (
+                                        <div className="p-4 text-center text-gray-500">No projects available.</div>
+                                    ) : (
+                                        allProjectOptions.map((project) => {
+                                            const isSelected = selectedProjects.includes(project.id);
+
+                                            return (
+                                                <div
+                                                    key={project.id}
+                                                    className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${
+                                                        isSelected ? "bg-blue-50" : ""
+                                                    }`}
+                                                    onClick={() => {
+                                                        if (isSelected) {
+                                                            setSelectedProjects(
+                                                                selectedProjects.filter((id) => id !== project.id)
+                                                            );
+                                                        } else {
+                                                            setSelectedProjects([...selectedProjects, project.id]);
+                                                        }
+                                                    }}
+                                                >
+                                                    <span>{project.name}</span>
+                                                    {isSelected && <span className="text-blue-600 font-bold">✓</span>}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 

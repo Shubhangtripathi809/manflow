@@ -34,6 +34,11 @@ export interface Project {
   document_count: number;
 }
 
+export interface ProjectMinimal {
+  id: number;
+  name: string;
+}
+
 export type TaskType =
   | 'key_value'
   | 'table'
@@ -60,6 +65,13 @@ export interface ProjectStats {
   total_test_runs: number;
   latest_accuracy: number | null;
   open_issues: number;
+}
+
+export interface PaginatedProjectsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ProjectMinimal[];
 }
 
 export interface Label {

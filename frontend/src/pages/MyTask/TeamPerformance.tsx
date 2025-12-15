@@ -30,7 +30,6 @@ export interface UserPerformance {
     recent_activity: Array<{
         task_name: string;
         project_name: string;
-        // FIX: Update status to match potential backend task statuses
         status: 'completed' | 'in_progress' | 'pending' | 'deployed' | 'deferred' | string; 
         timestamp: string; 
     }>;
@@ -69,7 +68,6 @@ export const TeamPerformance: React.FC = () => {
 
         } catch (error) {
             console.error(`Failed to fetch performance for user ${userId}:`, error);
-            // On API error, set performance data to a safe null state
             setTeamMembers(prevMembers => 
                 prevMembers.map(m => 
                     m.id === userId ? { ...m, performance: null } : m
@@ -92,15 +90,13 @@ export const TeamPerformance: React.FC = () => {
                 return {
                     ...user,
                     avatar: initials,
-                    performance: null, // Performance initially null
+                    performance: null,
                 } as TeamMember;
             });
 
             setTeamMembers(members);
             if (members.length > 0) {
-                // Select the first member and immediately fetch their performance
                 setSelectedMember(members[0]);
-                // Trigger performance fetch for the first user
                 fetchPerformanceData(members[0].id);
             }
         } catch (error) {
