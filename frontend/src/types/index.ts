@@ -34,9 +34,17 @@ export interface Project {
   document_count: number;
 }
 
+//  In create task load project name from project list API
 export interface ProjectMinimal {
   id: number;
   name: string;
+}
+
+export interface PaginatedProjectsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ProjectMinimal[];
 }
 
 export type TaskType =
@@ -65,13 +73,6 @@ export interface ProjectStats {
   total_test_runs: number;
   latest_accuracy: number | null;
   open_issues: number;
-}
-
-export interface PaginatedProjectsResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: ProjectMinimal[];
 }
 
 export interface Label {

@@ -324,6 +324,11 @@ export const taskApi = {
     return response.data;
   },
 
+  delete: async (taskId: number) => {
+    const response = await api.delete(`/tasksite/${taskId}/`);
+    return response.data;
+  },
+
   getPerformance: async (userId: number) => {
     const response = await api.get(`/tasksite/performance/${userId}/`);
     const apiData = response.data;

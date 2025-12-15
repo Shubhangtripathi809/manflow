@@ -176,13 +176,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onTaskClick }) => {
 interface TaskDetailModalProps {
     task: Task;
     onClose: () => void;
-    onDelete: (id: number) => void;
+    onDelete: (id: number) => Promise<void>;
     onTaskUpdated: (updatedTask: Task) => void;
 }
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDelete, onTaskUpdated }) => {
     const [selectedStatus, setSelectedStatus] = useState<Task['status']>(task.status);
     const [isEditingStatus, setIsEditingStatus] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const queryClient = useQueryClient();
     const updateTaskMutation = useMutation({
         mutationFn: (newStatus: Task['status']) => taskApi.update(task.id, { status: newStatus }),
@@ -264,12 +265,22 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDele
         { status: 'deferred', icon: Pause, label: 'Deferred' },
     ];
 
-    const handleDelete = () => {
-        if (window.confirm(`Are you sure you want to delete task "${task.heading}"? This cannot be undone.`)) {
-            onDelete(task.id);
-            onClose();
+    const deleteMutation = useMutation({
+        mutationFn: (taskId: number) => onDelete(taskId),
+        onSuccess: () => {
+            setShowDeleteConfirm(false);
+        },
+        onError: (error) => {
+            console.error('Failed to delete task:', error);
+            alert('Failed to delete task.');
         }
-    }
+    });
+
+
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
+
 
     const currentStatusConfig = getStatusConfig(task.status);
     const isSaving = updateTaskMutation.isPending;
@@ -423,6 +434,35 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDele
                     </section>
                 </div>
             </div>
+            {/* ✅ PASTE CONFIRMATION MODAL HERE */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            Delete Task
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Are you sure you want to delete <b>{task.heading}</b>?
+                            This action cannot be undone.
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
+                            >
+                                No
+                            </button>
+                            <button
+                                onClick={() => deleteMutation.mutate(task.id)}
+                                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                            >
+                                Yes, Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -491,7 +531,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeFilter, onFilterChange, onBackT
                             <Plus className="w-5 h-5 mr-3" />
                             Add New Task
                         </button>
-                        <a 
+                        <a
                             href="/team-performance"
                             className="w-full flex items-center mt-2 px-4 py-3 text-left text-sm font-medium rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
                         >
@@ -575,10 +615,23 @@ export const MyTask: React.FC<MyTaskProps> = () => {
 
 
     // Handler to delete a task (Placeholder)
-    const handleDeleteTask = useCallback((id: number) => {
-        console.log(`Deleting task with ID: ${id}`);
-        setTasks(prevTasks => prevTasks.filter(t => t.id !== id));
+    const handleDeleteTask = useCallback(async (id: number) => {
+        try {
+            await taskApi.delete(id); // assume success if no error
+
+            // ✅ Update UI immediately
+            setTasks(prevTasks => prevTasks.filter(t => t.id !== id));
+
+            // Close modal
+            setSelectedTask(null);
+
+            console.log(`Task ${id} deleted successfully`);
+        } catch (error) {
+            console.error(`Failed to delete task with ID: ${id}`, error);
+            throw error; // modal will handle error
+        }
     }, []);
+
 
 
     const handleAddNewTaskClick = () => {
@@ -733,7 +786,6 @@ export const MyTask: React.FC<MyTaskProps> = () => {
                         </>
                     )
                 ) : (
-                    // This block runs when the URL is /taskboard/create
                     <Outlet />
                 )}
             </div>
@@ -748,5 +800,6 @@ export const MyTask: React.FC<MyTaskProps> = () => {
                 />
             )}
         </div>
+
     );
 };
