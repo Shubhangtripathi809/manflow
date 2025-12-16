@@ -159,7 +159,7 @@ export const projectsApi = {
   },
 };
 
-// Documents API
+// Add Documents API in task type file
 export const documentsApi = {
   list: async (params?: {
     project?: number;
@@ -212,7 +212,7 @@ export const documentsApi = {
     description: string;
     file_key: string; 
     initial_gt_data?: Record<string, unknown>;
-    file_type: string; // <--- ADD THIS LINE
+    file_type: string;
   }) => {
     const response = await api.post('/documents/', data);
     return response.data;

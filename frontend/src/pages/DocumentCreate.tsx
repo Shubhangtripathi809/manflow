@@ -16,6 +16,7 @@ const FILE_TYPES = [
     { value: 'json', label: 'JSON' },
     { value: 'pdf', label: 'PDF' },
     { value: 'image', label: 'Image' },
+    { value: 'video', label: 'Video' },
     { value: 'text', label: 'Text' },
     { value: 'other', label: 'Other' },
 ];
@@ -42,7 +43,7 @@ export function DocumentCreate() {
 
   const projectIdNum = Number(projectId);
 
-  // --- START: UPDATED MUTATION ---
+  // UPDATED MUTATION 
   const createMutation = useMutation({
     mutationFn: async ({ name, description, file_key, initial_gt_data, file_type }: { 
       name: string; 
@@ -119,7 +120,6 @@ export function DocumentCreate() {
       setError(`Upload Failed: ${detailedError}`);
     }
   };
-  // --- END: UPDATED SUBMIT HANDLER ---
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -133,8 +133,15 @@ export function DocumentCreate() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      const MAX_FILE_SIZE = 500 * 1024 * 1024; 
+      
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        setError('File size exceeds the 500 MB limit.');
+        setFile(null);
+        return;
+      }
+      
       setFile(selectedFile);
-      // Auto-fill name if empty
       if (!formData.name) {
         setFormData((prev) => ({
           ...prev,
@@ -147,10 +154,14 @@ export function DocumentCreate() {
         setFormData((prev) => ({ ...prev, file_type: 'pdf' }));
       } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
         setFormData((prev) => ({ ...prev, file_type: 'image' }));
+      } else if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) { 
+        setFormData((prev) => ({ ...prev, file_type: 'video' })); 
       } else if (ext === 'json') {
         setFormData((prev) => ({ ...prev, file_type: 'json' }));
       } else if (ext === 'txt') {
         setFormData((prev) => ({ ...prev, file_type: 'text' }));
+      } else {
+        setFormData((prev) => ({ ...prev, file_type: 'other' }));
       }
     }
   };
@@ -197,7 +208,7 @@ export function DocumentCreate() {
             <CardTitle>Source File</CardTitle>
           </CardHeader>
           <CardContent>
-            {!file ? (
+           {!file ? (
               <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="h-10 w-10 text-muted-foreground mb-3" />
@@ -205,14 +216,14 @@ export function DocumentCreate() {
                     <span className="font-semibold">Click to upload</span> or drag and drop
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    PDF, PNG, JPG, JSON, TXT (MAX. 50MB)
+                    PDF, PNG, JPG, JSON, TXT, **MP4, MOV** (MAX. **500MB**)
                   </p>
                 </div>
                 <input
                   type="file"
                   className="hidden"
                   onChange={handleFileChange}
-                  accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.json,.txt"
+                  accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.json,.txt,**video/*,.mp4,.mov,.avi,.webm**" // UPDATED ACCEPT
                 />
               </label>
             ) : (

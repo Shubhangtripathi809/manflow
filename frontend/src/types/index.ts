@@ -104,7 +104,7 @@ export interface Document {
   labels?: Label[];
 }
 
-export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'other';
+export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'other' | 'video';
 export type DocumentStatus = 'draft' | 'in_review' | 'approved' | 'archived';
 
 export interface GTVersion {
