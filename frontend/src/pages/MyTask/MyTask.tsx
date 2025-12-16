@@ -302,7 +302,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDele
                     <div className="flex items-center">
                         <Edit3 className="w-6 h-6 mr-3 text-purple-600" />
                         <h2 className="text-xl font-bold text-gray-900">
-                            {task.project_name || 'Project Task'}
+                            {task.heading}
                         </h2>
                     </div>
                     <div className="flex items-center gap-2">

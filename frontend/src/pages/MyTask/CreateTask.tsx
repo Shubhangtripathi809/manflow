@@ -119,16 +119,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             setLoading(false);
             return;
         }
+        const projectId = selectedProjects[0];
 
-        // Map selected project IDs to their names
-        const projectNames = allProjectOptions
-            .filter(project => selectedProjects.includes(project.id))
-            .map(project => project.name);
-
-        // API payload must be an array of project names for multi-select
-        const project_names = projectNames;
-
-        // --- API CALL ---
         try {
             const payload = {
                 heading,
@@ -138,7 +130,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 assigned_to: assignedToList,
                 status,
                 priority,
-                project_name: project_names.join(', '),
+                project: projectId, 
             };
 
             await taskApi.create(payload);
@@ -352,7 +344,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                             )}
                         </div>
 
-                        {/* Project Multi-Select Dropdown - Start of the fix */}
+                        {/* Project Multi-Select Dropdown */}
                         <div className="relative">
                             <label className="block text-lg font-semibold mb-2 text-gray-800">
                                 Project <span className="text-red-500">*</span>
@@ -413,11 +405,10 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                                     }`}
                                                     onClick={() => {
                                                         if (isSelected) {
-                                                            setSelectedProjects(
-                                                                selectedProjects.filter((id) => id !== project.id)
-                                                            );
+                                                            setSelectedProjects([]);
                                                         } else {
-                                                            setSelectedProjects([...selectedProjects, project.id]);
+                                                            setSelectedProjects([project.id]); 
+                                                            setProjectDropdownOpen(false);
                                                         }
                                                     }}
                                                 >
