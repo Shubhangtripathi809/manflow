@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse } from '@/types';
+import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8002/';
@@ -176,10 +176,45 @@ export const documentsApi = {
     return response.data;
   },
 
-  create: async (data: FormData) => {
-    const response = await api.post('/documents/', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+
+  getUploadUrl: async (projectId: number, data: GetUploadUrlPayload) => {
+    const response = await api.post<GetUploadUrlResponse>(
+      `/projects/${projectId}/get-upload-url/`,
+      data
+    );
+    return response.data;
+  },
+
+  uploadFileToS3: async (
+    s3Url: string,
+    fields: Record<string, string>,
+    file: File
+  ) => {
+    const formData = new FormData();
+    Object.keys(fields).forEach(key => {
+      formData.append(key, fields[key]);
     });
+    formData.append('file', file);
+
+    // Note: We use plain axios because the URL is external (S3)
+    // and requires a special content-type for S3 POST upload.
+    await axios.post(s3Url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data', 
+      },
+    });
+  },
+
+  // This `create` now expects the final S3 file_key
+ create: async (data: { 
+    project: number; 
+    name: string; 
+    description: string;
+    file_key: string; 
+    initial_gt_data?: Record<string, unknown>;
+    file_type: string; // <--- ADD THIS LINE
+  }) => {
+    const response = await api.post('/documents/', data);
     return response.data;
   },
 
@@ -447,7 +482,7 @@ export const toolApi = {
   },
 
 
-// Tools JSONViewer API
+  // Tools JSONViewer API
   getTableCellsFileNames: async () => {
     const res = await fileApi.post<GetTableCellsResponse>("/backend/get_table_cells", { load_json: [] }, {
       headers: {
@@ -458,7 +493,7 @@ export const toolApi = {
   },
   fetchPageContentJson: async (fileName: string) => {
     const data = {
-      elastic_indx: "10k", 
+      elastic_indx: "10k",
       select_fields: [
         "page",
         "table",

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'; 
 import { ArrowLeft, Upload, File, X } from 'lucide-react';
 import {
   Button,
@@ -23,6 +23,7 @@ const FILE_TYPES = [
 export function DocumentCreate() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient(); 
   
   const [formData, setFormData] = useState({
     name: '',
@@ -39,49 +40,86 @@ export function DocumentCreate() {
     enabled: !!projectId,
   });
 
+  const projectIdNum = Number(projectId);
+
+  // --- START: UPDATED MUTATION ---
   const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      return documentsApi.create(data);
+    mutationFn: async ({ name, description, file_key, initial_gt_data, file_type }: { 
+      name: string; 
+      description: string;
+      file_key: string; 
+      initial_gt_data?: Record<string, unknown>;
+      file_type: string; 
+    }) => {
+      return documentsApi.create({
+        project: projectIdNum,
+        name,
+        description, 
+        file_key,
+        initial_gt_data, 
+        file_type,
+      });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', { project: projectId }] });
       navigate(`/projects/${projectId}`);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Failed to create document');
+      setError(err.response?.data?.detail || 'Failed to create document record after file upload.');
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+  // UPDATED SUBMIT HANDLER
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.name.trim()) {
-      setError('Document name is required');
+    if (!formData.name.trim() || !file) {
+      setError('Document name and a source file are required.');
       return;
     }
 
-    const data = new FormData();
-    data.append('project', projectId || '');
-    data.append('name', formData.name);
-    data.append('description', formData.description);
-    data.append('file_type', formData.file_type);
-    
-    if (file) {
-      data.append('source_file', file);
-    }
-
+    let gtData: Record<string, unknown> | undefined = undefined;
     if (initialGT.trim()) {
       try {
-        const gtData = JSON.parse(initialGT);
-        data.append('initial_gt_data', JSON.stringify(gtData));
+        gtData = JSON.parse(initialGT);
       } catch {
         setError('Invalid JSON format for ground truth data');
         return;
       }
     }
 
-    createMutation.mutate(data);
+    try {
+      // Step 1: Get Upload URL from backend API
+      const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
+        file_name: file.name,
+        file_type: file.type || 'application/octet-stream',
+      });
+      
+      const { url: s3Url, fields: s3Fields, file_key } = uploadUrlResponse;
+
+      // Step 2: Upload File directly to S3 using the pre-signed URL/fields
+      await documentsApi.uploadFileToS3(s3Url, s3Fields, file);
+
+      // Step 3: Call the create mutation to save the document record in the database
+      // This uses the file_key received in Step 1
+      await createMutation.mutateAsync({
+        name: formData.name,
+        description: formData.description,
+        file_key: file_key,
+        initial_gt_data: gtData,
+        file_type: formData.file_type, // <--- ADD THIS LINE
+      });
+
+    } catch (e: any) {
+      console.error('Document creation failed:', e);
+      // Detailed error handling for S3 or pre-signing failures
+      const detailedError = e.response?.data?.detail || e.message || 'An unknown error occurred during file upload.';
+      setError(`Upload Failed: ${detailedError}`);
+    }
   };
+  // --- END: UPDATED SUBMIT HANDLER ---
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -284,7 +322,7 @@ export function DocumentCreate() {
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Button type="submit" disabled={createMutation.isPending}>
+          <Button type="submit" disabled={createMutation.isPending || !file}>
             {createMutation.isPending ? 'Creating...' : 'Create Document'}
           </Button>
           <Link to={`/projects/${projectId}`}>

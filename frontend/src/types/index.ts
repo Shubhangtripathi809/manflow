@@ -333,7 +333,7 @@ export interface SelectableBaseElement {
 export interface SelectableTextElement extends SelectableBaseElement {
     type: 'text';
     text: string;
-    words_pos: string; // Exists in standalone project type, keeping it.
+    words_pos: string;
 }
 
 export interface SelectableTableElement extends SelectableBaseElement {
@@ -402,4 +402,15 @@ export interface SelectedElementData {
     id: string;
     type: SelectableElement['type'];
     data: Omit<SelectableElement, 'type'>;
+}
+
+export interface GetUploadUrlPayload {
+  file_name: string;
+  file_type: string;
+}
+
+export interface GetUploadUrlResponse {
+  url: string;
+  fields: Record<string, string>;
+  file_key: string;
 }
