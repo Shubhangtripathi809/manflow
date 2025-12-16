@@ -130,7 +130,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.5:5173"
+    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.6:5173"
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL", default=True, cast=bool)  # For development
@@ -178,7 +178,7 @@ env_path = BASE_DIR.parent / '.env'
 load_dotenv(env_path)
 
 # AWS S3 Settings
-USE_S3 = config("USE_S3", default=False, cast=bool)
+USE_S3 = config("USE_S3", default=True, cast=bool)
 
 # --- CHANGE STARTS HERE ---
 # define these OUTSIDE the 'if' block so 'views.py' can always find them.

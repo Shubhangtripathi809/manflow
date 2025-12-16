@@ -21,6 +21,7 @@ urlpatterns = [
         path("documents/", include("apps.groundtruth.urls")),
         path("test-runs/", include("apps.testing.urls")),
         path("issues/", include("apps.issues.urls")),
+        path("groundtruth/", include("apps.groundtruth.urls")),
     ])),
     
     # API Documentation

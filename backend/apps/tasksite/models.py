@@ -1,5 +1,11 @@
+# models.py
 from django.db import models
 from apps.users.models import User
+
+# --- IMPORT YOUR EXISTING PROJECT MODEL ---
+# CAUTION: Check this path. It might be 'apps.projects.models' or similar
+# based on where your "Marketing Campaign 2025" model is defined.
+from apps.projects.models import Project 
 
 class Task(models.Model):
     STATUS_CHOICES = (
@@ -11,7 +17,6 @@ class Task(models.Model):
         ('deferred', 'Deferred'),
     )
 
-    # --- ADD THIS: Priority Choices ---
     PRIORITY_CHOICES = (
         ('low', 'Low'),
         ('medium', 'Medium'),
@@ -24,14 +29,22 @@ class Task(models.Model):
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
     
-    # --- ADD THESE TWO FIELDS ---
     priority = models.CharField(
         max_length=20, 
         choices=PRIORITY_CHOICES, 
         default='medium'
     )
-    project_name = models.CharField(max_length=255, null=True, blank=True)
-    # ----------------------------
+
+    # --- UPDATED: LINK TO EXISTING PROJECT ---
+    # We removed 'project_name' and added a ForeignKey to 'Project'
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='tasks'
+    )
+    # ----------------------------------------
 
     assigned_to = models.ManyToManyField(User, related_name='assigned_tasks')
     

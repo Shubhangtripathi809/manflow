@@ -81,7 +81,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         s3_key = data.get("s3_key")
         name = data.get("name")
         file_size = data.get("file_size", 0)
-        file_type = data.get("file_type", "application/pdf") # Default or required
+        file_type = data.get("file_type", "application/pdf")
 
         if not project_id or not s3_key:
             return Response(
@@ -89,33 +89,30 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Construct the full URL for frontend access
-        # Ensure AWS_S3_CUSTOM_DOMAIN or standard S3 URL format is used
-        if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
-            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{s3_key}"
-        else:
-            file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
-
-        # Create the Document manually
-        # Note: Ensure your Document model has fields for 's3_key' or 'file_url'
-        document = Document.objects.create(
+        # Create the document instance
+        document = Document(
             project_id=project_id,
             name=name,
-            # We explicitly set the S3 path/URL here. 
-            # If your model uses a FileField, you might need to assign the path string relative to MEDIA_ROOT
-            # or save it to a separate CharField like 's3_key'.
-            metadata={"s3_key": s3_key, "url": file_url}, 
             file_size=file_size,
-            file_type=file_type, 
+            file_type=file_type,
             created_by=request.user,
             updated_by=request.user,
-            status=Document.Status.UPLOADED, # Assuming you have an UPLOADED status
+            status=Document.Status.UPLOADED,
         )
+
+        # --- THE FIX ---
+        # We manually assign the S3 path to the 'source_file' field.
+        # This tells Django: "The file is already at this path in the storage."
+        document.source_file.name = s3_key 
+        
+        # Save to DB
+        document.save()
 
         # Log the action
         log_action(document, "create", new_value={"name": document.name, "s3_key": s3_key})
 
         # Return the standard serialized data
+        # Now the serializer will see 'source_file' is set and generate the correct S3 URL
         serializer = DocumentSerializer(document)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     # ------------------------------
