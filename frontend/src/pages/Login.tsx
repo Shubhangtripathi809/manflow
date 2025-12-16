@@ -1,27 +1,32 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/common';
+import { getCredentials } from '@/services/authStorage';
+
+
 
 export function Login() {
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const savedCredentials = getCredentials();
+  const [username, setUsername] = useState(savedCredentials?.username || '');
+  const [password, setPassword] = useState(savedCredentials?.password || '');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+  e.preventDefault();
+  setError('');
+  setIsLoading(true);
 
-    try {
-      await login(username, password);
-    } catch {
-      setError('Invalid username or password');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    await login(username, password);
+  } catch {
+    setError('Invalid username or password');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50">
@@ -58,7 +63,7 @@ export function Login() {
               </label>
               <Input
                 id="password"
-                type="password"
+                type="text"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
