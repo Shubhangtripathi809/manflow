@@ -12,7 +12,8 @@ from django_filters import rest_framework as filters
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from apps.audit.services import get_object_history, log_action
-
+from apps.groundtruth.models import Document  # Ensure this import exists
+from apps.groundtruth.serializers import DocumentSerializer
 from .models import Label, Project, ProjectMembership
 from .serializers import (
     LabelSerializer,
@@ -85,7 +86,76 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     )
 
         log_action(project, "create", new_value=serializer.data)
+    def get_download_url(self, request, pk=None):
+        """
+        Generates a URL based on Document ID using the 'source_file' field.
+        """
+        document_id = request.data.get("document_id") or request.query_params.get("document_id")
+        
+        if not document_id:
+            # Fallback for manual file_key (optional)
+            file_key = request.data.get("file_key")
+            if not file_key:
+                return Response({"detail": "document_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # LOOKUP THE KEY FROM DB
+            try:
+                # Ensure we import Document if not already imported at top of file
+                from apps.groundtruth.models import Document 
+                document = Document.objects.get(id=document_id, project_id=pk)
+                
+                # --- FIX IS HERE: Use source_file.name ---
+                file_key = document.source_file.name 
+                
+            except Document.DoesNotExist:
+                return Response({"detail": "Document not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Initialize S3 Client
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME,
+        )
+
+        try:
+            url = s3_client.generate_presigned_url(
+                ClientMethod='get_object',
+                Params={
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': file_key,
+                },
+                ExpiresIn=3600 
+            )
+        except ClientError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"url": url})
     
+    def confirm_upload(self, request, pk=None):
+        project = self.get_object()
+        
+        file_key = request.data.get("file_key")
+        file_name = request.data.get("file_name")
+        
+        if not file_key or not file_name:
+            return Response(
+                {"detail": "file_key and file_name are required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        document = Document.objects.create(
+            project=project,
+            name=file_name,
+            source_file=file_key,  # <--- CHANGED TO CORRECT FIELD NAME
+            status=Document.Status.DRAFT, 
+            created_by=request.user
+        )
+
+        return Response(
+            {"id": document.id, "status": "saved"}, 
+            status=status.HTTP_201_CREATED
+        )
     def perform_update(self, serializer):
         old_data = ProjectSerializer(self.get_object()).data
         project = serializer.save(updated_by=self.request.user)
@@ -277,3 +347,4 @@ class LabelViewSet(viewsets.ModelViewSet):
             project_id=project_id,
             created_by=self.request.user,
         )
+
