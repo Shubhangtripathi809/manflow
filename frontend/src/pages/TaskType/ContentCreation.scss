@@ -1,7 +1,8 @@
 .content-creation {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #f0f4f8 100%);
+  background: #f8fafc; 
+  color: var(--foreground, #000000);
 
   // Main content area (center)
   &__main {
@@ -55,7 +56,7 @@
     border-radius: 0.5rem;
     border: none;
     background-color: transparent;
-    color: var(--foreground, #64748b);
+    color: var(--muted-foreground, #64748b);
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
@@ -64,12 +65,12 @@
     width: 100%;
 
     &:hover {
-      background-color: var(--muted, #f8fafc);
+      background-color: var(--muted, #f1f5f9);
       color: var(--foreground, #000000);
     }
 
     &--active {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background-color: #000000;
       color: #ffffff;
       font-weight: 600;
 
@@ -134,9 +135,9 @@
   &__title {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--foreground, #000000);
+    color: #000000;
     margin: 0 0 0.25rem 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: black;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -144,7 +145,7 @@
 
   &__subtitle {
     font-size: 1rem;
-    color: var(--muted-foreground, #64748b);
+    color: #64748b;
     margin: 0;
   }
 
@@ -160,8 +161,8 @@
 
   &__tab--create-task {
   margin-left: auto;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
+  background: none;
+  color: #64748b;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -198,9 +199,10 @@
     }
 
     &--active {
-      color: var(--primary, #3b82f6);
-      background: linear-gradient(180deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
-      border-bottom-color: var(--primary, #3b82f6);
+      background-color: #f1f5f9;
+      color: #000000;
+      border-bottom: 2px solid #000000;
+      border-radius: 0.5rem 0.5rem 0 0;
     }
   }
 
@@ -236,12 +238,11 @@
     h3 {
       font-size: 1.5rem;
       font-weight: 700;
-      color: var(--foreground, #000000);
       margin: 0 0 0.5rem 0;
     }
 
     p {
-      color: var(--muted-foreground, #64748b);
+      color: #64748b;
       margin: 0 0 2rem 0;
       font-size: 1rem;
     }
@@ -252,7 +253,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-color: #000000;
     color: #ffffff;
     border: none;
     border-radius: 0.75rem;
@@ -370,7 +371,7 @@
   &__upload-icon {
     width: 2rem;
     height: 2rem;
-    color: #667eea;
+    color: #1f1f20;
     margin-bottom: 1rem;
   }
 
@@ -445,7 +446,8 @@
 &__modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;

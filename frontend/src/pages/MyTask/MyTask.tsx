@@ -125,7 +125,7 @@ interface TaskCardProps {
     onTaskClick: (task: Task) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onTaskClick }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onTaskClick }) => {
     const statusConfig = getStatusConfig(task.status);
 
     return (
@@ -180,7 +180,7 @@ interface TaskDetailModalProps {
     onTaskUpdated: (updatedTask: Task) => void;
 }
 
-const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDelete, onTaskUpdated }) => {
+export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDelete, onTaskUpdated }) => {
     const [selectedStatus, setSelectedStatus] = useState<Task['status']>(task.status);
     const [isEditingStatus, setIsEditingStatus] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
