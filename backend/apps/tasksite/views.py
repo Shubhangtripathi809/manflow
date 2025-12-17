@@ -34,11 +34,25 @@ class TaskListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+<<<<<<< HEAD
         if request.user.is_manager:
+=======
+        # --- UPDATE THIS CONDITION ---
+        # Allow if Manager OR Superuser (Admin)
+        if request.user.is_manager or request.user.is_superuser:
+>>>>>>> origin/harshitlens
             tasks = Task.objects.all()
         else:
             tasks = Task.objects.filter(assigned_to=request.user).distinct()
         
+<<<<<<< HEAD
+=======
+        # (Include your project filtering logic here from the previous step)
+        project_id = request.query_params.get('project_id')
+        if project_id:
+            tasks = tasks.filter(project__id=project_id)
+
+>>>>>>> origin/harshitlens
         serializer = TaskSerializer(tasks, many=True)
         return Response({
             "message": "Tasks retrieved successfully",
@@ -46,7 +60,13 @@ class TaskListCreateView(APIView):
         }, status=status.HTTP_200_OK)
 
     def post(self, request):
+<<<<<<< HEAD
         if not request.user.is_manager:
+=======
+        # --- UPDATE THIS CONDITION ---
+        # Allow Admin to create tasks too
+        if not (request.user.is_manager or request.user.is_superuser):
+>>>>>>> origin/harshitlens
             return Response(
                 {"detail": "You do not have permission to create tasks."},
                 status=status.HTTP_403_FORBIDDEN
@@ -69,7 +89,19 @@ class TaskRetrieveUpdateView(APIView):
     def get(self, request, task_id):
         task = get_object_or_404(Task, id=task_id)
 
+<<<<<<< HEAD
         if not request.user.is_manager and not task.assigned_to.filter(id=request.user.id).exists():
+=======
+        # --- UPDATE THIS CONDITION ---
+        # Allow if Manager OR Superuser OR if assigned to the user
+        is_authorized = (
+            request.user.is_manager or 
+            request.user.is_superuser or 
+            task.assigned_to.filter(id=request.user.id).exists()
+        )
+
+        if not is_authorized:
+>>>>>>> origin/harshitlens
             return Response(
                 {"detail": "You do not have permission to view this task."},
                 status=status.HTTP_403_FORBIDDEN
@@ -124,6 +156,27 @@ class TaskRetrieveUpdateView(APIView):
         return Response({
             "message": "Task deleted successfully"
         }, status=status.HTTP_204_NO_CONTENT)
+<<<<<<< HEAD
+=======
+    def delete(self, request, task_id): 
+        # 1. Get the task or return 404 if not found
+        task = get_object_or_404(Task, id=task_id)
+
+        # 2. Permission Check: Allow if user is a Manager OR an Admin (superuser)
+        if not (request.user.is_manager or request.user.is_superuser):
+             return Response(
+                {"detail": "You do not have permission to delete tasks."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # 3. Delete the task
+        task.delete()
+        
+        # 4. Return success response (204 No Content is standard for deletes)
+        return Response({
+            "message": "Task deleted successfully"
+        }, status=status.HTTP_204_NO_CONTENT)
+>>>>>>> origin/harshitlens
 
 # --- CORRECTED PERFORMANCE VIEW ---
 class UserPerformanceView(APIView):
@@ -169,4 +222,9 @@ class UserPerformanceView(APIView):
             "user": user_serializer.data,
             "performance_metrics": metrics,
             "task_history": task_serializer.data
+<<<<<<< HEAD
         }, status=status.HTTP_200_OK)
+=======
+        }, status=status.HTTP_200_OK)
+    
+>>>>>>> origin/harshitlens
