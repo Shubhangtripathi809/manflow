@@ -45,12 +45,13 @@ export function DocumentCreate() {
 
   // UPDATED MUTATION 
   const createMutation = useMutation({
-    mutationFn: async ({ name, description, file_key, initial_gt_data, file_type }: { 
+    mutationFn: async ({ name, description, file_key, initial_gt_data, file_type, original_file_name }: { 
       name: string; 
       description: string;
       file_key: string; 
       initial_gt_data?: Record<string, unknown>;
       file_type: string; 
+      original_file_name: string;
     }) => {
       return documentsApi.create({
         project: projectIdNum,
@@ -59,11 +60,12 @@ export function DocumentCreate() {
         file_key,
         initial_gt_data, 
         file_type,
+        original_file_name, 
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['documents', { project: projectId }] });
-      navigate(`/projects/${projectId}`);
+      navigate(`/documents/${data.id}`); 
     },
     onError: (err: any) => {
       setError(err.response?.data?.detail || 'Failed to create document record after file upload.');
@@ -85,6 +87,7 @@ export function DocumentCreate() {
     if (initialGT.trim()) {
       try {
         gtData = JSON.parse(initialGT);
+        console.log('[DocumentCreate] Parsed GT Data successfully.');
       } catch {
         setError('Invalid JSON format for ground truth data');
         return;
@@ -93,31 +96,43 @@ export function DocumentCreate() {
 
     try {
       // Step 1: Get Upload URL from backend API
+      console.log('[DocumentCreate] Step 1: Requesting upload URL...');
       const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
         file_name: file.name,
         file_type: file.type || 'application/octet-stream',
       });
       
       const { url: s3Url, fields: s3Fields, file_key } = uploadUrlResponse;
-
+      console.log(`[DocumentCreate] Step 1 Success. file_key: ${file_key}`);
+      
       // Step 2: Upload File directly to S3 using the pre-signed URL/fields
+      console.log('[DocumentCreate] Step 2: Uploading file to S3...');
       await documentsApi.uploadFileToS3(s3Url, s3Fields, file);
+      console.log('[DocumentCreate] Step 2 Success: File uploaded to S3.');
 
-      // Step 3: Call the create mutation to save the document record in the database
-      // This uses the file_key received in Step 1
-      await createMutation.mutateAsync({
-        name: formData.name,
-        description: formData.description,
+
+      // Step 3: CONFIRM UPLOAD (New API call)
+      const fileNameWithoutPath = file_key.split('/').pop() || file.name;
+      console.log(`[DocumentCreate] Step 3: Confirming upload with file_key: ${file_key}, file_name: ${fileNameWithoutPath}`);
+      const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
         file_key: file_key,
-        initial_gt_data: gtData,
-        file_type: formData.file_type, // <--- ADD THIS LINE
+        file_name: fileNameWithoutPath,
       });
+      console.log('[DocumentCreate] Step 3 Success: Confirm upload complete.', confirmResponse);
+      queryClient.invalidateQueries({ queryKey: ['documents', { project: projectId }] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      
+      // Decide where to navigate. Using the ID from confirmResponse if available.
+      if (confirmResponse.id) {
+          navigate(`/documents/${confirmResponse.id}`); 
+          navigate(`/projects/${projectId}`); 
+      }
+      
 
     } catch (e: any) {
       console.error('Document creation failed:', e);
-      // Detailed error handling for S3 or pre-signing failures
-      const detailedError = e.response?.data?.detail || e.message || 'An unknown error occurred during file upload.';
-      setError(`Upload Failed: ${detailedError}`);
+      const detailedError = e.response?.data?.detail || e.message || 'An unknown error occurred during file upload or confirmation.';
+      setError(`Process Failed: ${detailedError}`);
     }
   };
 

@@ -92,6 +92,7 @@ export interface Document {
   description: string;
   source_file?: string;
   source_file_url?: string;
+  original_file_name?: string;
   file_type: FileType;
   file_size?: number;
   metadata: Record<string, unknown>;
@@ -413,4 +414,24 @@ export interface GetUploadUrlResponse {
   url: string;
   fields: Record<string, string>;
   file_key: string;
+}
+
+//3rd API call Confirm Upload
+export interface ConfirmUploadPayload {
+  file_key: string;
+  file_name: string; 
+}
+
+export interface ConfirmUploadResponse {
+  id: string;
+  status: DocumentStatus; 
+}
+
+// 4th API call (Get Download URL)
+export interface GetDownloadUrlPayload {
+  document_id: string;
+}
+
+export interface GetDownloadUrlResponse {
+  url: string;
 }

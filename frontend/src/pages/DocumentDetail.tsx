@@ -25,8 +25,42 @@ import type { Document, GTVersion } from '@/types';
 import { DiffViewer } from '@/components/DiffViewer';
 import { LabelSelector } from '@/components/LabelSelector';
 
+// Hook to fetch the pre-signed download URL
+function useDownloadUrl(projectId: number | undefined, documentId: string | undefined) {
+    const queryClient = useQueryClient();
+
+    const fetcher = async () => {
+        if (!projectId || !documentId) {
+            console.log('[useDownloadUrl] Skipping fetch: missing Project ID or Document ID.');
+            return null;
+        }
+
+        console.log(`[useDownloadUrl] Step 4: Requesting download URL for document_id: ${documentId}`);
+        const response = await documentsApi.getDownloadUrl(projectId, {
+            document_id: documentId,
+        });
+        console.log('[useDownloadUrl] Step 4 Success: Received download URL.');
+        return response.url;
+    };
+
+    return useQuery({
+        queryKey: ['document-download-url', projectId, documentId],
+        queryFn: fetcher,
+        enabled: !!projectId && !!documentId,
+        staleTime: 5 * 60 * 1000,
+    });
+}
+
 function SourcePreview({ doc }: { doc: Document }) {
-  if (!doc.source_file) {
+  const projectId = doc.project;
+  const docId = doc.id; 
+  const fileKey = doc.source_file || doc.source_file_url;
+  
+  const { data: downloadUrl, isLoading: isUrlLoading } = useDownloadUrl(
+      projectId, 
+      docId
+  );
+  if (!fileKey) {
     return (
       <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
         <p className="text-sm text-muted-foreground">No source file</p>
@@ -34,10 +68,29 @@ function SourcePreview({ doc }: { doc: Document }) {
     );
   }
 
+  if (isUrlLoading) {
+     return (
+        <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            <p className="ml-3 text-sm text-muted-foreground">Loading file...</p>
+        </div>
+    );
+  }
+
+  if (!downloadUrl) {
+    return (
+      <div className="p-4 bg-destructive/10 rounded-lg">
+        <p className="text-sm text-destructive">Failed to load source file URL.</p>
+      </div>
+    );
+  }
+  
+  // Use the pre-signed downloadUrl
+  
   if (doc.file_type === 'image') {
     return (
       <img
-        src={doc.source_file}
+        src={downloadUrl}
         alt={doc.name}
         className="w-full rounded-lg border"
       />
@@ -48,7 +101,7 @@ function SourcePreview({ doc }: { doc: Document }) {
     return (
       <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
         <a
-          href={doc.source_file}
+          href={downloadUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary hover:underline"
@@ -58,12 +111,35 @@ function SourcePreview({ doc }: { doc: Document }) {
       </div>
     );
   }
+  
+  // Handle video file type
+  if (doc.file_type === 'video') {
+    return (
+      <div className="w-full rounded-lg border overflow-hidden">
+        <video 
+            controls 
+            className="w-full h-auto"
+            src={downloadUrl}
+        >
+            Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 bg-muted rounded-lg">
       <p className="text-sm text-muted-foreground">
-        Preview not available for this file type
+        Preview not available for file type: **{doc.file_type}**
       </p>
+      <a
+          href={downloadUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline mt-2 inline-block text-xs"
+        >
+          Download Source
+        </a>
     </div>
   );
 }
