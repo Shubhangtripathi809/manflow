@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { AuthTokens, User as AppUser, PaginatedResponse } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.16:8002/api/v1';
+const API_URL = import.meta.env.VITE_API_URL as string;
 
 
 export const api = axios.create({
@@ -30,10 +30,20 @@ export const clearTokens = (): void => {
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // 🚫 Do NOT attach token for login/register/refresh
+    if (
+      config.url?.includes('/auth/login/') ||
+      config.url?.includes('/auth/register/') ||
+      config.url?.includes('/auth/refresh/')
+    ) {
+      return config;
+    }
+
     const tokens = getTokens();
     if (tokens?.access) {
       config.headers.Authorization = `Bearer ${tokens.access}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -74,14 +84,19 @@ api.interceptors.response.use(
 // Auth API
 export const authApi = {
   login: async (username: string, password: string) => {
-    const response = await api.post<AuthTokens>('/auth/login/', {
-      username,
-      password,
-    });
-    setTokens(response.data);
-    api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-    return response.data;
-  },
+  clearTokens(); // 🧹 remove old tokens
+
+  const response = await api.post<AuthTokens>('/auth/login/', {
+    username,
+    password,
+  });
+
+  setTokens(response.data);
+  api.defaults.headers.common['Authorization'] =
+    `Bearer ${response.data.access}`;
+
+  return response.data;
+},
 
   logout: () => {
     clearTokens();
