@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
     X,
     Calendar,
-    // Users,
     Info,
     CheckCircle,
     AlertCircle,
@@ -12,7 +11,7 @@ import {
     ListTodo,
 } from 'lucide-react';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
-// import { useAuth } from '@/hooks/useAuth'
+import { ProjectMinimal } from '@/types';
 
 interface UserOption {
     value: string;
@@ -20,8 +19,22 @@ interface UserOption {
     id: number;
 }
 
+interface ProjectOption {
+    id: number;
+    name: string;
+}
 
-export const CreateTask: React.FC = () => {
+interface CreateTaskProps {
+    onClose?: () => void;
+    onSuccess?: () => void;
+    isModal?: boolean;
+}
+
+export const CreateTask: React.FC<CreateTaskProps> = ({
+    onClose,
+    onSuccess,
+    isModal = false
+}) => {
     const navigate = useNavigate();
     const [heading, setHeading] = useState('');
     const [description, setDescription] = useState('');
@@ -29,7 +42,9 @@ export const CreateTask: React.FC = () => {
     const [endDate, setEndDate] = useState('');
     const [assignedToList, setAssignedToList] = useState<number[]>([]);
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [project, setProject] = useState<string>('');
+    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
+    const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+    const [allProjectOptions, setAllProjectOptions] = useState<ProjectOption[]>([]);
     const [status, setStatus] = useState('pending');
     const [priority, setPriority] = useState('medium');
     const [loading, setLoading] = useState(false);
@@ -52,11 +67,12 @@ export const CreateTask: React.FC = () => {
         { value: 'deferred', label: 'Deferred' },
     ];
 
-    // Fetch dynamic user lists
+    // Fetch dynamic user and project lists
     useEffect(() => {
         const fetchDynamicData = async () => {
             setIsDataLoading(true);
             try {
+                // 1. Fetch Users
                 const userData = await usersApi.listAll();
                 const mappedUsers: UserOption[] = userData.map((user: any) => ({
                     value: String(user.id),
@@ -64,6 +80,14 @@ export const CreateTask: React.FC = () => {
                     id: user.id,
                 }));
                 setAllUserOptions(mappedUsers);
+
+                // 2. Fetch Projects
+                const projectData = await projectsApi.list();
+                const mappedProjects: ProjectOption[] = projectData.results.map((project: ProjectMinimal) => ({
+                    id: project.id,
+                    name: project.name,
+                }));
+                setAllProjectOptions(mappedProjects);
 
             } catch (err) {
                 console.error("Failed to load dynamic data for task creation:", err);
@@ -75,6 +99,13 @@ export const CreateTask: React.FC = () => {
         fetchDynamicData();
     }, []);
 
+    const handleClose = () => {
+        if (isModal && onClose) {
+            onClose();
+        } else {
+            navigate('/taskboard');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,11 +114,19 @@ export const CreateTask: React.FC = () => {
         setSuccess(null);
 
         // --- VALIDATION ---
-        if (!heading || !description || !startDate || !endDate || assignedToList.length === 0 || !project.trim()) {
-            setError('Please fill in all required fields (including Project).');
+        if (!heading || !description || !startDate || !endDate || assignedToList.length === 0 || selectedProjects.length === 0) {
+            setError('Please fill in all required fields (Task Heading, Description, Dates, Assigned To, and Project).');
             setLoading(false);
             return;
         }
+
+        // Map selected project IDs to their names
+        const projectNames = allProjectOptions
+            .filter(project => selectedProjects.includes(project.id))
+            .map(project => project.name);
+
+        // API payload must be an array of project names for multi-select
+        const project_names = projectNames;
 
         // --- API CALL ---
         try {
@@ -99,14 +138,19 @@ export const CreateTask: React.FC = () => {
                 assigned_to: assignedToList,
                 status,
                 priority,
-                project_name: project.trim(),
+                project_name: project_names.join(', '),
             };
 
             await taskApi.create(payload);
 
-            setSuccess('Task created successfully! Redirecting to Taskboard...');
+            setSuccess('Task created successfully!');
+
             setTimeout(() => {
-                navigate('/taskboard');
+                if (isModal && onSuccess) {
+                    onSuccess();
+                } else {
+                    navigate('/taskboard');
+                }
             }, 1500);
 
         } catch (err: any) {
@@ -126,22 +170,23 @@ export const CreateTask: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8 flex justify-center">
+        <div className={isModal ? "" : "min-h-screen bg-gray-50 p-8 flex justify-center"}>
             <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden">
-
                 {/* Header Section */}
                 <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <button
-                            onClick={() => navigate('/taskboard')}
-                            className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
-                        >
-                            <ArrowLeft className="w-6 h-6" />
-                        </button>
+                        {!isModal && (
+                            <button
+                                onClick={handleClose}
+                                className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
+                            >
+                                <ArrowLeft className="w-6 h-6" />
+                            </button>
+                        )}
                         <h1 className="text-3xl font-bold text-white">Create New Task</h1>
                     </div>
                     <button
-                        onClick={() => navigate('/taskboard')}
+                        onClick={handleClose}
                         className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
                     >
                         <X className="w-6 h-6" />
@@ -151,13 +196,13 @@ export const CreateTask: React.FC = () => {
                 {/* Form Body */}
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
                     {error && (
-                        <div className={`p-3 rounded-lg bg-red-100 text-red-800 flex items-start text-sm`}>
+                        <div className="p-3 rounded-lg bg-red-100 text-red-800 flex items-start text-sm">
                             <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                             {error}
                         </div>
                     )}
                     {success && (
-                        <div className={`p-3 rounded-lg bg-green-100 text-green-800 flex items-start text-sm`}>
+                        <div className="p-3 rounded-lg bg-green-100 text-green-800 flex items-start text-sm">
                             <CheckCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                             {success}
                         </div>
@@ -196,7 +241,7 @@ export const CreateTask: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Start Date - Using native date input */}
+                        {/* Start Date */}
                         <div>
                             <label htmlFor="startDate" className="block text-lg font-semibold mb-2 text-gray-800">
                                 Start Date <span className="text-red-500">*</span>
@@ -214,7 +259,7 @@ export const CreateTask: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* End Date - Using native date input */}
+                        {/* End Date */}
                         <div>
                             <label htmlFor="endDate" className="block text-lg font-semibold mb-2 text-gray-800">
                                 End Date <span className="text-red-500">*</span>
@@ -233,8 +278,8 @@ export const CreateTask: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Assigned To - Custom Multi Select */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Assigned To */}
                         <div className="relative">
                             <label className="block text-lg font-semibold mb-2 text-gray-800">
                                 Assigned To <span className="text-red-500">*</span>
@@ -307,28 +352,88 @@ export const CreateTask: React.FC = () => {
                             )}
                         </div>
 
-
-
-                        <div>
-                            <label htmlFor="project" className="block text-lg font-semibold mb-2 text-gray-800">
+                        {/* Project Multi-Select Dropdown - Start of the fix */}
+                        <div className="relative">
+                            <label className="block text-lg font-semibold mb-2 text-gray-800">
                                 Project <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    id="project"
-                                    value={project}
-                                    onChange={(e) => setProject(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Enter project name..."
-                                    required
-                                />
+
+                            {/* Project Tag Input Box */}
+                            <div
+                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 cursor-pointer flex flex-wrap gap-2 min-h-[50px]"
+                                onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                            >
+                                {selectedProjects.length === 0 && (
+                                    <span className="text-gray-500">Select projects...</span>
+                                )}
+
+                                {/* Selected Project Tags */}
+                                {selectedProjects.map((projectId) => {
+                                    const project = allProjectOptions.find(p => p.id === projectId);
+                                    if (!project) return null;
+
+                                    return (
+                                        <span
+                                            key={projectId}
+                                            className="px-2 py-1 bg-gray-200 text-gray-800 rounded-md flex items-center gap-1"
+                                        >
+                                            {project.name}
+                                            <button
+                                                type="button"
+                                                className="text-gray-600 hover:text-red-500"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedProjects(
+                                                        selectedProjects.filter(id => id !== projectId)
+                                                    );
+                                                }}
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    );
+                                })}
                                 <Briefcase className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                             </div>
+
+                            {/* Project Dropdown List */}
+                            {projectDropdownOpen && (
+                                <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                    {allProjectOptions.length === 0 ? (
+                                        <div className="p-4 text-center text-gray-500">No projects available.</div>
+                                    ) : (
+                                        allProjectOptions.map((project) => {
+                                            const isSelected = selectedProjects.includes(project.id);
+
+                                            return (
+                                                <div
+                                                    key={project.id}
+                                                    className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${
+                                                        isSelected ? "bg-blue-50" : ""
+                                                    }`}
+                                                    onClick={() => {
+                                                        if (isSelected) {
+                                                            setSelectedProjects(
+                                                                selectedProjects.filter((id) => id !== project.id)
+                                                            );
+                                                        } else {
+                                                            setSelectedProjects([...selectedProjects, project.id]);
+                                                        }
+                                                    }}
+                                                >
+                                                    <span>{project.name}</span>
+                                                    {isSelected && <span className="text-blue-600 font-bold">✓</span>}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Status */}
                         <div>
                             <label htmlFor="status" className="block text-lg font-semibold mb-2 text-gray-800">
                                 Status
@@ -349,6 +454,8 @@ export const CreateTask: React.FC = () => {
                                 <ListTodo className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
+
+                        {/* Priority */}
                         <div>
                             <label htmlFor="priority" className="block text-lg font-semibold mb-2 text-gray-800">
                                 Priority
@@ -373,8 +480,8 @@ export const CreateTask: React.FC = () => {
                     <div className="flex justify-end space-x-4 pt-6">
                         <button
                             type="button"
-                            onClick={() => navigate('/taskboard')}
-                            className={`px-8 py-3 rounded-lg text-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300`}
+                            onClick={handleClose}
+                            className="px-8 py-3 rounded-lg text-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300"
                             disabled={loading}
                         >
                             Cancel

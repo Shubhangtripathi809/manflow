@@ -176,13 +176,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onTaskClick }) => {
 interface TaskDetailModalProps {
     task: Task;
     onClose: () => void;
-    onDelete: (id: number) => void;
+    onDelete: (id: number) => Promise<void>;
     onTaskUpdated: (updatedTask: Task) => void;
 }
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDelete, onTaskUpdated }) => {
     const [selectedStatus, setSelectedStatus] = useState<Task['status']>(task.status);
     const [isEditingStatus, setIsEditingStatus] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const queryClient = useQueryClient();
     const updateTaskMutation = useMutation({
         mutationFn: (newStatus: Task['status']) => taskApi.update(task.id, { status: newStatus }),
@@ -264,12 +265,22 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDele
         { status: 'deferred', icon: Pause, label: 'Deferred' },
     ];
 
-    const handleDelete = () => {
-        if (window.confirm(`Are you sure you want to delete task "${task.heading}"? This cannot be undone.`)) {
-            onDelete(task.id);
-            onClose();
+    const deleteMutation = useMutation({
+        mutationFn: (taskId: number) => onDelete(taskId),
+        onSuccess: () => {
+            setShowDeleteConfirm(false);
+        },
+        onError: (error) => {
+            console.error('Failed to delete task:', error);
+            alert('Failed to delete task.');
         }
-    }
+    });
+
+
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
+
 
     const currentStatusConfig = getStatusConfig(task.status);
     const isSaving = updateTaskMutation.isPending;
@@ -423,87 +434,39 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDele
                     </section>
                 </div>
             </div>
-        </div>
-    );
-};
+            {/* ✅ PASTE CONFIRMATION MODAL HERE */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            Delete Task
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Are you sure you want to delete <b>{task.heading}</b>?
+                            This action cannot be undone.
+                        </p>
 
-interface SidebarProps {
-    activeFilter: string;
-    onFilterChange: (filter: string) => void;
-    onBackToDashboard: () => void;
-    onAddNewTask: () => void;
-    isCreationAllowed: boolean;
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ activeFilter, onFilterChange, onBackToDashboard, onAddNewTask, isCreationAllowed }) => {
-    const menuItems = [
-        { id: 'ALL', label: 'All Tasks', icon: CheckSquare, action: () => onFilterChange('ALL') },
-        { id: 'COMPLETED', label: 'Completed Tasks', icon: CheckCircle, action: () => onFilterChange('COMPLETED') },
-        { id: 'PENDING', label: 'Pending Tasks', icon: Clock, action: () => onFilterChange('PENDING') },
-        { id: 'IN_PROGRESS', label: 'In Progress Tasks', icon: PlayCircle, action: () => onFilterChange('IN_PROGRESS') },
-        { id: 'DEPLOYED', label: 'Deployed Tasks', icon: CheckSquare, action: () => onFilterChange('DEPLOYED') },
-        { id: 'DEFERRED', label: 'Deferred Tasks', icon: Pause, action: () => onFilterChange('DEFERRED') },
-    ];
-
-    return (
-        <div className="task-manager-sidebar">
-            <div className="p-6">
-                <div className="flex items-center mb-8">
-                    <button
-                        onClick={onBackToDashboard}
-                        className="flex items-center text-white hover:text-blue-200 transition-colors duration-200 mr-3"
-                    >
-                        <ArrowLeft className="w-5 h-5 mr-2" />
-                    </button>
-                    <div className='flex items-center'>
-                        <CheckSquare className="w-6 h-6 text-white mr-2" />
-                        <h1 className="text-xl font-bold text-white">Task Manager</h1>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
+                            >
+                                No
+                            </button>
+                            <button
+                                onClick={() => deleteMutation.mutate(task.id)}
+                                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                            >
+                                Yes, Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <nav className="space-y-1">
-                    {menuItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeFilter.toUpperCase() === item.id.toUpperCase();
-
-
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={item.action}
-                                className={`
-                                w-full flex items-center px-4 py-3 text-left text-sm font-medium transition-all duration-200 task-sidebar-link
-                                ${isActive ? 'task-sidebar-link-active' : ''}
-                            `}
-                            >
-                                <Icon className="w-5 h-5 mr-3" />
-                                {item.label}
-                            </button>
-                        );
-                    })}
-                </nav>
-                {isCreationAllowed && (
-                    <>
-                        <button
-                            onClick={onAddNewTask}
-                            className="w-full flex items-center mt-6 px-4 py-3 text-left text-sm font-medium rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
-                        >
-                            <Plus className="w-5 h-5 mr-3" />
-                            Add New Task
-                        </button>
-                        <a 
-                            href="/team-performance"
-                            className="w-full flex items-center mt-2 px-4 py-3 text-left text-sm font-medium rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
-                        >
-                            <Users className="w-5 h-5 mr-3" />
-                            Team Performance
-                        </a>
-                    </>
-                )}
-            </div>
+            )}
         </div>
     );
 };
+
 
 interface MyTaskProps { }
 
@@ -515,10 +478,12 @@ export const MyTask: React.FC<MyTaskProps> = () => {
     const isCreationAllowed = !!(user?.role && CREATION_ALLOWED_ROLES.includes(user.role));
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeFilter, setActiveFilter] = useState<string>('ALL');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const pathParts = location.pathname.split('/').filter(p => p);
+    const pathFilter = pathParts.length > 1 && pathParts[1].toUpperCase() !== 'CREATE' ? pathParts[1].toUpperCase() : 'ALL';
+    const activeFilter = pathFilter; 
 
     // Function to fetch tasks data
     const fetchTasks = useCallback(async () => {
@@ -543,15 +508,10 @@ export const MyTask: React.FC<MyTaskProps> = () => {
 
     // useEffect to fetch tasks data on component mount or user change
     useEffect(() => {
-        const currentPath = location.pathname;
-        if (currentPath === '/taskboard' || currentPath === '/taskboard/') {
-            setActiveFilter('ALL');
-        }
-
         if (user) {
             fetchTasks();
         }
-    }, [user, location.pathname, fetchTasks]);
+    }, [user, fetchTasks]);
 
 
     // Handler to open the modal
@@ -575,10 +535,18 @@ export const MyTask: React.FC<MyTaskProps> = () => {
 
 
     // Handler to delete a task (Placeholder)
-    const handleDeleteTask = useCallback((id: number) => {
-        console.log(`Deleting task with ID: ${id}`);
-        setTasks(prevTasks => prevTasks.filter(t => t.id !== id));
+    const handleDeleteTask = useCallback(async (id: number) => {
+        try {
+            await taskApi.delete(id);
+            setTasks(prevTasks => prevTasks.filter(t => t.id !== id));
+            setSelectedTask(null);
+            console.log(`Task ${id} deleted successfully`);
+        } catch (error) {
+            console.error(`Failed to delete task with ID: ${id}`, error);
+            throw error;
+        }
     }, []);
+
 
 
     const handleAddNewTaskClick = () => {
@@ -587,7 +555,7 @@ export const MyTask: React.FC<MyTaskProps> = () => {
 
 
     const filteredTasks = tasks.filter(task => {
-        const matchesFilter = activeFilter === 'ALL' || task.status.toLowerCase() === activeFilter.toLowerCase();
+        const matchesFilter = activeFilter === 'ALL' || task.status.toUpperCase() === activeFilter.toUpperCase();
         const matchesSearch = searchQuery.trim() === '' || task.heading.toLowerCase().includes(searchQuery.toLowerCase()) ||
             task.description.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesFilter && matchesSearch;
@@ -608,18 +576,9 @@ export const MyTask: React.FC<MyTaskProps> = () => {
     const stats = getTaskStats();
 
     return (
-        <div className="my-task-board-wrapper">
-            <Sidebar
-                activeFilter={activeFilter}
-                onFilterChange={setActiveFilter}
-                onBackToDashboard={() => navigate('/')}
-                onAddNewTask={handleAddNewTaskClick}
-                isCreationAllowed={isCreationAllowed}
-            />
-
+        <div className="task-main-content-area w-full"> 
             {/* Main Content Area */}
-            <div className="task-main-content-area">
-                {location.pathname === '/taskboard' || location.pathname === '/taskboard/' ? (
+            {location.pathname.startsWith('/taskboard') && !location.pathname.endsWith('/create') ? (
                     loading ? (
                         <div className="flex items-center justify-center h-64">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -638,13 +597,22 @@ export const MyTask: React.FC<MyTaskProps> = () => {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        {/* ADD: Add New Task button to the main Task Board view */}
+                                        {isCreationAllowed && (
+                                            <button
+                                                onClick={handleAddNewTaskClick}
+                                                className="flex items-center px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-md"
+                                            >
+                                                <Plus className="w-4 h-4 mr-2" /> Add New
+                                            </button>
+                                        )}
                                         <button
                                             className="p-2 rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200"
                                         >
                                             <Bell className="w-5 h-5" />
                                         </button>
                                         <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                            All Tasks ({filteredTasks.length})
+                                            {activeFilter.charAt(0) + activeFilter.slice(1).toLowerCase()} Tasks ({filteredTasks.length})
                                         </div>
                                     </div>
                                 </div>
@@ -677,7 +645,7 @@ export const MyTask: React.FC<MyTaskProps> = () => {
                                     </div>
                                 </div>
 
-                                {/* Search and Controls */}
+                               {/* Search and Controls */}
                                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                                     <div className="relative flex-1 max-w-md">
                                         <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5`} />
@@ -733,10 +701,8 @@ export const MyTask: React.FC<MyTaskProps> = () => {
                         </>
                     )
                 ) : (
-                    // This block runs when the URL is /taskboard/create
                     <Outlet />
                 )}
-            </div>
 
             {/* Task Detail Modal */}
             {selectedTask && (
@@ -748,5 +714,6 @@ export const MyTask: React.FC<MyTaskProps> = () => {
                 />
             )}
         </div>
+
     );
 };

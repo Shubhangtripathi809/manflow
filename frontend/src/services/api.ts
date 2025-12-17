@@ -1,8 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, PaginatedResponse } from '@/types';
+import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL as string;
-
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -10,6 +10,12 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+export const fileApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
 
 // Token management
 const TOKEN_KEY = 'zanflow_tokens';
@@ -122,7 +128,7 @@ export const authApi = {
 // Projects API
 export const projectsApi = {
   list: async (params?: { task_type?: string; is_active?: boolean }) => {
-    const response = await api.get('/projects/', { params });
+    const response = await api.get<PaginatedProjectsResponse>('/projects/', { params });
     return response.data;
   },
 
@@ -167,7 +173,7 @@ export const projectsApi = {
   },
 };
 
-// Documents API
+// Add Documents API in task type file
 export const documentsApi = {
   list: async (params?: {
     project?: number;
@@ -184,10 +190,45 @@ export const documentsApi = {
     return response.data;
   },
 
-  create: async (data: FormData) => {
-    const response = await api.post('/documents/', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+
+  getUploadUrl: async (projectId: number, data: GetUploadUrlPayload) => {
+    const response = await api.post<GetUploadUrlResponse>(
+      `/projects/${projectId}/get-upload-url/`,
+      data
+    );
+    return response.data;
+  },
+
+  uploadFileToS3: async (
+    s3Url: string,
+    fields: Record<string, string>,
+    file: File
+  ) => {
+    const formData = new FormData();
+    Object.keys(fields).forEach(key => {
+      formData.append(key, fields[key]);
     });
+    formData.append('file', file);
+
+    // Note: We use plain axios because the URL is external (S3)
+    // and requires a special content-type for S3 POST upload.
+    await axios.post(s3Url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data', 
+      },
+    });
+  },
+
+  // This `create` now expects the final S3 file_key
+ create: async (data: { 
+    project: number; 
+    name: string; 
+    description: string;
+    file_key: string; 
+    initial_gt_data?: Record<string, unknown>;
+    file_type: string;
+  }) => {
+    const response = await api.post('/documents/', data);
     return response.data;
   },
 
@@ -332,6 +373,11 @@ export const taskApi = {
     return response.data;
   },
 
+  delete: async (taskId: number) => {
+    const response = await api.delete(`/tasksite/${taskId}/`);
+    return response.data;
+  },
+
   getPerformance: async (userId: number) => {
     const response = await api.get(`/tasksite/performance/${userId}/`);
     const apiData = response.data;
@@ -359,8 +405,6 @@ export const taskApi = {
       projectDistributionMap[projectName].task_count += 1;
     });
 
-    // NOTE: We cannot calculate total_project_tasks from this endpoint, 
-    // so we assume project_distribution is based on tasks assigned to the user.
     const projectDistribution = Object.keys(projectDistributionMap).map(name => ({
       project_name: name,
       task_count: projectDistributionMap[name].task_count,
@@ -419,6 +463,77 @@ export const usersApi = {
     await api.delete(`/users/${id}/`);
   },
 };
+
+// Tools PdfVsHtml API
+export const toolApi = {
+  getProjectFolders: async () => {
+    const res = await fileApi.get<ToolDocumentListPayload>("/documents/");
+    return res.data.documents || [];
+  },
+  getDocumentsInProject: async (projectName: string) => {
+    const res = await fileApi.get<ToolDocumentListPayload>(`/documents/${projectName}/`);
+    return res.data.documents || [];
+  },
+
+  getDocumentDetail: async (projectName: string, docName: string) => {
+    const res = await fileApi.get<DocumentDetailResponse>(`/documents/${projectName}/${docName}/`);
+    return res.data;
+  },
+
+  getAllGroundTruth: async () => {
+    const res = await fileApi.get<{ documents: Omit<GroundTruthEntry, 'id'>[] }>("/ground_truth/all");
+    return res.data.documents.map((entry: any, index: number) => ({
+      ...entry,
+      id: `gt-server-${Date.now()}-${index}`,
+      docName: entry.docName || entry.document
+    })) as GroundTruthEntry[];
+  },
+
+  // New function to submit a new ground truth entry
+  submitGroundTruth: async (docName: string, entry: Omit<GroundTruthApiResponse, 'id' | 'docName'>) => {
+    const res = await fileApi.post(`/ground_truth/${docName}/`, entry);
+    return res.data;
+  },
+
+
+  // Tools JSONViewer API
+  getTableCellsFileNames: async () => {
+    const res = await fileApi.post<GetTableCellsResponse>("/backend/get_table_cells", { load_json: [] }, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    return res.data;
+  },
+  fetchPageContentJson: async (fileName: string) => {
+    const data = {
+      elastic_indx: "10k",
+      select_fields: [
+        "page",
+        "table",
+        "image",
+        "text",
+        "cell",
+        "entity",
+        "key_value",
+        "table_np",
+      ],
+      PDF: [
+        fileName,
+      ],
+      highlight_words: [],
+    };
+    const res = await fileApi.post<PageContentResponse | PageContentErrorResponse>("/backend/get_page_content", data, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    return res.data;
+  },
+};
+
+
+
 
 
 export default api;

@@ -1,7 +1,11 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout';
 import type { User as AppUser } from '@/types';
+import { ContentCreation } from '@/pages/TaskType/ContentCreation';
+import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { projectsApi } from '@/services/api';
 import {
   Dashboard,
   Login,
@@ -15,7 +19,12 @@ import {
   UserManagement,
   MyTask,
   CreateTask,
-  TeamPerformance
+  TeamPerformance,
+  ToolsHub,
+  PdfVsHtmlViewer,
+  PdfJson,
+  // SuperscriptChecker,
+  PivotTableExtractor
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -56,6 +65,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ProjectDetailWrapper() {
+  const { id } = useParams<{ id: string }>();
+  const { data: project } = useQuery({
+    queryKey: ['project', id],
+    queryFn: () => projectsApi.get(Number(id)),
+    enabled: !!id,
+  });
+
+  if (project?.task_type === 'content_creation') {
+    return <ContentCreation />;
+  }
+
+  return <ProjectDetail />;
+}
+
+// Helper component to render the Admin UI for nested routes
+const AdminDashboard = () => (
+  <AdminRoute>
+    <Outlet />
+  </AdminRoute>
+);
+
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
 
@@ -67,6 +98,8 @@ function AppRoutes() {
           isAuthenticated ? <Navigate to="/users" replace /> : <Login />
         }
       />
+      
+      {/* Routes WITH Sidebar (Inside Layout) */}
       <Route
         element={
           <ProtectedRoute>
@@ -78,7 +111,7 @@ function AppRoutes() {
 
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
-        <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/projects/:id" element={<ProjectDetailWrapper />} />
         <Route path="/projects/:projectId/documents/new" element={<DocumentCreate />} />
         <Route path="/projects/:id/settings" element={<ProjectSettings />} />
 
@@ -90,50 +123,87 @@ function AppRoutes() {
 
         <Route path="/issues" element={<div>Issues (Phase 3)</div>} />
         <Route path="/issues/:id" element={<div>Issue Detail (Phase 3)</div>} />
-
         <Route path="/settings" element={<div>Settings</div>} />
 
-        {/* Admin-only route for User Management */}
-        <Route
-          path="/users"
-          element={
-            <AdminRoute>
-              <UserManagement />
-            </AdminRoute>
-          }
-        />
+        {/* Taskboard Routes */}
+        <Route path="/taskboard" element={<MyTask />}>
+          <Route index element={null} />
+          <Route path="completed" element={null} />
+          <Route path="pending" element={null} />
+          <Route path="in_progress" element={null} />
+          <Route path="deployed" element={null} />
+          <Route path="deferred" element={null} />
+          <Route
+            path="create"
+            element={
+              <AdminRoute>
+                <CreateTask />
+              </AdminRoute>
+            }
+          />
+        </Route>
+
+        {/* NEW: Admin Accordion Routes (User Management & Team Performance) */}
+        <Route path="/admin" element={<AdminDashboard />}>
+            <Route path="user-roles" element={<UserManagement />} />
+            <Route path="team-performance" element={<TeamPerformance />} />
+            {/* Redirect /admin to /admin/user-roles by default */}
+            <Route index element={<Navigate to="user-roles" replace />} /> 
+        </Route>
 
       </Route>
 
-      <Route
-        path="/taskboard"
-        element={
-          <ProtectedRoute>
-            <MyTask />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={null} />
 
-        {/* Nested Route : Create Task Page */}
-        <Route
-          path="create"
-          element={
-            <AdminRoute>
-              <CreateTask />
-            </AdminRoute>
-          }
-        />
-      </Route>
-
-      {/* FULL-PAGE ROUTE: Team Performance 👈 New Full Page Route */}
-      <Route
+      {/* REMOVED: Old standalone Team Performance Route */}
+      {/* <Route
         path="/team-performance"
         element={
           <ProtectedRoute>
             <AdminRoute>
               <TeamPerformance />
             </AdminRoute>
+          </ProtectedRoute>
+        }
+      /> */}
+
+      {/* FULL-PAGE ROUTES: Tools Hub - WITHOUT ZanFlow Sidebar */}
+      <Route
+        path="/tools"
+        element={
+          <ProtectedRoute>
+            <ToolsHub />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tools/pdf-vs-html"
+        element={
+          <ProtectedRoute>
+            <PdfVsHtmlViewer />
+          </ProtectedRoute>
+        }
+      />
+      {/* <Route
+        path="/tools/superscript-checker"
+        element={
+          <ProtectedRoute>
+            <SuperscriptChecker />
+          </ProtectedRoute>
+        }
+      /> */}
+      <Route
+        path="/tools/json-viewer"
+        element={
+          <ProtectedRoute>
+            <PdfJson />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tools/pivot-table"
+        element={
+          <ProtectedRoute>
+            <PivotTableExtractor />
           </ProtectedRoute>
         }
       />

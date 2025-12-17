@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -22,7 +22,7 @@ import {
   Badge,
 } from '@/components/common';
 import { projectsApi } from '@/services/api';
-import type { Project, Label } from '@/types';
+import type { Project, Label, TaskType } from '@/types';
 
 const TASK_TYPES = [
   { value: 'key_value', label: 'Key-Value Extraction' },
@@ -31,6 +31,7 @@ const TASK_TYPES = [
   { value: 'ocr', label: 'OCR' },
   { value: 'ner', label: 'Named Entity Recognition' },
   { value: 'custom', label: 'Custom' },
+  { value: 'content_creation', label: 'Content Creation' },
 ];
 
 const PRESET_COLORS = [
@@ -46,10 +47,14 @@ export function ProjectSettings() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<'general' | 'labels' | 'danger'>('general');
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    task_type: TaskType;
+  }>({
     name: '',
     description: '',
-    task_type: 'key_value',
+    task_type: 'key_value' as TaskType,
   });
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [newLabel, setNewLabel] = useState({ name: '', color: '#3b82f6' });
@@ -60,14 +65,20 @@ export function ProjectSettings() {
     queryKey: ['project', id],
     queryFn: () => projectsApi.get(Number(id)),
     enabled: !!id,
-    onSuccess: (data: Project) => {
-      setFormData({
-        name: data.name,
-        description: data.description || '',
-        task_type: data.task_type,
-      });
-    },
   });
+
+  // A boolean flag to handle initial form state loading safely
+  const [isProjectDataLoaded, setIsProjectDataLoaded] = useState(false);
+
+  // Logic to set form data once project loads
+  if (project && !isProjectDataLoaded) {
+    setFormData({
+      name: project.name,
+      description: project.description || '',
+      task_type: project.task_type,
+    });
+    setIsProjectDataLoaded(true);
+  }
 
   const updateMutation = useMutation({
     mutationFn: (data: Partial<Project>) => projectsApi.update(Number(id), data),
@@ -159,7 +170,7 @@ export function ProjectSettings() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold">Project Settings</h1>
-          <p className="text-muted-foreground">{project.name}</p>
+          <p className="text-muted-foreground">{project?.name}</p>
         </div>
       </div>
 
@@ -267,11 +278,13 @@ export function ProjectSettings() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setFormData({
-                      name: project.name,
-                      description: project.description || '',
-                      task_type: project.task_type,
-                    });
+                    if (project) { 
+                      setFormData({
+                        name: project.name,
+                        description: project.description || '',
+                        task_type: project.task_type,
+                      });
+                    }
                     setIsFormDirty(false);
                   }}
                 >

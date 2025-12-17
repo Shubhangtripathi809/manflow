@@ -30,7 +30,6 @@ export interface UserPerformance {
     recent_activity: Array<{
         task_name: string;
         project_name: string;
-        // FIX: Update status to match potential backend task statuses
         status: 'completed' | 'in_progress' | 'pending' | 'deployed' | 'deferred' | string; 
         timestamp: string; 
     }>;
@@ -69,7 +68,6 @@ export const TeamPerformance: React.FC = () => {
 
         } catch (error) {
             console.error(`Failed to fetch performance for user ${userId}:`, error);
-            // On API error, set performance data to a safe null state
             setTeamMembers(prevMembers => 
                 prevMembers.map(m => 
                     m.id === userId ? { ...m, performance: null } : m
@@ -92,16 +90,15 @@ export const TeamPerformance: React.FC = () => {
                 return {
                     ...user,
                     avatar: initials,
-                    performance: null, // Performance initially null
+                    performance: null,
                 } as TeamMember;
             });
 
             setTeamMembers(members);
             if (members.length > 0) {
-                // Select the first member and immediately fetch their performance
-                setSelectedMember(members[0]);
-                // Trigger performance fetch for the first user
-                fetchPerformanceData(members[0].id);
+                const firstMember = members[0];
+                setSelectedMember(firstMember);
+                fetchPerformanceData(firstMember.id);
             }
         } catch (error) {
             console.error("Failed to fetch team members:", error);
@@ -127,7 +124,7 @@ export const TeamPerformance: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-slate-50">
+            <div className="flex items-center justify-center h-full min-h-[500px] bg-slate-50">
                 <Loader2 className="w-8 h-8 animate-spin text-slate-800" />
                 <p className="ml-3 text-slate-600">Loading team data...</p>
             </div>
@@ -149,17 +146,12 @@ export const TeamPerformance: React.FC = () => {
     const showNoDataPlaceholder = !performance && !isPerformanceLoading;
 
     return (
-        <div className="team-performance-full-page">
-            <div className="header-bar">
-                <a href="/taskboard" className="back-link">
-                    <ArrowLeft className="w-6 h-6" />
-                    <span className="text-xl font-semibold">Team Performance</span>
-                </a>
-            </div>
+        <div className="w-full h-full p-8 bg-gray-50">
 
-            <div className="flex h-[calc(100vh-65px)]"> 
+            {/* Adjusted height for main container */}
+            <div className="flex w-full h-[calc(100vh-100px)] rounded-xl overflow-hidden shadow-2xl border border-slate-200"> 
                 {/* Left Sidebar: Team Member List */}
-                <div className="w-80 bg-white border-r border-slate-200 overflow-y-auto">
+                <div className="min-w-[300px] max-w-[350px] w-1/3 bg-white border-r border-slate-200 overflow-y-auto">
                     <div className="p-6 border-b border-slate-200">
                         <div className="flex items-center gap-3 mb-2">
                             <Users className="w-6 h-6 text-slate-700" />
@@ -170,7 +162,6 @@ export const TeamPerformance: React.FC = () => {
 
                     <div className="p-4 space-y-2">
                         {teamMembers.map((member) => {
-                            // 👇 FIX: Use a temporary variable to safely access nested properties
                             const memberPerformance = member.performance;
                             const totalTasks = memberPerformance?.total_tasks_count ?? 0;
                             const completedTasks = memberPerformance?.completed_tasks_count ?? 0;
@@ -292,7 +283,6 @@ export const TeamPerformance: React.FC = () => {
                                                 </div>
                                                 <h3 className="text-lg font-bold text-slate-800">Project Distribution</h3>
                                             </div>
-                                            {/* FIX: Ensure .project_distribution array is safe */}
                                             {(performance.project_distribution ?? []).length > 0 ? (
                                                 <div className="space-y-5">
                                                     {(performance.project_distribution ?? []).map((project, idx) => {
@@ -307,7 +297,6 @@ export const TeamPerformance: React.FC = () => {
                                                             </div>
                                                             <div className="relative">
                                                                 <div className="w-full bg-slate-100 rounded-full h-3">
-                                                                    {/* NOTE: Using static color since project colors are not in the API */}
                                                                     <div
                                                                         className={`bg-indigo-500 h-3 rounded-full transition-all duration-500 shadow-sm`}
                                                                         style={{ 
@@ -343,7 +332,6 @@ export const TeamPerformance: React.FC = () => {
                                                 <h3 className="text-lg font-bold text-slate-800">Recent Activity</h3>
                                             </div>
                                             <div className="space-y-4">
-                                                {/* FIX: Ensure .recent_activity array is safe */}
                                                 {(performance.recent_activity ?? []).length > 0 ? (
                                                     (performance.recent_activity ?? []).map((activity, idx) => (
                                                         <div key={idx} className="flex gap-4 group">
@@ -351,7 +339,7 @@ export const TeamPerformance: React.FC = () => {
                                                                 <div className={`w-3 h-3 rounded-full ${
                                                                     activity.status === 'completed' || activity.status === 'deployed' ? 'bg-emerald-500' : // Treat deployed as complete for coloring
                                                                     activity.status === 'in_progress' ? 'bg-amber-500' :
-                                                                    'bg-slate-400' // Default for pending/deferred/other
+                                                                    'bg-slate-400' 
                                                                 }`} />
                                                                 {idx < (performance.recent_activity?.length ?? 0) - 1 && (
                                                                     <div className="w-0.5 h-full bg-slate-200 mt-2" />
