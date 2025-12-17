@@ -31,6 +31,8 @@ class Document(UserStampedModel):
         IMAGE = "image", "Image"
         JSON = "json", "JSON"
         TEXT = "text", "Text"
+        VIDEO = "video", "Video"  # Use "video" if that's what your frontend sends
+        MP4 = "mp4", "MP4"
         OTHER = "other", "Other"
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

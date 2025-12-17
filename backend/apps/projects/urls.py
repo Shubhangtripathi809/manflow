@@ -24,6 +24,16 @@ urlpatterns = [
         views.ProjectViewSet.as_view({"post": "get_upload_url"}), 
         name="project-get-upload-url"
     ),
+    path(
+        "<int:pk>/confirm-upload/", 
+        views.ProjectViewSet.as_view({"post": "confirm_upload"}), 
+        name="project-confirm-upload"
+    ),
+    path(
+        "<int:pk>/get-download-url/", 
+        views.ProjectViewSet.as_view({"post": "get_download_url"}), 
+        name="project-get-download-url"
+    ),
     
     # GET /projects/{pk}/stats/
     path(
