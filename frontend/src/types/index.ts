@@ -88,6 +88,7 @@ export interface Label {
 export interface Document {
   id: string;
   project: number;
+  project_name ?: string;
   name: string;
   description: string;
   source_file?: string;
@@ -105,7 +106,7 @@ export interface Document {
   labels?: Label[];
 }
 
-export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'other' | 'video';
+export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'video' | 'other';
 export type DocumentStatus = 'draft' | 'in_review' | 'approved' | 'archived';
 
 export interface GTVersion {
@@ -419,7 +420,8 @@ export interface GetUploadUrlResponse {
 //3rd API call Confirm Upload
 export interface ConfirmUploadPayload {
   file_key: string;
-  file_name: string; 
+  file_name: string;
+  file_type: string
 }
 
 export interface ConfirmUploadResponse {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'; 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Upload, File, X } from 'lucide-react';
 import {
   Button,
@@ -13,19 +13,19 @@ import {
 import { documentsApi, projectsApi } from '@/services/api';
 
 const FILE_TYPES = [
-    { value: 'json', label: 'JSON' },
-    { value: 'pdf', label: 'PDF' },
-    { value: 'image', label: 'Image' },
-    { value: 'video', label: 'Video' },
-    { value: 'text', label: 'Text' },
-    { value: 'other', label: 'Other' },
+  { value: 'json', label: 'JSON' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'image', label: 'Image' },
+  { value: 'video', label: 'Video' },
+  { value: 'text', label: 'Text' },
+  { value: 'other', label: 'Other' },
 ];
 
 export function DocumentCreate() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient(); 
-  
+  const queryClient = useQueryClient();
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -45,27 +45,27 @@ export function DocumentCreate() {
 
   // UPDATED MUTATION 
   const createMutation = useMutation({
-    mutationFn: async ({ name, description, file_key, initial_gt_data, file_type, original_file_name }: { 
-      name: string; 
+    mutationFn: async ({ name, description, file_key, initial_gt_data, file_type, original_file_name }: {
+      name: string;
       description: string;
-      file_key: string; 
+      file_key: string;
       initial_gt_data?: Record<string, unknown>;
-      file_type: string; 
+      file_type: string;
       original_file_name: string;
     }) => {
       return documentsApi.create({
         project: projectIdNum,
         name,
-        description, 
+        description,
         file_key,
-        initial_gt_data, 
+        initial_gt_data,
         file_type,
-        original_file_name, 
+        original_file_name,
       });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['documents', { project: projectId }] });
-      navigate(`/documents/${data.id}`); 
+      navigate(`/documents/${data.id}`);
     },
     onError: (err: any) => {
       setError(err.response?.data?.detail || 'Failed to create document record after file upload.');
@@ -101,33 +101,33 @@ export function DocumentCreate() {
         file_name: file.name,
         file_type: file.type || 'application/octet-stream',
       });
-      
+
       const { url: s3Url, fields: s3Fields, file_key } = uploadUrlResponse;
       console.log(`[DocumentCreate] Step 1 Success. file_key: ${file_key}`);
-      
+
       // Step 2: Upload File directly to S3 using the pre-signed URL/fields
       console.log('[DocumentCreate] Step 2: Uploading file to S3...');
       await documentsApi.uploadFileToS3(s3Url, s3Fields, file);
       console.log('[DocumentCreate] Step 2 Success: File uploaded to S3.');
-
-
-      // Step 3: CONFIRM UPLOAD (New API call)
+     // Step 3: CONFIRM UPLOAD original_file_name
       const fileNameWithoutPath = file_key.split('/').pop() || file.name;
       console.log(`[DocumentCreate] Step 3: Confirming upload with file_key: ${file_key}, file_name: ${fileNameWithoutPath}`);
       const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
         file_key: file_key,
-        file_name: fileNameWithoutPath,
+        file_name: file.name,
+        file_type: formData.file_type,
       });
+
       console.log('[DocumentCreate] Step 3 Success: Confirm upload complete.', confirmResponse);
       queryClient.invalidateQueries({ queryKey: ['documents', { project: projectId }] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      
-      // Decide where to navigate. Using the ID from confirmResponse if available.
+
+      // Navigate to the document detail page
       if (confirmResponse.id) {
-          navigate(`/documents/${confirmResponse.id}`); 
-          navigate(`/projects/${projectId}`); 
+        navigate(`/documents/${confirmResponse.id}`);
+      } else {
+        navigate(`/projects/${projectId}`);
       }
-      
 
     } catch (e: any) {
       console.error('Document creation failed:', e);
@@ -145,41 +145,21 @@ export function DocumentCreate() {
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      const MAX_FILE_SIZE = 500 * 1024 * 1024; 
-      
-      if (selectedFile.size > MAX_FILE_SIZE) {
-        setError('File size exceeds the 500 MB limit.');
-        setFile(null);
-        return;
-      }
-      
-      setFile(selectedFile);
-      if (!formData.name) {
-        setFormData((prev) => ({
-          ...prev,
-          name: selectedFile.name.replace(/\.[^/.]+$/, ''),
-        }));
-      }
-      // Auto-detect file type
-      const ext = selectedFile.name.split('.').pop()?.toLowerCase();
-      if (ext === 'pdf') {
-        setFormData((prev) => ({ ...prev, file_type: 'pdf' }));
-      } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
-        setFormData((prev) => ({ ...prev, file_type: 'image' }));
-      } else if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) { 
-        setFormData((prev) => ({ ...prev, file_type: 'video' })); 
-      } else if (ext === 'json') {
-        setFormData((prev) => ({ ...prev, file_type: 'json' }));
-      } else if (ext === 'txt') {
-        setFormData((prev) => ({ ...prev, file_type: 'text' }));
-      } else {
-        setFormData((prev) => ({ ...prev, file_type: 'other' }));
-      }
-    }
-  };
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const selectedFile = e.target.files?.[0];
+  if (selectedFile) {
+    setFile(selectedFile);
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+    let detectedType = 'other';
+    if (ext === 'pdf') detectedType = 'pdf';
+    else if (['png', 'jpg', 'jpeg'].includes(ext!)) detectedType = 'image';
+    else if (['mp4', 'mov'].includes(ext!)) detectedType = 'video'; 
+    else if (ext === 'json') detectedType = 'json';
+    else if (ext === 'txt') detectedType = 'text';
+
+    setFormData((prev) => ({ ...prev, file_type: detectedType }));
+  }
+};
 
   const removeFile = () => {
     setFile(null);
@@ -223,7 +203,7 @@ export function DocumentCreate() {
             <CardTitle>Source File</CardTitle>
           </CardHeader>
           <CardContent>
-           {!file ? (
+            {!file ? (
               <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="h-10 w-10 text-muted-foreground mb-3" />

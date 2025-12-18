@@ -4,12 +4,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Save,
-  Send,
   CheckCircle,
   History,
   FileText,
   Download,
-  Plus,
+  Film,
+  Image as ImageIcon,
+  FileJson,
+  FileCode,
+  Loader2
 } from 'lucide-react';
 import {
   Button,
@@ -18,128 +21,163 @@ import {
   CardTitle,
   CardContent,
   Badge,
+  Input
 } from '@/components/common';
 import { documentsApi, projectsApi } from '@/services/api';
 import { formatDate, formatDateTime, getStatusColor } from '@/lib/utils';
 import type { Document, GTVersion } from '@/types';
-import { DiffViewer } from '@/components/DiffViewer';
-import { LabelSelector } from '@/components/LabelSelector';
+import { Document as PDFDocument, Page as PDFPage, pdfjs } from 'react-pdf';
 
-// Hook to fetch the pre-signed download URL
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+
 function useDownloadUrl(projectId: number | undefined, documentId: string | undefined) {
-    const queryClient = useQueryClient();
-
-    const fetcher = async () => {
-        if (!projectId || !documentId) {
-            console.log('[useDownloadUrl] Skipping fetch: missing Project ID or Document ID.');
-            return null;
-        }
-
-        console.log(`[useDownloadUrl] Step 4: Requesting download URL for document_id: ${documentId}`);
-        const response = await documentsApi.getDownloadUrl(projectId, {
-            document_id: documentId,
-        });
-        console.log('[useDownloadUrl] Step 4 Success: Received download URL.');
-        return response.url;
-    };
-
-    return useQuery({
-        queryKey: ['document-download-url', projectId, documentId],
-        queryFn: fetcher,
-        enabled: !!projectId && !!documentId,
-        staleTime: 5 * 60 * 1000,
-    });
+  return useQuery({
+    queryKey: ['document-download-url', projectId, documentId],
+    queryFn: async () => {
+      if (!projectId || !documentId) return null;
+      console.log(`[SourcePreview] Requesting download URL for doc: ${documentId}`);
+      const response = await documentsApi.getDownloadUrl(projectId, { document_id: documentId });
+      return response.url;
+    },
+    enabled: !!projectId && !!documentId,
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 function SourcePreview({ doc }: { doc: Document }) {
-  const projectId = doc.project;
-  const docId = doc.id; 
-  const fileKey = doc.source_file || doc.source_file_url;
-  
-  const { data: downloadUrl, isLoading: isUrlLoading } = useDownloadUrl(
-      projectId, 
-      docId
-  );
-  if (!fileKey) {
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
+
+  const { data: downloadUrl, isLoading: isUrlLoading } = useDownloadUrl(doc.project, doc.id);
+
+  // DEBUG LOGS
+  console.log(`[SourcePreview] Rendering doc: ${doc.name}`);
+  console.log(`[SourcePreview] Detected file_type in metadata: "${doc.file_type}"`);
+
+  useEffect(() => {
+    if (!downloadUrl) return;
+
+    const fetchContent = async () => {
+      if (doc.file_type === 'json' || doc.file_type === 'text') {
+        console.log(`[SourcePreview] Fetching raw text content for ${doc.file_type}...`);
+        setIsLoadingFile(true);
+        try {
+          const response = await fetch(downloadUrl);
+          const text = await response.text();
+          setFileContent(text);
+        } catch (err) {
+          console.error("[SourcePreview] Fetch error:", err);
+          setFileError("Failed to load file content.");
+        } finally {
+          setIsLoadingFile(false);
+        }
+      }
+    };
+    fetchContent();
+  }, [downloadUrl, doc.file_type]);
+
+  if (isUrlLoading || isLoadingFile) {
     return (
-      <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">No source file</p>
+      <div className="flex flex-col items-center justify-center p-12 bg-muted/30 rounded-lg border">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+        <p className="text-sm text-muted-foreground">Loading source file...</p>
       </div>
     );
   }
 
-  if (isUrlLoading) {
-     return (
-        <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-            <p className="ml-3 text-sm text-muted-foreground">Loading file...</p>
-        </div>
-    );
-  }
-
-  if (!downloadUrl) {
+  if (fileError || !downloadUrl) {
     return (
-      <div className="p-4 bg-destructive/10 rounded-lg">
-        <p className="text-sm text-destructive">Failed to load source file URL.</p>
+      <div className="p-6 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+        <p className="text-sm text-destructive font-medium">{fileError || "Could not retrieve download URL."}</p>
       </div>
     );
   }
-  
-  // Use the pre-signed downloadUrl
-  
-  if (doc.file_type === 'image') {
-    return (
-      <img
-        src={downloadUrl}
-        alt={doc.name}
-        className="w-full rounded-lg border"
-      />
-    );
-  }
 
-  if (doc.file_type === 'pdf') {
-    return (
-      <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-        <a
-          href={downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline"
-        >
-          View PDF
-        </a>
-      </div>
-    );
-  }
-  
-  // Handle video file type
+  // BRANCH 1: VIDEO
   if (doc.file_type === 'video') {
+    console.log("[SourcePreview] Rendering as VIDEO");
     return (
-      <div className="w-full rounded-lg border overflow-hidden">
-        <video 
-            controls 
-            className="w-full h-auto"
-            src={downloadUrl}
-        >
-            Your browser does not support the video tag.
+      <div className="w-full rounded-lg overflow-hidden bg-black shadow-lg">
+        <video controls className="w-full max-h-[500px]">
+          <source src={downloadUrl} />
+          Your browser does not support the video tag.
         </video>
       </div>
     );
   }
 
-  return (
-    <div className="p-4 bg-muted rounded-lg">
-      <p className="text-sm text-muted-foreground">
-        Preview not available for file type: **{doc.file_type}**
-      </p>
-      <a
-          href={downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline mt-2 inline-block text-xs"
+  // BRANCH 2: IMAGE
+  if (doc.file_type === 'image') {
+    console.log("[SourcePreview] Rendering as IMAGE");
+    return (
+      <div className="w-full flex justify-center">
+        <img 
+          src={downloadUrl} 
+          alt={doc.name} 
+          className="max-w-full h-auto rounded-lg border shadow-sm"
+          onError={(e) => console.error("[SourcePreview] Image failed to load:", e)}
+        />
+      </div>
+    );
+  }
+
+  // BRANCH 3: JSON / TEXT
+  if (doc.file_type === 'json' || doc.file_type === 'text') {
+    console.log("[SourcePreview] Rendering as TEXT/JSON block");
+    return (
+      <div className="w-full">
+        <div className="bg-slate-950 text-slate-50 rounded-lg p-4 max-h-[500px] overflow-auto border shadow-inner">
+          <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+            {fileContent}
+          </pre>
+        </div>
+      </div>
+    );
+  }
+
+  // BRANCH 4: PDF
+  if (doc.file_type === 'pdf') {
+    console.log("[SourcePreview] Rendering as PDF using react-pdf");
+    return (
+      <div className="w-full flex flex-col items-center">
+        <PDFDocument
+          file={downloadUrl}
+          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          onLoadError={(err) => {
+            console.error("[SourcePreview] PDF Load Error:", err);
+            setFileError(`Failed to load PDF: ${err.message}`);
+          }}
         >
-          Download Source
-        </a>
+          <PDFPage 
+            pageNumber={pageNumber} 
+            width={500}
+            renderTextLayer={true}
+            renderAnnotationLayer={true}
+          />
+        </PDFDocument>
+        {numPages && numPages > 1 && (
+          <div className="flex items-center gap-4 mt-4">
+            <Button variant="outline" size="sm" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}>Previous</Button>
+            <span className="text-sm font-medium">Page {pageNumber} of {numPages}</span>
+            <Button variant="outline" size="sm" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}>Next</Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  console.warn(`[SourcePreview] No renderer found for type: "${doc.file_type}"`);
+  return (
+    <div className="text-center p-8 bg-muted rounded-lg border-2 border-dashed">
+      <FileText className="h-10 w-10 mx-auto mb-2 opacity-20" />
+      <p className="font-medium">Unsupported File Type</p>
+      <p className="text-sm text-muted-foreground">The system thinks this is a "{doc.file_type}"</p>
     </div>
   );
 }
@@ -147,14 +185,11 @@ function SourcePreview({ doc }: { doc: Document }) {
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-
   const [gtData, setGtData] = useState<string>('');
   const [changeSummary, setChangeSummary] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [jsonError, setJsonError] = useState('');
   const [activeTab, setActiveTab] = useState<'editor' | 'versions'>('editor');
-  const [compareMode, setCompareMode] = useState(false);
-  const [selectedVersion, setSelectedVersion] = useState<GTVersion | null>(null);
 
   const { data: document, isLoading } = useQuery({
     queryKey: ['document', id],
@@ -166,12 +201,6 @@ export function DocumentDetail() {
     queryKey: ['document-versions', id],
     queryFn: () => documentsApi.getVersions(id!),
     enabled: !!id,
-  });
-
-  const { data: project } = useQuery({
-    queryKey: ['project', document?.project],
-    queryFn: () => projectsApi.get(Number(document?.project)),
-    enabled: !!document?.project,
   });
 
   useEffect(() => {
@@ -191,242 +220,74 @@ export function DocumentDetail() {
     },
   });
 
-  const submitForReviewMutation = useMutation({
-    mutationFn: () => documentsApi.submitForReview(id!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['document', id] });
-    },
-  });
-
   const approveMutation = useMutation({
     mutationFn: () => documentsApi.approve(id!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['document', id] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['document', id] }),
   });
 
   const handleSaveVersion = () => {
-    setJsonError('');
     try {
       const parsedData = JSON.parse(gtData);
-      createVersionMutation.mutate({
-        gt_data: parsedData,
-        change_summary: changeSummary,
-      });
+      createVersionMutation.mutate({ gt_data: parsedData, change_summary: changeSummary });
     } catch {
       setJsonError('Invalid JSON format');
     }
   };
 
-  const handleGtChange = (value: string) => {
-    setGtData(value);
-    setJsonError('');
-    if (value.trim()) {
-      try {
-        JSON.parse(value);
-      } catch {
-        setJsonError('Invalid JSON');
-      }
-    }
-  };
-
-  const loadVersion = (version: GTVersion) => {
-    setGtData(JSON.stringify(version.gt_data, null, 2));
-    setIsEditing(true);
-    setActiveTab('editor');
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  if (!document) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold">Document not found</h2>
-        <Link to="/projects" className="text-primary hover:underline">
-          Back to projects
-        </Link>
-      </div>
-    );
-  }
-
-  const versionList = versions?.results || versions || [];
-  const doc = document as Document;
+  if (isLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin h-12 w-12 text-primary" /></div>;
+  if (!document) return <div className="text-center py-12"><h2>Document not found</h2></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1400px] mx-auto p-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          <Link
-            to={`/projects/${doc.project}`}
-            className="p-2 hover:bg-accent rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <Link to={`/projects/${document.project}`} className="p-2 hover:bg-accent rounded-lg"><ArrowLeft className="h-5 w-5" /></Link>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{doc.name}</h1>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(doc.status)}`}>
-                {doc.status.replace('_', ' ')}
-              </span>
-            </div>
-            {doc.description && (
-              <p className="text-muted-foreground mt-1">{doc.description}</p>
-            )}
-            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-              <span>Type: {doc.file_type}</span>
-              <span>Versions: {doc.version_count || 0}</span>
-              <span>Created: {formatDate(doc.created_at)}</span>
-            </div>
-            {/* Labels */}
-            <div className="mt-3">
-              <LabelSelector
-                documentId={doc.id}
-                currentLabels={doc.labels || []}
-                availableLabels={project?.labels || []}
-              />
+            <h1 className="text-2xl font-bold">{document.original_file_name || document.name}</h1>
+            <div className="flex gap-2 mt-1">
+                <Badge variant="secondary" className="uppercase">{document.file_type}</Badge>
+                <Badge className={getStatusColor(document.status)}>{document.status}</Badge>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          {doc.source_file && (
-            <a href={doc.source_file} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-            </a>
-          )}
-          {doc.status === 'draft' && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => submitForReviewMutation.mutate()}
-              disabled={submitForReviewMutation.isPending}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Submit for Review
-            </Button>
-          )}
-          {doc.status === 'in_review' && (
-            <Button
-              size="sm"
-              onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Approve
+           {document.status === 'in_review' && (
+            <Button onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}>
+              <CheckCircle className="h-4 w-4 mr-2" /> Approve
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex gap-2 border-b">
-        <button
-          onClick={() => setActiveTab('editor')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'editor'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <FileText className="h-4 w-4 inline mr-2" />
-          GT Editor
-        </button>
-        <button
-          onClick={() => setActiveTab('versions')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'versions'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <History className="h-4 w-4 inline mr-2" />
-          Version History ({versionList.length})
-        </button>
+      <div className="flex gap-4 border-b">
+        <button onClick={() => setActiveTab('editor')} className={`pb-2 px-4 text-sm font-bold ${activeTab === 'editor' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground'}`}>GT Editor</button>
+        <button onClick={() => setActiveTab('versions')} className={`pb-2 px-4 text-sm font-bold ${activeTab === 'versions' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground'}`}>History ({versions?.length || 0})</button>
       </div>
 
       {activeTab === 'editor' && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="text-lg">Source File</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SourcePreview doc={doc} />
-            </CardContent>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader><CardTitle>Source File</CardTitle></CardHeader>
+            <CardContent><SourcePreview doc={document as Document} /></CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Ground Truth Data</CardTitle>
-              {!isEditing && doc.current_gt_version && (
-                <Badge variant="outline">v{doc.current_gt_version.version_number}</Badge>
-              )}
-            </CardHeader>
+          <Card>
+            <CardHeader><CardTitle>Ground Truth Editor</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {jsonError && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                  {jsonError}
-                </div>
-              )}
-
               <textarea
                 value={gtData}
-                onChange={(e) => handleGtChange(e.target.value)}
+                onChange={(e) => { setGtData(e.target.value); setJsonError(''); }}
                 onFocus={() => setIsEditing(true)}
-                placeholder='{"key": "value"}'
-                rows={16}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                rows={18}
+                className="w-full p-4 rounded-lg bg-slate-50 font-mono text-xs border border-slate-200"
               />
-
               {isEditing && (
-                <div className="space-y-4 pt-2 border-t">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Change Summary</label>
-                    <input
-                      type="text"
-                      value={changeSummary}
-                      onChange={(e) => setChangeSummary(e.target.value)}
-                      placeholder="Describe your changes..."
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                  </div>
+                <div className="p-4 bg-slate-100 rounded-lg space-y-4">
+                  <Input value={changeSummary} onChange={(e) => setChangeSummary(e.target.value)} placeholder="Summary of changes" className="bg-white" />
                   <div className="flex gap-2">
-                    <Button
-                      onClick={handleSaveVersion}
-                      disabled={!!jsonError || createVersionMutation.isPending}
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {createVersionMutation.isPending ? 'Saving...' : 'Save New Version'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsEditing(false);
-                        if (doc.current_gt_version?.gt_data) {
-                          setGtData(JSON.stringify(doc.current_gt_version.gt_data, null, 2));
-                        }
-                      }}
-                    >
-                      Cancel
-                    </Button>
+                    <Button onClick={handleSaveVersion} disabled={createVersionMutation.isPending}>Save Version</Button>
+                    <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
                   </div>
-                </div>
-              )}
-
-              {!isEditing && !doc.current_gt_version && (
-                <div className="text-center py-8 border-t">
-                  <p className="text-muted-foreground mb-4">No ground truth data yet</p>
-                  <Button onClick={() => setIsEditing(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Ground Truth
-                  </Button>
                 </div>
               )}
             </CardContent>
@@ -436,110 +297,19 @@ export function DocumentDetail() {
 
       {activeTab === 'versions' && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Version History</CardTitle>
-            {versionList.length >= 2 && (
-              <Button
-                variant={compareMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setCompareMode(!compareMode);
-                  setSelectedVersion(null);
-                }}
-              >
-                {compareMode ? 'Exit Compare' : 'Compare Versions'}
-              </Button>
-            )}
-          </CardHeader>
+          <CardHeader><CardTitle>History</CardTitle></CardHeader>
           <CardContent>
-            {compareMode && selectedVersion && doc.current_gt_version && (
-              <div className="mb-6 p-4 border rounded-lg bg-muted/30">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium">
-                    Comparing v{selectedVersion.version_number} → v{doc.current_gt_version.version_number}
-                  </h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedVersion(null)}
-                  >
-                    Clear
-                  </Button>
-                </div>
-                <DiffViewer
-                  oldData={selectedVersion.gt_data as Record<string, unknown>}
-                  newData={doc.current_gt_version.gt_data as Record<string, unknown>}
-                  oldLabel={`v${selectedVersion.version_number}`}
-                  newLabel={`v${doc.current_gt_version.version_number} (Current)`}
-                />
-              </div>
-            )}
-
-            {compareMode && !selectedVersion && (
-              <div className="mb-6 p-4 border rounded-lg bg-blue-50 text-blue-800 text-sm">
-                Select a version below to compare with the current version
-              </div>
-            )}
-
-            {versionList.length > 0 ? (
-              <div className="space-y-4">
-                {versionList.map((version: GTVersion) => (
-                  <div
-                    key={version.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 ${
-                      selectedVersion?.id === version.id ? 'ring-2 ring-primary' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary font-bold">
-                        v{version.version_number}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Version {version.version_number}</span>
-                          {version.is_approved && (
-                            <Badge className="bg-green-100 text-green-800">Approved</Badge>
-                          )}
-                          {doc.current_gt_version?.id === version.id && (
-                            <Badge variant="secondary">Current</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {version.change_summary || 'No description'}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          By {version.created_by?.full_name || version.created_by?.username || 'Unknown'} - {formatDateTime(version.created_at)}
-                        </p>
-                      </div>
+             <div className="space-y-4">
+                {versions?.map((v: GTVersion) => (
+                  <div key={v.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                        <p className="font-bold">Version {v.version_number}</p>
+                        <p className="text-xs text-muted-foreground">{formatDateTime(v.created_at)}</p>
                     </div>
-                    <div className="flex gap-2">
-                      {compareMode && doc.current_gt_version?.id !== version.id && (
-                        <Button
-                          variant={selectedVersion?.id === version.id ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedVersion(
-                            selectedVersion?.id === version.id ? null : version
-                          )}
-                        >
-                          {selectedVersion?.id === version.id ? 'Selected' : 'Compare'}
-                        </Button>
-                      )}
-                      {!compareMode && (
-                        <Button variant="outline" size="sm" onClick={() => loadVersion(version)}>
-                          Load
-                        </Button>
-                      )}
-                    </div>
+                    <Button variant="outline" size="sm" onClick={() => { setGtData(JSON.stringify(v.gt_data, null, 2)); setActiveTab('editor'); }}>Load</Button>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium">No versions yet</h3>
-                <p className="text-muted-foreground">Create your first ground truth version</p>
-              </div>
-            )}
+             </div>
           </CardContent>
         </Card>
       )}

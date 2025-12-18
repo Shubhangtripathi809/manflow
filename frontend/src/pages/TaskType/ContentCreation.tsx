@@ -1,11 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Upload, Search, Film } from 'lucide-react';
-import { projectsApi, taskApi } from '@/services/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { 
+    ArrowLeft, 
+    Plus, 
+    Upload, 
+    Search, 
+    Film, 
+    Loader2, 
+    X, 
+    Download, 
+    ChevronLeft, 
+    ChevronRight,
+    FileText
+} from 'lucide-react';
+import { projectsApi, taskApi, documentsApi } from '@/services/api';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
 import { TaskCard, TaskDetailModal } from '@/pages/MyTask/MyTask';
+import { Document as PDFDocument, Page as PDFPage, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 import './ContentCreation.scss';
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 type TabType = 'tasks' | 'calendar' | 'media';
 type StatusFilter = 'all' | 'todo' | 'draft' | 'inProgress' | 'inReview' | 'completed' | 'revisionNeeded';
@@ -32,42 +50,135 @@ interface Task {
     status: string;
 }
 
-interface MediaFile {
-    id: string;
-    name: string;
-    type: 'video' | 'image' | 'audio' | 'pdf';
-    tags: MediaTag[];
-    uploadedAt: string;
-    size: string;
+// Reuse the SourcePreview logic for the Media Modal
+function MediaPreviewModal({ 
+    doc, 
+    projectId, 
+    onClose 
+}: { 
+    doc: any; 
+    projectId: number; 
+    onClose: () => void 
+}) {
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [pageNumber, setPageNumber] = useState(1);
+    const [fileError, setFileError] = useState<string | null>(null);
+
+    const { data: downloadUrl, isLoading } = useQuery({
+        queryKey: ['document-download-url', projectId, doc.id],
+        queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: doc.id }).then(res => res.url),
+        staleTime: 5 * 60 * 1000,
+    });
+
+    return (
+        <div className="content-creation__modal-overlay" onClick={onClose}>
+            <div className="content-creation__modal-container max-w-4xl w-full p-6 bg-white" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4 border-b pb-4">
+                    <h3 className="text-xl font-bold truncate">{doc.original_file_name || doc.name}</h3>
+                    <div className="flex items-center gap-2">
+                        {downloadUrl && (
+                            <a href={downloadUrl} download className="p-2 hover:bg-gray-100 rounded-full">
+                                <Download className="h-5 w-5" />
+                            </a>
+                        )}
+                        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    {isLoading ? (
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    ) : fileError ? (
+                        <div className="text-destructive">{fileError}</div>
+                    ) : doc.file_type === 'pdf' ? (
+                        <div className="w-full flex flex-col items-center overflow-auto max-h-[70vh]">
+                            <PDFDocument
+                                file={downloadUrl}
+                                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                                onLoadError={(err) => setFileError(err.message)}
+                            >
+                                <PDFPage 
+                                    pageNumber={pageNumber} 
+                                    width={700}
+                                    renderTextLayer={true}
+                                    renderAnnotationLayer={true}
+                                />
+                            </PDFDocument>
+                            {numPages && numPages > 1 && (
+                                <div className="flex items-center gap-4 mt-4 bg-gray-100 p-2 rounded-lg">
+                                    <button 
+                                        disabled={pageNumber <= 1} 
+                                        onClick={() => setPageNumber(p => p - 1)}
+                                        className="disabled:opacity-30"
+                                    >
+                                        <ChevronLeft />
+                                    </button>
+                                    <span className="text-sm">Page {pageNumber} of {numPages}</span>
+                                    <button 
+                                        disabled={pageNumber >= numPages} 
+                                        onClick={() => setPageNumber(p => p + 1)}
+                                        className="disabled:opacity-30"
+                                    >
+                                        <ChevronRight />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : doc.file_type === 'image' ? (
+                        <img src={downloadUrl} alt="Preview" className="max-h-[70vh] rounded-lg shadow-md" />
+                    ) : doc.file_type === 'video' ? (
+                        <video controls className="w-full max-h-[70vh] bg-black rounded-lg">
+                            <source src={downloadUrl} />
+                        </video>
+                    ) : (
+                        <div className="flex flex-col items-center gap-4">
+                            <FileText className="h-20 w-20 text-gray-300" />
+                            <p>No preview available for this file type.</p>
+                            <a href={downloadUrl} download className="text-primary hover:underline font-bold">Download to View</a>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export function ContentCreation() {
     const { id } = useParams<{ id: string }>();
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedMediaTags, setSelectedMediaTags] = useState<MediaTag[]>([]);
     const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [isTasksLoading, setIsTasksLoading] = useState(true);
-    const [mediaFiles] = useState<MediaFile[]>([]);
+    
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
 
-    // Fetch Project Details
     const { data: project, isLoading: isProjectLoading } = useQuery({
         queryKey: ['project', id],
         queryFn: () => projectsApi.get(Number(id)),
         enabled: !!id,
     });
 
-    // Fetch and Filter Tasks by Project ID
+    const { data: documentsData, isLoading: isMediaLoading } = useQuery({
+        queryKey: ['documents', { project: id }],
+        queryFn: () => documentsApi.list({ project: Number(id) }),
+        enabled: !!id && activeTab === 'media',
+    });
+
+    const mediaFiles = documentsData?.results || documentsData || [];
+
     const fetchTasks = useCallback(async () => {
         try {
             setIsTasksLoading(true);
             const data = await taskApi.list();
             const allTasks = data.tasks || data.results || [];
-
-            // Filter tasks belonging specifically to this project ID
             const projectTasks = allTasks.filter((t: any) => String(t.project) === id);
             setTasks(projectTasks);
         } catch (error) {
@@ -81,7 +192,60 @@ export function ContentCreation() {
         if (id) fetchTasks();
     }, [id, fetchTasks]);
 
-    // Status mapping for the sidebar counts
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !id) return;
+
+        const MAX_FILE_SIZE = 500 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            setUploadError('File size exceeds the 500 MB limit.');
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+            setUploadError(null);
+            const projectIdNum = Number(id);
+
+            // Step 1: Get Upload URL
+            const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
+                file_name: file.name,
+                file_type: file.type || 'application/octet-stream',
+            });
+
+            const { url: s3Url, fields: s3Fields, file_key } = uploadUrlResponse;
+
+            // Step 2: Direct S3 Upload
+            await documentsApi.uploadFileToS3(s3Url, s3Fields, file);
+
+            // Step 3: Confirm Upload
+            const ext = file.name.split('.').pop()?.toLowerCase() || '';
+            let mappedType = 'other';
+            if (['mp4', 'mov', 'avi', 'webm'].includes(ext)) mappedType = 'video';
+            else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) mappedType = 'image';
+            else if (['mp3', 'wav', 'ogg'].includes(ext)) mappedType = 'audio';
+            else if (ext === 'pdf') mappedType = 'pdf';
+
+            const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
+                file_key: file_key,
+                file_name: file.name,
+                file_type: mappedType,
+            });
+
+            // Step 4: Call Get Download URL (Required to verify the flow is complete)
+            if (confirmResponse.id) {
+                await documentsApi.getDownloadUrl(projectIdNum, { document_id: confirmResponse.id });
+            }
+
+            // Refresh the media list
+            queryClient.invalidateQueries({ queryKey: ['documents', { project: id }] });
+        } catch (err: any) {
+            setUploadError(err.message || 'Upload failed');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const statusCounts = {
         all: tasks.length,
         todo: tasks.filter(t => t.status.toLowerCase() === 'pending').length,
@@ -92,40 +256,14 @@ export function ContentCreation() {
         revisionNeeded: tasks.filter(t => t.status.toLowerCase() === 'revision_needed').length,
     };
 
-    const mediaTags: MediaTag[] = ['final', 'draft', 'rawFootage', 'approved', 'wip', 'reference'];
-
-    const toggleMediaTag = (tag: MediaTag) => {
-        setSelectedMediaTags(prev =>
-            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-        );
-    };
-
     const getStatusLabel = (status: StatusFilter): string => {
         const labels: Record<StatusFilter, string> = {
-            all: 'All',
-            todo: 'To-Do',
-            draft: 'Draft',
-            inProgress: 'In Progress',
-            inReview: 'In Review',
-            completed: 'Completed',
-            revisionNeeded: 'Revision Needed'
+            all: 'All', todo: 'To-Do', draft: 'Draft', inProgress: 'In Progress', 
+            inReview: 'In Review', completed: 'Completed', revisionNeeded: 'Revision Needed'
         };
         return labels[status];
     };
 
-    const getMediaTagLabel = (tag: MediaTag): string => {
-        const labels: Record<MediaTag, string> = {
-            final: 'Final',
-            draft: 'Draft',
-            rawFootage: 'Raw Footage',
-            approved: 'Approved',
-            wip: 'WIP',
-            reference: 'Reference'
-        };
-        return labels[tag];
-    };
-
-    // Handlers for Modal Actions
     const handleTaskCreated = () => {
         setIsCreateTaskModalOpen(false);
         fetchTasks();
@@ -179,24 +317,15 @@ export function ContentCreation() {
                     </div>
 
                     <div className="content-creation__tabs">
-                        <button
-                            className={`content-creation__tab ${activeTab === 'tasks' ? 'content-creation__tab--active' : ''}`}
-                            onClick={() => setActiveTab('tasks')}
-                        >
-                            Tasks
-                        </button>
-                        <button
-                            className={`content-creation__tab ${activeTab === 'calendar' ? 'content-creation__tab--active' : ''}`}
-                            onClick={() => setActiveTab('calendar')}
-                        >
-                            Calendar
-                        </button>
-                        <button
-                            className={`content-creation__tab ${activeTab === 'media' ? 'content-creation__tab--active' : ''}`}
-                            onClick={() => setActiveTab('media')}
-                        >
-                            Media
-                        </button>
+                        {(['tasks', 'calendar', 'media'] as TabType[]).map((tab) => (
+                            <button
+                                key={tab}
+                                className={`content-creation__tab ${activeTab === tab ? 'content-creation__tab--active' : ''}`}
+                                onClick={() => setActiveTab(tab)}
+                            >
+                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            </button>
+                        ))}
 
                         <button
                             className="content-creation__tab content-creation__tab--create-task"
@@ -248,10 +377,6 @@ export function ContentCreation() {
                                 <div className="content-creation__empty-icon">📅</div>
                                 <h3>Calendar View</h3>
                                 <p>Schedule and manage your content creation timeline</p>
-                                <button className="content-creation__btn-primary">
-                                    <Plus className="h-4 w-4" />
-                                    Add Event
-                                </button>
                             </div>
                         </div>
                     )}
@@ -270,17 +395,56 @@ export function ContentCreation() {
                             </div>
 
                             <div className="content-creation__upload-area">
-                                <div className="content-creation__upload-box">
-                                    <Upload className="content-creation__upload-icon" />
-                                    <p className="content-creation__upload-text">Drop files here or click to browse</p>
-                                    <p className="content-creation__upload-subtext">Videos, images, audio, PDFs</p>
-                                </div>
+                                <label className={`content-creation__upload-box ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        onChange={handleFileUpload} 
+                                        disabled={isUploading}
+                                        accept="video/*,image/*,audio/*,.pdf"
+                                    />
+                                    {isUploading ? (
+                                        <Loader2 className="content-creation__upload-icon animate-spin" />
+                                    ) : (
+                                        <Upload className="content-creation__upload-icon" />
+                                    )}
+                                    <p className="content-creation__upload-text">
+                                        {isUploading ? 'Uploading to S3...' : 'Drop files here or click to browse'}
+                                    </p>
+                                    <p className="content-creation__upload-subtext">Videos, images, audio, PDFs (Max 500MB)</p>
+                                    {uploadError && <p className="text-destructive text-sm mt-2">{uploadError}</p>}
+                                </label>
                             </div>
 
-                            <div className="content-creation__media-empty">
-                                <Film className="content-creation__empty-media-icon" />
-                                <p className="content-creation__empty-text">No media files yet</p>
-                            </div>
+                            {isMediaLoading ? (
+                                <div className="flex justify-center p-12">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
+                                </div>
+                            ) : mediaFiles.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-6">
+                                    {mediaFiles.map((file: any) => (
+                                        <div 
+                                            key={file.id} 
+                                            className="border rounded-lg p-2 bg-white text-center cursor-pointer hover:shadow-md transition-shadow"
+                                            onClick={() => setSelectedMedia(file)}
+                                        >
+                                            <div className="aspect-square bg-muted rounded flex items-center justify-center mb-2">
+                                                {file.file_type === 'pdf' ? (
+                                                    <FileText className="h-8 w-8 text-primary" />
+                                                ) : (
+                                                    <Film className="h-8 w-8 text-muted-foreground" />
+                                                )}
+                                            </div>
+                                            <p className="text-xs font-medium truncate">{file.original_file_name || file.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="content-creation__media-empty">
+                                    <Film className="content-creation__empty-media-icon" />
+                                    <p className="content-creation__empty-text">No media files yet</p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -297,37 +461,23 @@ export function ContentCreation() {
                                     className={`content-creation__sidebar-filter ${statusFilter === status ? 'content-creation__sidebar-filter--active' : ''}`}
                                     onClick={() => setStatusFilter(status)}
                                 >
-                                    <span className="content-creation__sidebar-filter-label">
-                                        {getStatusLabel(status)}
-                                    </span>
-                                    <span className="content-creation__sidebar-filter-count">
-                                        {statusCounts[status]}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'media' && (
-                    <div className="content-creation__sidebar-section">
-                        <h3 className="content-creation__sidebar-title">Media Tags</h3>
-                        <div className="content-creation__sidebar-filters">
-                            {mediaTags.map((tag) => (
-                                <button
-                                    key={tag}
-                                    className={`content-creation__sidebar-filter ${selectedMediaTags.includes(tag) ? 'content-creation__sidebar-filter--active' : ''}`}
-                                    onClick={() => toggleMediaTag(tag)}
-                                >
-                                    <span className="content-creation__sidebar-filter-label">
-                                        {getMediaTagLabel(tag)}
-                                    </span>
+                                    <span className="content-creation__sidebar-filter-label">{getStatusLabel(status)}</span>
+                                    <span className="content-creation__sidebar-filter-count">{statusCounts[status]}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Modal for PDF/Image/Video Preview */}
+            {selectedMedia && (
+                <MediaPreviewModal 
+                    doc={selectedMedia} 
+                    projectId={Number(id)} 
+                    onClose={() => setSelectedMedia(null)} 
+                />
+            )}
 
             {isCreateTaskModalOpen && (
                 <div className="content-creation__modal-overlay">
