@@ -1,18 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate} from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { 
-    ArrowLeft, 
-    Plus, 
-    Upload, 
-    Search, 
-    Film, 
-    Loader2, 
-    X, 
-    Download, 
-    ChevronLeft, 
+import {
+    ArrowLeft,
+    Plus,
+    Upload,
+    Search,
+    Film,
+    Loader2,
+    X,
+    Download,
+    ChevronLeft,
     ChevronRight,
-    FileText
+    FileText,
+    Settings
 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
@@ -36,7 +37,7 @@ interface Task {
     start_date: string;
     end_date: string;
     priority: string;
-    project: number; 
+    project: number;
     project_name: string | null;
     assigned_to: number[];
     assigned_to_user_details: Array<{
@@ -51,14 +52,14 @@ interface Task {
 }
 
 // Reuse the SourcePreview logic for the Media Modal
-function MediaPreviewModal({ 
-    doc, 
-    projectId, 
-    onClose 
-}: { 
-    doc: any; 
-    projectId: number; 
-    onClose: () => void 
+function MediaPreviewModal({
+    doc,
+    projectId,
+    onClose
+}: {
+    doc: any;
+    projectId: number;
+    onClose: () => void
 }) {
     const [numPages, setNumPages] = useState<number | null>(null);
     const [pageNumber, setPageNumber] = useState(1);
@@ -99,8 +100,8 @@ function MediaPreviewModal({
                                 onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                                 onLoadError={(err) => setFileError(err.message)}
                             >
-                                <PDFPage 
-                                    pageNumber={pageNumber} 
+                                <PDFPage
+                                    pageNumber={pageNumber}
                                     width={700}
                                     renderTextLayer={true}
                                     renderAnnotationLayer={true}
@@ -108,16 +109,16 @@ function MediaPreviewModal({
                             </PDFDocument>
                             {numPages && numPages > 1 && (
                                 <div className="flex items-center gap-4 mt-4 bg-gray-100 p-2 rounded-lg">
-                                    <button 
-                                        disabled={pageNumber <= 1} 
+                                    <button
+                                        disabled={pageNumber <= 1}
                                         onClick={() => setPageNumber(p => p - 1)}
                                         className="disabled:opacity-30"
                                     >
                                         <ChevronLeft />
                                     </button>
                                     <span className="text-sm">Page {pageNumber} of {numPages}</span>
-                                    <button 
-                                        disabled={pageNumber >= numPages} 
+                                    <button
+                                        disabled={pageNumber >= numPages}
                                         onClick={() => setPageNumber(p => p + 1)}
                                         className="disabled:opacity-30"
                                     >
@@ -156,7 +157,7 @@ export function ContentCreation() {
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [isTasksLoading, setIsTasksLoading] = useState(true);
-    
+    const navigate = useNavigate();
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -258,7 +259,7 @@ export function ContentCreation() {
 
     const getStatusLabel = (status: StatusFilter): string => {
         const labels: Record<StatusFilter, string> = {
-            all: 'All', todo: 'To-Do', draft: 'Draft', inProgress: 'In Progress', 
+            all: 'All', todo: 'To-Do', draft: 'Draft', inProgress: 'In Progress',
             inReview: 'In Review', completed: 'Completed', revisionNeeded: 'Revision Needed'
         };
         return labels[status];
@@ -310,9 +311,21 @@ export function ContentCreation() {
                         <Link to="/projects" className="content-creation__back-button">
                             <ArrowLeft className="h-5 w-5" />
                         </Link>
-                        <div className="content-creation__title-section">
-                            <h1 className="content-creation__title">{project.name}</h1>
-                            <p className="content-creation__subtitle">Content Creation Dashboard</p>
+                        <div className="content-creation__title-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <div>
+                                <h1 className="content-creation__title">{project.name}</h1>
+                                <p className="content-creation__subtitle">Content Creation Dashboard</p>
+                            </div>
+
+                            {/* Project Settings Button */}
+                            <button
+                                onClick={() => navigate(`/projects/${id}/settings`)}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 text-gray-600 hover:text-black"
+                                title="Project Settings"
+                            >
+                                <Settings className="h-5 w-5" />
+                                <span className="text-sm font-medium">Settings</span>
+                            </button>
                         </div>
                     </div>
 
@@ -396,10 +409,10 @@ export function ContentCreation() {
 
                             <div className="content-creation__upload-area">
                                 <label className={`content-creation__upload-box ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                                    <input 
-                                        type="file" 
-                                        className="hidden" 
-                                        onChange={handleFileUpload} 
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        onChange={handleFileUpload}
                                         disabled={isUploading}
                                         accept="video/*,image/*,audio/*,.pdf"
                                     />
@@ -423,8 +436,8 @@ export function ContentCreation() {
                             ) : mediaFiles.length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-6">
                                     {mediaFiles.map((file: any) => (
-                                        <div 
-                                            key={file.id} 
+                                        <div
+                                            key={file.id}
                                             className="border rounded-lg p-2 bg-white text-center cursor-pointer hover:shadow-md transition-shadow"
                                             onClick={() => setSelectedMedia(file)}
                                         >
@@ -472,10 +485,10 @@ export function ContentCreation() {
 
             {/* Modal for PDF/Image/Video Preview */}
             {selectedMedia && (
-                <MediaPreviewModal 
-                    doc={selectedMedia} 
-                    projectId={Number(id)} 
-                    onClose={() => setSelectedMedia(null)} 
+                <MediaPreviewModal
+                    doc={selectedMedia}
+                    projectId={Number(id)}
+                    onClose={() => setSelectedMedia(null)}
                 />
             )}
 
