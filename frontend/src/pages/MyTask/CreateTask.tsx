@@ -28,12 +28,14 @@ interface CreateTaskProps {
     onClose?: () => void;
     onSuccess?: () => void;
     isModal?: boolean;
+    fixedProjectId?: number;
 }
 
 export const CreateTask: React.FC<CreateTaskProps> = ({
     onClose,
     onSuccess,
-    isModal = false
+    isModal = false,
+    fixedProjectId
 }) => {
     const navigate = useNavigate();
     const [heading, setHeading] = useState('');
@@ -99,6 +101,17 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         fetchDynamicData();
     }, []);
 
+    // Handle fixed project logic for Content Creation Dashboard
+    useEffect(() => {
+        if (fixedProjectId && allProjectOptions.length > 0) {
+            const currentProject = allProjectOptions.find(p => p.id === fixedProjectId);
+            if (currentProject) {
+                setAllProjectOptions([currentProject]);
+                setSelectedProjects([fixedProjectId]);
+            }
+        }
+    }, [fixedProjectId, allProjectOptions.length]);
+
     const handleClose = () => {
         if (isModal && onClose) {
             onClose();
@@ -130,7 +143,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 assigned_to: assignedToList,
                 status,
                 priority,
-                project: projectId, 
+                project: projectId,
             };
 
             await taskApi.create(payload);
@@ -270,7 +283,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                         </div>
                     </div>
 
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Assigned To */}
                         <div className="relative">
                             <label className="block text-lg font-semibold mb-2 text-gray-800">
@@ -352,8 +365,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
                             {/* Project Tag Input Box */}
                             <div
-                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 cursor-pointer flex flex-wrap gap-2 min-h-[50px]"
-                                onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                                className={`w-full p-3 rounded-lg border border-gray-300 bg-gray-50 flex flex-wrap gap-2 min-h-[50px] ${fixedProjectId ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}
+                                onClick={() => !fixedProjectId && setProjectDropdownOpen(!projectDropdownOpen)}
                             >
                                 {selectedProjects.length === 0 && (
                                     <span className="text-gray-500">Select projects...</span>
@@ -370,18 +383,20 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                             className="px-2 py-1 bg-gray-200 text-gray-800 rounded-md flex items-center gap-1"
                                         >
                                             {project.name}
-                                            <button
-                                                type="button"
-                                                className="text-gray-600 hover:text-red-500"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedProjects(
-                                                        selectedProjects.filter(id => id !== projectId)
-                                                    );
-                                                }}
-                                            >
-                                                ×
-                                            </button>
+                                            {!fixedProjectId && (
+                                                <button
+                                                    type="button"
+                                                    className="text-gray-600 hover:text-red-500"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedProjects(
+                                                            selectedProjects.filter(id => id !== projectId)
+                                                        );
+                                                    }}
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
                                         </span>
                                     );
                                 })}
@@ -400,14 +415,13 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                             return (
                                                 <div
                                                     key={project.id}
-                                                    className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${
-                                                        isSelected ? "bg-blue-50" : ""
-                                                    }`}
+                                                    className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${isSelected ? "bg-blue-50" : ""
+                                                        }`}
                                                     onClick={() => {
                                                         if (isSelected) {
                                                             setSelectedProjects([]);
                                                         } else {
-                                                            setSelectedProjects([project.id]); 
+                                                            setSelectedProjects([project.id]);
                                                             setProjectDropdownOpen(false);
                                                         }
                                                     }}

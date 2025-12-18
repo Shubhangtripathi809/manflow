@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate} from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft,
@@ -13,6 +13,7 @@ import {
     ChevronLeft,
     ChevronRight,
     FileText,
+    FileJson,
     Settings
 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
@@ -144,6 +145,58 @@ function MediaPreviewModal({
             </div>
         </div>
     );
+}
+
+function MediaThumbnail({ file, projectId }: { file: any; projectId: number }) {
+    const { data: downloadUrl, isLoading } = useQuery({
+        queryKey: ['document-download-url', projectId, file.id],
+        queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: file.id }).then(res => res.url),
+        staleTime: 5 * 60 * 1000,
+    });
+
+    if (isLoading) {
+        return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+    }
+
+    if (!downloadUrl) {
+        return <Film className="h-8 w-8 text-muted-foreground" />;
+    }
+
+    switch (file.file_type) {
+        case 'image':
+            return (
+                <img
+                    src={downloadUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded"
+                />
+            );
+        case 'video':
+            return (
+                <video className="w-full h-full object-cover rounded" preload="metadata">
+                    <source src={`${downloadUrl}#t=0.5`} />
+                </video>
+            );
+        case 'pdf':
+            return (
+                <div className="w-full h-full flex items-start justify-center overflow-hidden">
+                    <div className="scale-[0.4] origin-top mt-1">
+                        <PDFDocument file={downloadUrl} loading="">
+                            <PDFPage
+                                pageNumber={1}
+                                width={250} // Reduced base width for better scaling
+                                renderTextLayer={false}
+                                renderAnnotationLayer={false}
+                            />
+                        </PDFDocument>
+                    </div>
+                </div>
+            );
+        case 'json':
+            return <FileJson className="h-8 w-8 text-yellow-600" />;
+        default:
+            return <FileText className="h-8 w-8 text-muted-foreground" />;
+    }
 }
 
 export function ContentCreation() {
@@ -441,12 +494,8 @@ export function ContentCreation() {
                                             className="border rounded-lg p-2 bg-white text-center cursor-pointer hover:shadow-md transition-shadow"
                                             onClick={() => setSelectedMedia(file)}
                                         >
-                                            <div className="aspect-square bg-muted rounded flex items-center justify-center mb-2">
-                                                {file.file_type === 'pdf' ? (
-                                                    <FileText className="h-8 w-8 text-primary" />
-                                                ) : (
-                                                    <Film className="h-8 w-8 text-muted-foreground" />
-                                                )}
+                                            <div className="aspect-square bg-muted rounded flex items-center justify-center mb-2 overflow-hidden border relative">
+                                                <MediaThumbnail file={file} projectId={Number(id)} />
                                             </div>
                                             <p className="text-xs font-medium truncate">{file.original_file_name || file.name}</p>
                                         </div>
@@ -499,6 +548,7 @@ export function ContentCreation() {
                             onClose={() => setIsCreateTaskModalOpen(false)}
                             onSuccess={handleTaskCreated}
                             isModal={true}
+                            fixedProjectId={Number(id)}
                         />
                     </div>
                 </div>

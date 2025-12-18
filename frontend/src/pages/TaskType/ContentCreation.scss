@@ -537,3 +537,17 @@
   margin: 0 !important;
   width: 100% !important;
 }
+
+.content-creation__media {
+  .aspect-square {
+    .react-pdf__Document {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+    canvas {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  }
+}
