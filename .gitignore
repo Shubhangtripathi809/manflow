@@ -139,6 +139,10 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
+# Django media & uploads
+backend/media/
+media/
+
 # Environments
 .env
 .envrc
