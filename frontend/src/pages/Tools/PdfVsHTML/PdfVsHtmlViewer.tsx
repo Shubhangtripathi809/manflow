@@ -115,7 +115,7 @@ const GroundTruthPanel: React.FC<GroundTruthPanelProps> = ({ currentPage, onClos
       }
     };
     // Debounce adding listener to avoid instant close on button click
-    setTimeout(() => document.addEventListener('mousedown', handleClickOutside), 0); 
+    setTimeout(() => document.addEventListener('mousedown', handleClickOutside), 0);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -132,7 +132,7 @@ const GroundTruthPanel: React.FC<GroundTruthPanelProps> = ({ currentPage, onClos
       setError('Document name is missing. Cannot submit entry.');
       return;
     }
-    const docName = currentDocName.replace(/\.html$/, '').replace(/\.pdf$/, ''); 
+    const docName = currentDocName.replace(/\.html$/, '').replace(/\.pdf$/, '');
     const newEntryPayload = {
       pageNumber: currentPage,
       issueType,
@@ -141,7 +141,7 @@ const GroundTruthPanel: React.FC<GroundTruthPanelProps> = ({ currentPage, onClos
     };
 
     try {
-      await toolApi.submitGroundTruth(docName, newEntryPayload); 
+      await toolApi.submitGroundTruth(docName, newEntryPayload);
       const updatedGtEntries = await toolApi.getAllGroundTruth();
       setEntries(updatedGtEntries);
       setLocation('');
@@ -701,7 +701,6 @@ const HtmlViewer: React.FC<HtmlViewerProps> = ({
           )
         ) : (
           <div style={{ textAlign: 'center', padding: '5rem', width: '100%', color: '#6b7280' }}>
-            <p className="text-lg">Please select a project and file from the navigation bar.</p>
           </div>
         )}
       </div>
@@ -963,7 +962,7 @@ export function PdfVsHtmlViewer() {
     const fetchDocumentsInProject = async () => {
       try {
         const data = await toolApi.getDocumentsInProject(selectedProject);
-        
+
         if (data) {
           setDocumentList(data);
           setTotalPages(data.length);
@@ -982,7 +981,7 @@ export function PdfVsHtmlViewer() {
   // Event Handlers
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
-        setCurrentPage(page);
+      setCurrentPage(page);
     }
   };
   const handleProjectChange = (projectName: string) => setSelectedProject(projectName);
@@ -991,19 +990,6 @@ export function PdfVsHtmlViewer() {
 
   return (
     <div className="tool-viewer full-page-view">
-      {/* ZanFlow Sidebar */}
-      <aside className="tool-viewer-sidebar">
-        <div className="sidebar-header">
-          <h2>Tools Hub</h2>
-          <p>Manage your utilities</p>
-        </div>
-        <button className="back-button" onClick={() => navigate('/tools')}>
-          <ArrowLeft size={18} />
-          <span>Back to Tools</span>
-        </button>
-      </aside>
-
-      {/* Main Viewer Content Area */}
       <div className="viewer-content">
         <div className="app-container">
           <Navbar

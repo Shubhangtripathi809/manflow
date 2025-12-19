@@ -20,7 +20,6 @@ import {
   MyTask,
   CreateTask,
   TeamPerformance,
-  ToolsHub,
   PdfVsHtmlViewer,
   PdfJson,
   // SuperscriptChecker,
@@ -98,7 +97,7 @@ function AppRoutes() {
           isAuthenticated ? <Navigate to="/users" replace /> : <Login />
         }
       />
-      
+
       {/* Routes WITH Sidebar (Inside Layout) */}
       <Route
         element={
@@ -143,70 +142,22 @@ function AppRoutes() {
           />
         </Route>
 
-        {/* NEW: Admin Accordion Routes (User Management & Team Performance) */}
+        {/* Admin Accordion Routes (User Management & Team Performance) */}
         <Route path="/admin" element={<AdminDashboard />}>
-            <Route path="user-roles" element={<UserManagement />} />
-            <Route path="team-performance" element={<TeamPerformance />} />
-            {/* Redirect /admin to /admin/user-roles by default */}
-            <Route index element={<Navigate to="user-roles" replace />} /> 
+          <Route path="user-roles" element={<UserManagement />} />
+          <Route path="team-performance" element={<TeamPerformance />} />
+          <Route index element={<Navigate to="user-roles" replace />} />
         </Route>
 
+        {/* ✅ TOOLS ROUTES - NOW INSIDE LAYOUT */}
+        <Route path="/tools">
+          <Route index element={<Navigate to="pdf-vs-html" replace />} />
+          <Route path="pdf-vs-html" element={<PdfVsHtmlViewer />} />
+          <Route path="json-viewer" element={<PdfJson />} />
+          <Route path="pivot-table" element={<PivotTableExtractor />} />
+          {/* <Route path="superscript-checker" element={<SuperscriptChecker />} /> */}
+        </Route>
       </Route>
-
-
-      {/* REMOVED: Old standalone Team Performance Route */}
-      {/* <Route
-        path="/team-performance"
-        element={
-          <ProtectedRoute>
-            <AdminRoute>
-              <TeamPerformance />
-            </AdminRoute>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      {/* FULL-PAGE ROUTES: Tools Hub - WITHOUT ZanFlow Sidebar */}
-      <Route
-        path="/tools"
-        element={
-          <ProtectedRoute>
-            <ToolsHub />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tools/pdf-vs-html"
-        element={
-          <ProtectedRoute>
-            <PdfVsHtmlViewer />
-          </ProtectedRoute>
-        }
-      />
-      {/* <Route
-        path="/tools/superscript-checker"
-        element={
-          <ProtectedRoute>
-            <SuperscriptChecker />
-          </ProtectedRoute>
-        }
-      /> */}
-      <Route
-        path="/tools/json-viewer"
-        element={
-          <ProtectedRoute>
-            <PdfJson />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tools/pivot-table"
-        element={
-          <ProtectedRoute>
-            <PivotTableExtractor />
-          </ProtectedRoute>
-        }
-      />
     </Routes>
   );
 }

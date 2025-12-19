@@ -1,24 +1,24 @@
 import * as React from 'react';
 import { toolApi } from '@/services/api';
-import type { 
-    PageContentResponse, 
-    ProcessedPageData, 
-    PageContentErrorResponse, 
-    SelectableElement, 
-    SelectedElementData, 
-    JsonViewerFile, 
+import type {
+    PageContentResponse,
+    ProcessedPageData,
+    PageContentErrorResponse,
+    SelectableElement,
+    SelectedElementData,
+    JsonViewerFile,
     GetTableCellsResponse,
-    SelectableTextElement, 
-    SelectableCellElement 
+    SelectableTextElement,
+    SelectableCellElement
 } from '@/types';
-import Loader from '@/components/common/loader'; 
+import Loader from '@/components/common/loader';
 import './PdfJson.scss';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Label } from '@/components/common/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/common/diaog'; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/common/diaog';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -30,7 +30,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 function extractBasePdfName(fullFileName: string): string {
     const regex = /^\d{2}-\w+-\d{4}\s\d{2}:\d{2}:\d{2}-(.+)$/;
     const match = fullFileName.match(regex);
-    
+
     if (match && match[1]) {
         return match[1];
     }
@@ -158,8 +158,8 @@ function Nav({
                     className="pdf-nav-zoom"
                 >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-                        <path d="M4 6.5h6a.5.5 0 0 1 0 1H4a.5.5 0 0 1 0-1z"/>
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                        <path d="M4 6.5h6a.5.5 0 0 1 0 1H4a.5.5 0 0 1 0-1z" />
                     </svg>
                 </Button>
 
@@ -177,8 +177,8 @@ function Nav({
                     className="pdf-nav-zoom"
                 >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-                        <path d="M6.5 3a.5.5 0 0 1 .5.5V6h2.5a.5.5 0 0 1 0 1H7v2.5a.5.5 0 0 1-1 0V7H3.5a.5.5 0 0 1 0-1H6V3.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                        <path d="M6.5 3a.5.5 0 0 1 .5.5V6h2.5a.5.5 0 0 1 0 1H7v2.5a.5.5 0 0 1-1 0V7H3.5a.5.5 0 0 1 0-1H6V3.5a.5.5 0 0 1 .5-.5z" />
                     </svg>
                 </Button>
 
@@ -204,8 +204,8 @@ function Nav({
                         className="pdf-nav-download"
                     >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                            <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+                            <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z" />
                         </svg>
                         <span>Download</span>
                     </Button>
@@ -244,7 +244,7 @@ const processApiResponse = (data: PageContentResponse): ProcessedPageData[] => {
             const selectableElements = rawElements
                 .filter(el => el.page === pageNum)
                 .map(el => {
-                    return { ...el } as SelectableElement; 
+                    return { ...el } as SelectableElement;
                 });
 
             processedData.push({
@@ -475,48 +475,48 @@ function PDFJsonViewer({ selectedFileName }: PDFJsonViewerProps) {
 
         // Render PDF page on canvas
         React.useEffect(() => {
-    if (!pdfDoc) return;
+            if (!pdfDoc) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return; // 👈 Fixes "possibly null" error
+            const canvas = canvasRef.current;
+            if (!canvas) return; // 👈 Fixes "possibly null" error
 
-    let isMounted = true;
+            let isMounted = true;
 
-    const renderPage = async () => {
-        setIsRendering(true);
+            const renderPage = async () => {
+                setIsRendering(true);
 
-        try {
-            const page: PDFPageProxy = await pdfDoc.getPage(1);
-            const context = canvas.getContext("2d");
-            if (!context) return;
+                try {
+                    const page: PDFPageProxy = await pdfDoc.getPage(1);
+                    const context = canvas.getContext("2d");
+                    if (!context) return;
 
-            const viewport = page.getViewport({ scale: renderScale });
+                    const viewport = page.getViewport({ scale: renderScale });
 
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
 
-            await page.render({
-                canvasContext: context,
-                viewport: viewport,
-                canvas: canvas,  // 👈 REQUIRED by latest pdfjs
-            }).promise;
+                    await page.render({
+                        canvasContext: context,
+                        viewport: viewport,
+                        canvas: canvas,  // 👈 REQUIRED by latest pdfjs
+                    }).promise;
 
-        } catch (error) {
-            console.error("Error rendering PDF:", error);
-        } finally {
-            if (isMounted) {
-                setIsRendering(false);  // 👈 Loader hides correctly here
-            }
-        }
-    };
+                } catch (error) {
+                    console.error("Error rendering PDF:", error);
+                } finally {
+                    if (isMounted) {
+                        setIsRendering(false);  // 👈 Loader hides correctly here
+                    }
+                }
+            };
 
-    renderPage();
+            renderPage();
 
-    return () => {
-        isMounted = false;
-    };
+            return () => {
+                isMounted = false;
+            };
 
-}, [pdfDoc, renderScale]);
+        }, [pdfDoc, renderScale]);
 
 
 
@@ -561,7 +561,7 @@ function PDFJsonViewer({ selectedFileName }: PDFJsonViewerProps) {
                                 {/* Iterate over ALL selectable elements */}
                                 {currentViewData.selectable_elements.map((element) => {
                                     const isSelected = selectedElement?.id === element.id;
-                                    
+
                                     const topPx = element.top * renderScale;
                                     const leftPx = element.left * renderScale;
                                     const widthPx = (element.right - element.left) * renderScale;
@@ -595,7 +595,7 @@ function PDFJsonViewer({ selectedFileName }: PDFJsonViewerProps) {
             </div>
         );
     };
-    
+
     //Internal JsonViewer Component
     const JsonViewer = () => {
         React.useEffect(() => {
@@ -646,81 +646,81 @@ function PDFJsonViewer({ selectedFileName }: PDFJsonViewerProps) {
         const isTextElement = selectedElement?.type === 'text';
 
         return (
-        <div className="json-viewer-body panel-body">
-            {selectedElement ? (
-                <>
-                    <div className="json-info-banner">
-                        <strong>Selected Element: {selectedElement.type.toUpperCase()}</strong>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="clear-selection-btn"
-                            onClick={() => setSelectedElement(null)}
-                        >
-                            Clear Selection
-                        </Button>
-                    </div>
-                    <div className="json-content-display">
-                        <div className="json-section">
-                           <h4 className="json-section-header">
-                                <span>Element Data:</span>
-                                {isTextElement && (
-                                    <Button 
-                                        variant="default"
-                                        size="sm"
-                                        className="edit-text-btn" 
-                                        onClick={handleEditClick} 
-                                        disabled={isLoading}
-                                    >
-                                        Edit Text
-                                    </Button>
-                                )}
-                            </h4>
-                            <pre>
-                                {JSON.stringify(displayData, null, 2)}
-                            </pre>
+            <div className="json-viewer-body panel-body">
+                {selectedElement ? (
+                    <>
+                        <div className="json-info-banner">
+                            <strong>Selected Element: {selectedElement.type.toUpperCase()}</strong>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="clear-selection-btn"
+                                onClick={() => setSelectedElement(null)}
+                            >
+                                Clear Selection
+                            </Button>
                         </div>
-                    </div>
-                </>
-            ) : (
-                <div className="json-placeholder">
-                    <p>Click on any text or table/cell in the PDF to view its JSON data</p>
-                    {currentViewData && currentViewData.selectable_elements.length > 0 && (
-                        <p className="text-muted">Available elements: {currentViewData.selectable_elements.length}</p>
-                    )}
-                </div>
-            )}
-            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Edit Text Element</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="form-group">
-                            <Label htmlFor="editText">Text:</Label>
-                            <textarea
-                                id="editText"
-                                ref={editInputRef} 
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                rows={6}
-                                className="textarea-style"
-                            />
+                        <div className="json-content-display">
+                            <div className="json-section">
+                                <h4 className="json-section-header">
+                                    <span>Element Data:</span>
+                                    {isTextElement && (
+                                        <Button
+                                            variant="default"
+                                            size="sm"
+                                            className="edit-text-btn"
+                                            onClick={handleEditClick}
+                                            disabled={isLoading}
+                                        >
+                                            Edit Text
+                                        </Button>
+                                    )}
+                                </h4>
+                                <pre>
+                                    {JSON.stringify(displayData, null, 2)}
+                                </pre>
+                            </div>
                         </div>
+                    </>
+                ) : (
+                    <div className="json-placeholder">
+                        <p>Click on any text or table/cell in the PDF to view its JSON data</p>
+                        {currentViewData && currentViewData.selectable_elements.length > 0 && (
+                            <p className="text-muted">Available elements: {currentViewData.selectable_elements.length}</p>
+                        )}
                     </div>
-                    <DialogFooter>
-                        <Button variant="default" onClick={handleSaveEdit} disabled={editText.trim() === ''}>
-                            Save Changes
-                        </Button>
-                        <Button variant="outline" onClick={handleCancelEdit}>
-                            Cancel
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                )}
+                <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Edit Text Element</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="form-group">
+                                <Label htmlFor="editText">Text:</Label>
+                                <textarea
+                                    id="editText"
+                                    ref={editInputRef}
+                                    value={editText}
+                                    onChange={(e) => setEditText(e.target.value)}
+                                    rows={6}
+                                    className="textarea-style"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="default" onClick={handleSaveEdit} disabled={editText.trim() === ''}>
+                                Save Changes
+                            </Button>
+                            <Button variant="outline" onClick={handleCancelEdit}>
+                                Cancel
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
         );
-    }; 
+    };
 
     if (isLoading) {
         return <Loader />;
@@ -802,11 +802,11 @@ export function PdfJson({ }: PdfJsonProps) {
                 const fileList: JsonViewerFile[] = apiResponse.data.myTableCells.map(item => {
                     const fileName = Object.keys(item)[0];
                     const metadata = item[fileName];
-                    
+
                     return {
                         fileName: fileName,
                         owner: metadata.owner || 'N/A',
-                    } as JsonViewerFile; 
+                    } as JsonViewerFile;
                 });
 
                 setFileNames(fileList);
@@ -826,72 +826,59 @@ export function PdfJson({ }: PdfJsonProps) {
     };
 
     return (
-        <div className="tool-viewer">
-             <aside className="tool-viewer-sidebar">
-                <div className="sidebar-header">
-                    <h2>Tools Hub</h2>
-                    <p>Validation & Analysis</p>
-                </div>
-                <button className="back-button" onClick={() => navigate('/tools')}>
-                    <ArrowLeft size={16} />
-                    Back to Tools
-                </button>
-            </aside>
-            <div className="viewer-content viewer-content--full">
-                <div className="viewer-header">
-                    <h1>JSON Viewer</h1>
-                </div>
-                <div className="gt-page-content">
-                    <div className="gt-header">
-                        <div className="gt-dropdown-container">
-                            <div className="custom-select-container"> 
-                                <div 
-                                    className="select-display-box"
-                                    onClick={() => setIsDropdownOpen(prev => !prev)}
-                                >
-                                    <span className="select-data-label">Select PDF</span>
-                                    <span className="select-value-text">
-                                        {selectedFileName 
-                                            ? selectedFileName
-                                            : "Please choose file for validation"
-                                        }
-                                    </span>
-                                </div>
-                                {isDropdownOpen && (
-                                    <div className="select-dropdown-menu">
-                                        <div className="file-list-scroll">
-                                            {isFilesLoading ? (
-                                                <div className="list-item loading">Loading files...</div>
-                                            ) : fileNames.length === 0 ? (
-                                                <div className="list-item empty">No Options</div>
-                                            ) : (
-                                                fileNames.map(file => ( 
-                                                    <div
-                                                        key={file.fileName}
-                                                        className={`list-item ${file.fileName === selectedFileName ? 'selected' : ''}`}
-                                                        onClick={() => handleSelectFile(file.fileName)}
-                                                    >
-                                                        <div className="file-name">{file.fileName}</div>
-                                                        <span className='file-owner'>Owner: {file.owner}</span>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+        <div>
+            <div className="viewer-header">
+                <h1>JSON Viewer</h1>
+            </div>
+            <div className="gt-page-content">
+                <div className="gt-header">
+                    <div className="gt-dropdown-container">
+                        <div className="custom-select-container">
+                            <div
+                                className="select-display-box"
+                                onClick={() => setIsDropdownOpen(prev => !prev)}
+                            >
+                                <span className="select-data-label">Select PDF</span>
+                                <span className="select-value-text">
+                                    {selectedFileName
+                                        ? selectedFileName
+                                        : "Please choose file for validation"
+                                    }
+                                </span>
                             </div>
+                            {isDropdownOpen && (
+                                <div className="select-dropdown-menu">
+                                    <div className="file-list-scroll">
+                                        {isFilesLoading ? (
+                                            <div className="list-item loading">Loading files...</div>
+                                        ) : fileNames.length === 0 ? (
+                                            <div className="list-item empty">No Options</div>
+                                        ) : (
+                                            fileNames.map(file => (
+                                                <div
+                                                    key={file.fileName}
+                                                    className={`list-item ${file.fileName === selectedFileName ? 'selected' : ''}`}
+                                                    onClick={() => handleSelectFile(file.fileName)}
+                                                >
+                                                    <div className="file-name">{file.fileName}</div>
+                                                    <span className='file-owner'>Owner: {file.owner}</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+                </div>
 
-                    <div className="gt-main-viewer-area">
-                        {selectedFileName ? (
-                            <PDFJsonViewer selectedFileName={selectedFileName} />
-                        ) : (
-                            <div className="gt-json-viewer-placeholder">
-                                <p>Select a file from the dropdown above to view its JSON and PDF content.</p>
-                            </div>
-                        )}
-                    </div>
+                <div className="gt-main-viewer-area">
+                    {selectedFileName ? (
+                        <PDFJsonViewer selectedFileName={selectedFileName} />
+                    ) : (
+                        <div className="gt-json-viewer-placeholder">
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
