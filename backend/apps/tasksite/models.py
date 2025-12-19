@@ -1,85 +1,65 @@
-<<<<<<< HEAD
 from django.db import models
 from apps.users.models import User
+from apps.projects.models import Project
 
-=======
-# models.py
-from django.db import models
-from apps.users.models import User
 
-# --- IMPORT YOUR EXISTING PROJECT MODEL ---
-# CAUTION: Check this path. It might be 'apps.projects.models' or similar
-# based on where your "Marketing Campaign 2025" model is defined.
-from apps.projects.models import Project 
-
->>>>>>> origin/harshitlens
 class Task(models.Model):
     STATUS_CHOICES = (
-        ('pending', 'Pending'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('reviewed', 'Reviewed'),
-        ('deployed', 'Deployed'),
-        ('deferred', 'Deferred'),
+        ("pending", "Pending"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("reviewed", "Reviewed"),
+        ("deployed", "Deployed"),
+        ("deferred", "Deferred"),
     )
 
-<<<<<<< HEAD
-    # --- ADD THIS: Priority Choices ---
-=======
->>>>>>> origin/harshitlens
     PRIORITY_CHOICES = (
-        ('low', 'Low'),
-        ('medium', 'Medium'),
-        ('high', 'High'),
-        ('critical', 'Critical'),
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("critical", "Critical"),
     )
 
     heading = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
-    
-<<<<<<< HEAD
-    # --- ADD THESE TWO FIELDS ---
-=======
->>>>>>> origin/harshitlens
-    priority = models.CharField(
-        max_length=20, 
-        choices=PRIORITY_CHOICES, 
-        default='medium'
-    )
-<<<<<<< HEAD
-    project_name = models.CharField(max_length=255, null=True, blank=True)
-    # ----------------------------
-=======
 
-    # --- UPDATED: LINK TO EXISTING PROJECT ---
-    # We removed 'project_name' and added a ForeignKey to 'Project'
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default="medium",
+    )
+
+    # ✅ Correct approach: Link task to an existing Project
     project = models.ForeignKey(
         Project,
-        on_delete=models.SET_NULL, 
-        null=True, 
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        related_name='tasks'
+        related_name="tasks",
     )
-    # ----------------------------------------
->>>>>>> origin/harshitlens
 
-    assigned_to = models.ManyToManyField(User, related_name='assigned_tasks')
-    
+    assigned_to = models.ManyToManyField(
+        User,
+        related_name="assigned_tasks",
+        blank=True,
+    )
+
     assigned_by = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        related_name='created_tasks'
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_tasks",
     )
-    
+
     status = models.CharField(
-        max_length=20, 
-        choices=STATUS_CHOICES, 
-        default='pending'
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
