@@ -6,6 +6,7 @@ import { ContentCreation } from '@/pages/TaskType/ContentCreation';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
+import { TaskDetails} from '@/pages/TaskType/TaskDetails';
 import {
   Dashboard,
   Login,
@@ -72,10 +73,20 @@ function ProjectDetailWrapper() {
     enabled: !!id,
   });
 
-  if (project?.task_type === 'content_creation') {
+  if (!project) return null;
+
+  // 1. Content Creation specific UI
+  if (project.task_type === 'content_creation' || project.task_type === 'content-creation') {
     return <ContentCreation />;
   }
 
+  // 2. Extraction & OCR - Use TaskDetails for these types
+  const taskDetailsTypes = ['key_value', 'table', 'ocr'];
+  if (taskDetailsTypes.includes(project.task_type)) {
+    return <TaskDetails />;
+  }
+
+  // 3. Default fallback UI
   return <ProjectDetail />;
 }
 
@@ -98,7 +109,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Routes WITH Sidebar (Inside Layout) */}
+      {/* Routes WITH Sidebar */}
       <Route
         element={
           <ProtectedRoute>

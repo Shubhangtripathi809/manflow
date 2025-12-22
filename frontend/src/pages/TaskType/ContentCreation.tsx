@@ -53,7 +53,7 @@ interface Task {
 }
 
 // Reuse the SourcePreview logic for the Media Modal
-function MediaPreviewModal({
+export function MediaPreviewModal({
     doc,
     projectId,
     onClose
@@ -147,7 +147,7 @@ function MediaPreviewModal({
     );
 }
 
-function MediaThumbnail({ file, projectId }: { file: any; projectId: number }) {
+export function MediaThumbnail({ file, projectId }: { file: any; projectId: number }) {
     const { data: downloadUrl, isLoading } = useQuery({
         queryKey: ['document-download-url', projectId, file.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: file.id }).then(res => res.url),
