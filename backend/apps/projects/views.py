@@ -138,7 +138,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         file_key = request.data.get("file_key")
         file_name = request.data.get("file_name")
         # 1. Get the file_type from the Frontend request
-        file_type = request.data.get("file_type") 
+        file_type = request.data.get("file_type")
+        metadata = request.data.get("metadata", {}) 
         
         if not file_key or not file_name:
             return Response(
@@ -152,6 +153,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             source_file=file_key,
             # 2. Save it to the database!
             file_type=file_type, 
+            metadata=metadata,
             status=Document.Status.DRAFT, 
             created_by=request.user
         )
