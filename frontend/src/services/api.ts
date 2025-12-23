@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse } from '@/types';
+import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
@@ -209,9 +209,6 @@ export const documentsApi = {
       formData.append(key, fields[key]);
     });
     formData.append('file', file);
-
-    // Note: We use plain axios because the URL is external (S3)
-    // and requires a special content-type for S3 POST upload.
     await axios.post(s3Url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data', 
@@ -227,8 +224,27 @@ export const documentsApi = {
     file_key: string; 
     initial_gt_data?: Record<string, unknown>;
     file_type: string;
+    original_file_name: string;
   }) => {
     const response = await api.post('/documents/', data);
+    return response.data;
+  },
+
+  // 3rd API: Confirm Upload
+  confirmUpload: async (projectId: number, data: ConfirmUploadPayload) => {
+    const response = await api.post<ConfirmUploadResponse>(
+      `/projects/${projectId}/confirm-upload/`,
+      data
+    );
+    return response.data;
+  },
+
+  // 4th API: Get Download URL
+  getDownloadUrl: async (projectId: number, data: GetDownloadUrlPayload) => {
+    const response = await api.post<GetDownloadUrlResponse>(
+      `/projects/${projectId}/get-download-url/`,
+      data
+    );
     return response.data;
   },
 
@@ -362,7 +378,7 @@ export const taskApi = {
     assigned_to: number[];
     status: string;
     priority: string;
-    project_name?: string;
+    project: number;
   }) => {
     const response = await api.post('/tasksite/', data);
     return response.data;

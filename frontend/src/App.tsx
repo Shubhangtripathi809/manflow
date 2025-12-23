@@ -6,6 +6,7 @@ import { ContentCreation } from '@/pages/TaskType/ContentCreation';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
+import { TaskDetails} from '@/pages/TaskType/TaskDetails';
 import {
   Dashboard,
   Login,
@@ -20,7 +21,6 @@ import {
   MyTask,
   CreateTask,
   TeamPerformance,
-  ToolsHub,
   PdfVsHtmlViewer,
   PdfJson,
   // SuperscriptChecker,
@@ -73,10 +73,20 @@ function ProjectDetailWrapper() {
     enabled: !!id,
   });
 
-  if (project?.task_type === 'content_creation') {
+  if (!project) return null;
+
+  // 1. Content Creation specific UI
+  if (project.task_type === 'content_creation' || project.task_type === 'content-creation') {
     return <ContentCreation />;
   }
 
+  // 2. Extraction & OCR - Use TaskDetails for these types
+  const taskDetailsTypes = ['key_value', 'table', 'ocr'];
+  if (taskDetailsTypes.includes(project.task_type)) {
+    return <TaskDetails />;
+  }
+
+  // 3. Default fallback UI
   return <ProjectDetail />;
 }
 
@@ -98,8 +108,8 @@ function AppRoutes() {
           isAuthenticated ? <Navigate to="/users" replace /> : <Login />
         }
       />
-      
-      {/* Routes WITH Sidebar (Inside Layout) */}
+
+      {/* Routes WITH Sidebar */}
       <Route
         element={
           <ProtectedRoute>
@@ -143,70 +153,22 @@ function AppRoutes() {
           />
         </Route>
 
-        {/* NEW: Admin Accordion Routes (User Management & Team Performance) */}
+        {/* Admin Accordion Routes (User Management & Team Performance) */}
         <Route path="/admin" element={<AdminDashboard />}>
-            <Route path="user-roles" element={<UserManagement />} />
-            <Route path="team-performance" element={<TeamPerformance />} />
-            {/* Redirect /admin to /admin/user-roles by default */}
-            <Route index element={<Navigate to="user-roles" replace />} /> 
+          <Route path="user-roles" element={<UserManagement />} />
+          <Route path="team-performance" element={<TeamPerformance />} />
+          <Route index element={<Navigate to="user-roles" replace />} />
         </Route>
 
+        {/* ✅ TOOLS ROUTES - NOW INSIDE LAYOUT */}
+        <Route path="/tools">
+          <Route index element={<Navigate to="pdf-vs-html" replace />} />
+          <Route path="pdf-vs-html" element={<PdfVsHtmlViewer />} />
+          <Route path="json-viewer" element={<PdfJson />} />
+          <Route path="pivot-table" element={<PivotTableExtractor />} />
+          {/* <Route path="superscript-checker" element={<SuperscriptChecker />} /> */}
+        </Route>
       </Route>
-
-
-      {/* REMOVED: Old standalone Team Performance Route */}
-      {/* <Route
-        path="/team-performance"
-        element={
-          <ProtectedRoute>
-            <AdminRoute>
-              <TeamPerformance />
-            </AdminRoute>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      {/* FULL-PAGE ROUTES: Tools Hub - WITHOUT ZanFlow Sidebar */}
-      <Route
-        path="/tools"
-        element={
-          <ProtectedRoute>
-            <ToolsHub />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tools/pdf-vs-html"
-        element={
-          <ProtectedRoute>
-            <PdfVsHtmlViewer />
-          </ProtectedRoute>
-        }
-      />
-      {/* <Route
-        path="/tools/superscript-checker"
-        element={
-          <ProtectedRoute>
-            <SuperscriptChecker />
-          </ProtectedRoute>
-        }
-      /> */}
-      <Route
-        path="/tools/json-viewer"
-        element={
-          <ProtectedRoute>
-            <PdfJson />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tools/pivot-table"
-        element={
-          <ProtectedRoute>
-            <PivotTableExtractor />
-          </ProtectedRoute>
-        }
-      />
     </Routes>
   );
 }

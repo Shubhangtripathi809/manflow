@@ -88,10 +88,12 @@ export interface Label {
 export interface Document {
   id: string;
   project: number;
+  project_name?: string;
   name: string;
   description: string;
   source_file?: string;
   source_file_url?: string;
+  original_file_name?: string;
   file_type: FileType;
   file_size?: number;
   metadata: Record<string, unknown>;
@@ -104,7 +106,7 @@ export interface Document {
   labels?: Label[];
 }
 
-export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'other' | 'video';
+export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'video' | 'other';
 export type DocumentStatus = 'draft' | 'in_review' | 'approved' | 'archived';
 
 export interface GTVersion {
@@ -269,7 +271,7 @@ export interface Highlight {
 
 export interface GroundTruthEntry {
   id: string;
-  docName?: string; 
+  docName?: string;
   pageNumber: number;
   issueType: string;
   location: string;
@@ -310,98 +312,98 @@ export interface TableCellMetadata {
 
 // Structure of the response from the /get_table_cells endpoint
 export interface GetTableCellsResponse {
-    ok: boolean;
-    error: string;
-    columns: any[];
-    data: {
-        myTableCells: Array<Record<string, TableCellMetadata>>;
-    };
-    payload: Record<string, any>;
+  ok: boolean;
+  error: string;
+  columns: any[];
+  data: {
+    myTableCells: Array<Record<string, TableCellMetadata>>;
+  };
+  payload: Record<string, any>;
 }
 
 // Base for selectable elements (Text, Table, Cell)
 export interface SelectableBaseElement {
-    id: string;
-    PDF: string;
-    page: number;
-    top: number;
-    left: number;
-    bottom: number;
-    right: number;
+  id: string;
+  PDF: string;
+  page: number;
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
 }
 
 export interface SelectableTextElement extends SelectableBaseElement {
-    type: 'text';
-    text: string;
-    words_pos: string;
+  type: 'text';
+  text: string;
+  words_pos: string;
 }
 
 export interface SelectableTableElement extends SelectableBaseElement {
-    type: 'table';
-    table_num_cols: number;
-    table_num_rows: number;
-    table_last_header_row: number;
-    table_last_header_col: number;
-    caption_text: string | null;
-    label: string;
-    ids_table_merge: string | null;
-    table_np: string;
+  type: 'table';
+  table_num_cols: number;
+  table_num_rows: number;
+  table_last_header_row: number;
+  table_last_header_col: number;
+  caption_text: string | null;
+  label: string;
+  ids_table_merge: string | null;
+  table_np: string;
 }
 
 export interface SelectableCellElement extends SelectableBaseElement {
-    type: 'cell';
-    text: string;
+  type: 'cell';
+  text: string;
 }
 
 export type SelectableElement = SelectableTextElement | SelectableTableElement | SelectableCellElement;
 
 // Response structure for /get_page_content
 export interface PageContentResponse {
-    ok: true;
-    error: string;
-    columns: any;
-    data: {
-        [pageKey: string]: { 
-            page?: Array<{
-                id: string;
-                PDF: string;
-                page: number;
-                width: number;
-                height: number;
-                page_pdf: string; 
-                page_json?: string;
-            }>;
-            text?: Array<SelectableTextElement>; 
-            table?: Array<SelectableTableElement>; 
-            image?: any[];
-            cell?: Array<SelectableCellElement>; 
-            entity?: any[];
-            key_value?: any[];
-            table_np?: any[];
-        };
+  ok: true;
+  error: string;
+  columns: any;
+  data: {
+    [pageKey: string]: {
+      page?: Array<{
+        id: string;
+        PDF: string;
+        page: number;
+        width: number;
+        height: number;
+        page_pdf: string;
+        page_json?: string;
+      }>;
+      text?: Array<SelectableTextElement>;
+      table?: Array<SelectableTableElement>;
+      image?: any[];
+      cell?: Array<SelectableCellElement>;
+      entity?: any[];
+      key_value?: any[];
+      table_np?: any[];
     };
+  };
 }
 
 export interface PageContentErrorResponse {
-    ok: boolean;
-    error: string;
-    payload?: any;
-    data?: null;
+  ok: boolean;
+  error: string;
+  payload?: any;
+  data?: null;
 }
 
 // Data structure used internally by the PDFJsonViewer component
 export interface ProcessedPageData {
-    page_num: number;
-    page_b64: string;
-    json_metadata: Record<string, any>; 
-    selectable_elements: SelectableElement[];
+  page_num: number;
+  page_b64: string;
+  json_metadata: Record<string, any>;
+  selectable_elements: SelectableElement[];
 }
 
 // Updated interface to hold ANY selected element data
 export interface SelectedElementData {
-    id: string;
-    type: SelectableElement['type'];
-    data: Omit<SelectableElement, 'type'>;
+  id: string;
+  type: SelectableElement['type'];
+  data: Omit<SelectableElement, 'type'>;
 }
 
 export interface GetUploadUrlPayload {
@@ -413,4 +415,29 @@ export interface GetUploadUrlResponse {
   url: string;
   fields: Record<string, string>;
   file_key: string;
+}
+
+//3rd API call Confirm Upload
+export interface ConfirmUploadPayload {
+  file_key: string;
+  file_name: string;
+  file_type: string;
+  metadata?: {
+    gt_category?: 'gt' | 'running_gt';
+    [key: string]: any;
+  };
+}
+
+export interface ConfirmUploadResponse {
+  id: string;
+  status: DocumentStatus;
+}
+
+// 4th API call (Get Download URL)
+export interface GetDownloadUrlPayload {
+  document_id: string;
+}
+
+export interface GetDownloadUrlResponse {
+  url: string;
 }

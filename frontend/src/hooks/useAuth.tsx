@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi, getTokens, clearTokens } from '@/services/api';
+import { saveCredentials, clearCredentials } from '@/services/authStorage';
+
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -22,13 +24,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      console.log("[Auth] Starting initial auth check...");
       const tokens = getTokens();
-      
+
       if (tokens?.access) {
         try {
           const userData = await authApi.getMe();
-          console.log("[Auth] User data fetched successfully:", userData);
           setUser(userData);
         } catch (error) {
           console.error("[Auth] Failed to fetch user details. Clearing tokens.", error);
@@ -36,43 +36,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
-        console.log("[Auth] No access token found.");
       }
-      
+
       setIsLoading(false);
-      console.log("[Auth] Initial loading complete. isLoading set to false.");
     };
 
     initAuth();
   }, []);
 
   const login = async (username: string, password: string) => {
-    console.log(`[Auth] Attempting login for user: ${username}`);
     await authApi.login(username, password);
+    saveCredentials(username, password);
+
     const userData = await authApi.getMe();
     setUser(userData);
-    console.log("[Auth] Login successful. New user data:", userData);
     navigate('/');
   };
-
   const logout = () => {
-    console.log("[Auth] Logging out user.");
     authApi.logout();
+    clearCredentials();
     setUser(null);
     navigate('/login');
   };
 
+
+
   const hasRole = (role: User['role']) => {
     const result = user?.role === role;
-    console.log(`[Auth] hasRole('${role}') check: User Role='${user?.role}', Result=${result}`);
-    return result; 
+    return result;
   };
-  
-  // NEW: Check if user role is in the provided list
+
+  // Check if user role is in the provided list
   const isAllowed = (roles: User['role'][]) => {
     const userRole = user?.role;
     const result = !!userRole && roles.includes(userRole);
-    console.log(`[Auth] isAllowed check (Roles: ${roles.join(',')}) - User Role='${userRole}', Result=${result}`);
     return result;
   }
 
@@ -84,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         login,
         logout,
-        hasRole, 
+        hasRole,
         isAllowed,
       }}
     >

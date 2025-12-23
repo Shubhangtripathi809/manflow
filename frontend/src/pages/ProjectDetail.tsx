@@ -185,12 +185,19 @@ export function ProjectDetail() {
                       key={doc.id}
                       className="border-b hover:bg-muted/50 cursor-pointer"
                       onClick={() => navigate(`/documents/${doc.id}`)}
-                      >
+                    >
                       <td className="py-3 px-4">
-                        <div className="font-medium">{doc.name}</div>
+                        <div className="font-medium">
+                          {doc.original_file_name || doc.name}
+                        </div>
                         {doc.description && (
                           <div className="text-sm text-muted-foreground truncate max-w-xs">
                             {doc.description}
+                          </div>
+                        )}
+                        {doc.original_file_name && doc.original_file_name !== doc.name && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Internal: {doc.name}
                           </div>
                         )}
                       </td>

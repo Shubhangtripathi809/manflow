@@ -1,6 +1,7 @@
 python-dotenv
 # Django Core (Django 4.2 LTS - supports Python 3.9+)
 Django>=4.2,<5.0
+python-dotenv
 djangorestframework>=3.14.0
 django-cors-headers>=4.0.0
 django-filter>=23.0
