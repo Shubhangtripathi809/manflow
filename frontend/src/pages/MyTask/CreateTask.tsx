@@ -168,7 +168,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     if (isDataLoading) {
         return (
             <div className="flex items-center justify-center h-full min-h-screen">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-black" />
                 <p className="ml-3 text-gray-600">Loading resources...</p>
             </div>
         );
@@ -178,21 +178,21 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         <div className={isModal ? "" : "min-h-screen bg-gray-50 p-8 flex justify-center"}>
             <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden">
                 {/* Header Section */}
-                <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between">
+                <div className="p-6 border-b bg-white flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         {!isModal && (
                             <button
                                 onClick={handleClose}
-                                className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
+                                className="p-2 rounded-full text-black hover:bg-gray-100 transition-colors"
                             >
                                 <ArrowLeft className="w-6 h-6" />
                             </button>
                         )}
-                        <h1 className="text-3xl font-bold text-white">Create New Task</h1>
+                        <h1 className="text-3xl font-bold text-black">Create New Task</h1>
                     </div>
                     <button
                         onClick={handleClose}
-                        className="p-2 rounded-full text-white hover:bg-white/10 transition-colors"
+                        className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -223,7 +223,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                             id="heading"
                             value={heading}
                             onChange={(e) => setHeading(e.target.value)}
-                            className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                            className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black transition-shadow"
                             placeholder="e.g., Implement dark mode toggle"
                             required
                         />
@@ -239,7 +239,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={5}
-                            className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                            className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black transition-shadow"
                             placeholder="Detail the requirements, goals, and acceptance criteria for the task."
                             required
                         ></textarea>
@@ -257,7 +257,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                     id="startDate"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
                                     required
                                 />
                                 <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none opacity-0" />
@@ -275,7 +275,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                     id="endDate"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
                                     required
                                 />
                                 <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none opacity-0" />
@@ -336,7 +336,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                         return (
                                             <div
                                                 key={user.id}
-                                                className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${isSelected ? "bg-blue-50" : ""
+                                                className={`px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between ${isSelected ? "bg-gray-50" : ""
                                                     }`}
                                                 onClick={() => {
                                                     if (isSelected) {
@@ -349,7 +349,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                                 }}
                                             >
                                                 <span>{user.label}</span>
-                                                {isSelected && <span className="text-blue-600 font-bold">✓</span>}
+                                                {isSelected && <span className="text-black font-bold">✓</span>}
                                             </div>
                                         );
                                     })}
@@ -448,7 +448,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                     id="status"
                                     value={status}
                                     onChange={(e) => setStatus(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 appearance-none text-gray-900 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 appearance-none text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
                                 >
                                     {statusOptions.map((option) => (
                                         <option key={option.value} value={option.value}>
@@ -470,7 +470,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                     id="priority"
                                     value={priority}
                                     onChange={(e) => setPriority(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 appearance-none text-gray-900 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 appearance-none text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
                                 >
                                     {priorityOptions.map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
@@ -486,14 +486,14 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                         <button
                             type="button"
                             onClick={handleClose}
-                            className="px-8 py-3 rounded-lg text-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            className="px-8 py-3 rounded-lg text-sm font-medium transition-colors duration-200 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
                             disabled={loading}
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className={`px-8 py-3 rounded-lg text-lg font-medium transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`px-8 py-3 rounded-lg text-sm font-medium transition-colors duration-200 bg-black text-white hover:bg-black/90 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                             disabled={loading}
                         >
                             {loading ? 'Creating Task...' : 'Create Task'}

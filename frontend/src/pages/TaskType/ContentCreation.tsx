@@ -53,7 +53,7 @@ interface Task {
 }
 
 // Reuse the SourcePreview logic for the Media Modal
-function MediaPreviewModal({
+export function MediaPreviewModal({
     doc,
     projectId,
     onClose
@@ -147,7 +147,7 @@ function MediaPreviewModal({
     );
 }
 
-function MediaThumbnail({ file, projectId }: { file: any; projectId: number }) {
+export function MediaThumbnail({ file, projectId }: { file: any; projectId: number }) {
     const { data: downloadUrl, isLoading } = useQuery({
         queryKey: ['document-download-url', projectId, file.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: file.id }).then(res => res.url),
@@ -312,7 +312,7 @@ export function ContentCreation() {
 
     const getStatusLabel = (status: StatusFilter): string => {
         const labels: Record<StatusFilter, string> = {
-            all: 'All', todo: 'To-Do', draft: 'Draft', inProgress: 'In Progress',
+            all: 'All', todo: 'Pending', draft: 'Draft', inProgress: 'In Progress',
             inReview: 'In Review', completed: 'Completed', revisionNeeded: 'Revision Needed'
         };
         return labels[status];

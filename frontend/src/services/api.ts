@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8002/';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
 
 
 export const api = axios.create({
