@@ -1,6 +1,7 @@
 """
 Views for Ground Truth app.
 """
+from django.conf import settings  # Import settings for AWS URL construction
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -59,6 +60,63 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return DocumentDetailSerializer
         return DocumentSerializer
     
+    # --- MODIFIED CREATE METHOD ---
+    def create(self, request, *args, **kwargs):
+        """
+        Overridden to handle 's3_key' from direct client uploads.
+        """
+        # Check if this is a Direct S3 Upload confirmation
+        if "s3_key" in request.data:
+            return self.create_from_s3(request)
+            
+        # Standard flow (fallback)
+        return super().create(request, *args, **kwargs)
+
+    def create_from_s3(self, request):
+        """
+        Custom handler for creating documents after S3 direct upload.
+        """
+        data = request.data
+        project_id = data.get("project_id")
+        s3_key = data.get("s3_key")
+        name = data.get("name")
+        file_size = data.get("file_size", 0)
+        file_type = data.get("file_type", "application/pdf")
+
+        if not project_id or not s3_key:
+            return Response(
+                {"detail": "project_id and s3_key are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create the document instance
+        document = Document(
+            project_id=project_id,
+            name=name,
+            file_size=file_size,
+            file_type=file_type,
+            created_by=request.user,
+            updated_by=request.user,
+            status=Document.Status.UPLOADED,
+        )
+
+        # --- THE FIX ---
+        # We manually assign the S3 path to the 'source_file' field.
+        # This tells Django: "The file is already at this path in the storage."
+        document.source_file.name = s3_key 
+        
+        # Save to DB
+        document.save()
+
+        # Log the action
+        log_action(document, "create", new_value={"name": document.name, "s3_key": s3_key})
+
+        # Return the standard serialized data
+        # Now the serializer will see 'source_file' is set and generate the correct S3 URL
+        serializer = DocumentSerializer(document)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    # ------------------------------
+
     def perform_create(self, serializer):
         document = serializer.save()
         log_action(document, "create", new_value={"name": document.name})

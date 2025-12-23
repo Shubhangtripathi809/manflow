@@ -17,9 +17,11 @@ urlpatterns = [
     path("api/v1/", include([
         path("auth/", include("apps.users.urls")),
         path("projects/", include("apps.projects.urls")),
+        path("tasksite/", include("apps.tasksite.urls")),
         path("documents/", include("apps.groundtruth.urls")),
         path("test-runs/", include("apps.testing.urls")),
         path("issues/", include("apps.issues.urls")),
+        path("groundtruth/", include("apps.groundtruth.urls")),
     ])),
     
     # API Documentation

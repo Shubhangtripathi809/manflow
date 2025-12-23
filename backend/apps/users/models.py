@@ -29,6 +29,11 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.username
+    def save(self, *args, **kwargs):
+        # If the user is a superuser, force the role to be ADMIN
+        if self.is_superuser:
+            self.role = self.Role.ADMIN
+        super().save(*args, **kwargs)
     
     @property
     def is_admin(self):
