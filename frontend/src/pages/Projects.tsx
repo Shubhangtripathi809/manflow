@@ -20,8 +20,8 @@ const TASK_TYPES = [
   { value: 'table', label: 'Table Extraction' },
   { value: 'classification', label: 'Document Classification' },
   { value: 'ocr', label: 'OCR' },
-  { value: 'ner', label: 'Named Entity Recognition' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'client', label: 'Client' },
+  { value: 'internal', label: 'Internal' },
 ];
 
 export function Projects() {
@@ -52,7 +52,7 @@ export function Projects() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
+      {/* <div className="flex gap-2 flex-wrap">
         {TASK_TYPES.map((type) => (
           <button
             key={type.value}
@@ -66,7 +66,7 @@ export function Projects() {
             {type.label}
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* Projects Grid */}
       {isLoading ? (

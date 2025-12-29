@@ -20,6 +20,7 @@ import {
     User as UserIcon,
     Edit3,
     Loader2,
+    ListTodo,
 } from 'lucide-react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,7 +45,7 @@ interface Task {
         email: string;
         role: string;
     }>;
-    status: 'pending' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
+    status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
 }
 
 // Utility to format date to DD/MM/YYYY
@@ -71,6 +72,15 @@ const getStatusConfig = (status: Task['status']) => {
                 cardClass: 'card-yellow',
                 label: 'PENDING',
                 icon: Clock
+            };
+        case 'BACKLOG':
+            return {
+                bg: 'bg-orange-100 dark:bg-orange-900/20',
+                text: 'text-orange-800 dark:text-orange-300',
+                badge: 'bg-orange-500',
+                cardClass: 'card-orange',
+                label: 'BACKLOG',
+                icon: ListTodo
             };
         case 'IN_PROGRESS':
             return {
@@ -259,6 +269,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
     const statusOptions: Array<{ status: Task['status'], icon: React.ElementType, label: string }> = [
         { status: 'pending', icon: Clock, label: 'Pending' },
+        { status: 'backlog', icon: ListTodo, label: 'Backlog' },
         { status: 'in_progress', icon: PlayCircle, label: 'In Progress' },
         { status: 'completed', icon: CheckCircle, label: 'Completed' },
         { status: 'deployed', icon: CheckSquare, label: 'Deployed' },
@@ -566,6 +577,7 @@ export const MyTask: React.FC<MyTaskProps> = () => {
             total: tasks.length,
             completed: tasks.filter(t => t.status.toLowerCase() === 'completed').length,
             pending: tasks.filter(t => t.status.toLowerCase() === 'pending').length,
+            backlog: tasks.filter(t => t.status.toLowerCase() === 'backlog').length,
             inProgress: tasks.filter(t => t.status.toLowerCase() === 'in_progress').length,
             deployed: tasks.filter(t => t.status.toLowerCase() === 'deployed').length,
             deferred: tasks.filter(t => t.status.toLowerCase() === 'deferred').length,

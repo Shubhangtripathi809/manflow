@@ -9,6 +9,7 @@ import {
     ArrowLeft,
     Briefcase,
     ListTodo,
+    Plus,
 } from 'lucide-react';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
 import { ProjectMinimal } from '@/types';
@@ -54,6 +55,18 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [allUserOptions, setAllUserOptions] = useState<UserOption[]>([]);
     const [isDataLoading, setIsDataLoading] = useState(true);
     const [success, setSuccess] = useState<string | null>(null);
+    const [attachments, setAttachments] = useState<File[]>([]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+            setAttachments(prev => [...prev, ...newFiles]);
+        }
+    };
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
 
     const priorityOptions = [
         { value: 'high', label: 'High' },
@@ -63,6 +76,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
     const statusOptions = [
         { value: 'pending', label: 'Pending' },
+        { value: 'backlog', label: 'Backlog' },
         { value: 'in_progress', label: 'In Progress' },
         { value: 'completed', label: 'Completed' },
         { value: 'deployed', label: 'Deployed' },
@@ -330,29 +344,23 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                             {/* Dropdown List */}
                             {dropdownOpen && (
                                 <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                                    {allUserOptions.map((user) => {
-                                        const isSelected = assignedToList.includes(user.id);
-
-                                        return (
+                                    {allUserOptions
+                                        .filter((user) => !assignedToList.includes(user.id))
+                                        .map((user) => (
                                             <div
                                                 key={user.id}
-                                                className={`px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between ${isSelected ? "bg-gray-50" : ""
-                                                    }`}
+                                                className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between"
                                                 onClick={() => {
-                                                    if (isSelected) {
-                                                        setAssignedToList(
-                                                            assignedToList.filter((id) => id !== user.id)
-                                                        );
-                                                    } else {
-                                                        setAssignedToList([...assignedToList, user.id]);
-                                                    }
+                                                    setAssignedToList([...assignedToList, user.id]);
+                                                    setDropdownOpen(false);
                                                 }}
                                             >
                                                 <span>{user.label}</span>
-                                                {isSelected && <span className="text-black font-bold">✓</span>}
                                             </div>
-                                        );
-                                    })}
+                                        ))}
+                                    {allUserOptions.filter((user) => !assignedToList.includes(user.id)).length === 0 && (
+                                        <div className="px-4 py-2 text-gray-500 text-sm italic">All users assigned</div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -479,6 +487,67 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                 <Info className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
+                    </div>
+
+                    {/* Attachments Section */}
+                    <div className="space-y-2">
+                        <label className="block text-lg font-semibold text-gray-800">
+                            Attachments
+                        </label>
+                        <div 
+                            className="border-2 border-dashed border-gray-300 rounded-lg p-8 bg-gray-50 flex flex-col items-center justify-center transition-colors hover:bg-gray-100 cursor-pointer relative"
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                if (e.dataTransfer.files) {
+                                    const droppedFiles = Array.from(e.dataTransfer.files);
+                                    setAttachments(prev => [...prev, ...droppedFiles]);
+                                }
+                            }}
+                        >
+                            <input
+                                type="file"
+                                multiple
+                                onChange={handleFileChange}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                accept=".pdf,image/*,.ppt,.pptx,.xml,.json,.html"
+                            />
+                            <div className="text-center">
+                                <Plus className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                                <p className="text-sm text-gray-600">
+                                    <span className="font-semibold text-black">Click to upload</span> or drag and drop
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    PDF, Images, PPT, XML, JSON, HTML (Max 10MB)
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* File Preview List */}
+                        {attachments.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                                {attachments.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm">
+                                        <div className="flex items-center space-x-3 overflow-hidden">
+                                            <div className="p-2 bg-blue-50 rounded">
+                                                <Briefcase className="w-4 h-4 text-blue-600" />
+                                            </div>
+                                            <div className="truncate">
+                                                <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
+                                                <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeAttachment(index)}
+                                            className="p-1 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Action Buttons */}

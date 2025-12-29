@@ -29,8 +29,8 @@ const TASK_TYPES = [
   { value: 'table', label: 'Table Extraction' },
   { value: 'classification', label: 'Document Classification' },
   { value: 'ocr', label: 'OCR' },
-  { value: 'ner', label: 'Named Entity Recognition' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'client', label: 'Client' },
+  { value: 'internal', label: 'Internal' },
   { value: 'content_creation', label: 'Content Creation' },
 ];
 

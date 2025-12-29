@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FolderKanban,
   FileText,
@@ -25,6 +25,7 @@ import type { Project, Document } from '@/types';
 
 export function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: projectsData, isLoading: projectsLoading } = useQuery({
     queryKey: ['projects'],
@@ -39,7 +40,13 @@ export function Dashboard() {
   const projects = projectsData?.results || projectsData || [];
   const documents = documentsData?.results || documentsData || [];
 
+  const { data: tasksData } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => projectsApi.list(),
+  });
+
   const stats = {
+    totalTasks: tasksData?.tasks?.length || tasksData?.results?.length || 0,
     totalProjects: projects.length,
     totalDocuments: documents.length,
     draftDocs: documents.filter((d: Document) => d.status === 'draft').length,
@@ -77,8 +84,8 @@ export function Dashboard() {
 
       {/* Stats Cards */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          {[...Array(5)].map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          {[...Array(6)].map((_, i) => (
             <Card key={i}>
               <CardContent className="p-6">
                 <div className="h-16 animate-pulse bg-muted rounded" />
@@ -87,8 +94,31 @@ export function Dashboard() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          {/* 1. Tasks Card */}
+          <Card
+            className="cursor-pointer hover:border-primary transition-colors"
+            onClick={() => navigate('/taskboard')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Tasks
+              </CardTitle>
+              <CheckCircle className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalTasks}</div>
+              <span className="text-xs text-primary hover:underline">
+                Go to Taskboard
+              </span>
+            </CardContent>
+          </Card>
+
+          {/* 2. Projects Card */}
+          <Card 
+            className="cursor-pointer hover:border-primary transition-colors" 
+            onClick={() => navigate('/projects')}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Projects
@@ -103,7 +133,11 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* 3. Total Documents Card */}
+          <Card 
+            className="cursor-pointer hover:border-primary transition-colors" 
+            onClick={() => navigate('/documents')}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Documents
@@ -118,6 +152,7 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
+          {/* 4. Draft Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -133,6 +168,7 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
+          {/* 5. In Review Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -148,6 +184,7 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
+          {/* 6. Approved Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">

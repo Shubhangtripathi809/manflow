@@ -23,6 +23,7 @@ import {
   Braces,
   Type,
   Table,
+  ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,6 +44,7 @@ const taskNavigation = [
   { id: 'ALL', name: 'All Tasks', href: '/taskboard', icon: CheckSquare },
   { id: 'COMPLETED', name: 'Completed Tasks', href: '/taskboard/completed', icon: CheckCircle },
   { id: 'PENDING', name: 'Pending Tasks', href: '/taskboard/pending', icon: Clock },
+  { id: 'BACKLOG', name: 'Backlog Tasks', href: '/taskboard/backlog', icon: ListTodo },
   { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
   { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
   { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
@@ -192,8 +194,8 @@ const UserManagementAccordion = () => {
 const toolsNavigation = [
   { id: 'PDF_HTML', name: 'PDF vs HTML', href: '/tools/pdf-vs-html', icon: FileText },
   { id: 'JSON', name: 'JSON Viewer', href: '/tools/json-viewer', icon: Braces },
-  { id: 'PIVOT', name: 'Pivot Table', href: '/tools/pivot-table', icon: Table },
-  { id: 'SUPERSCRIPT', name: 'Superscript Checker', href: '/tools/superscript-checker', icon: Type },
+  // { id: 'PIVOT', name: 'Pivot Table', href: '/tools/pivot-table', icon: Table },
+  // { id: 'SUPERSCRIPT', name: 'Superscript Checker', href: '/tools/superscript-checker', icon: Type },
 ];
 
 const ToolsAccordion = () => {

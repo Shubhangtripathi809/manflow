@@ -23,8 +23,6 @@ import {
   TeamPerformance,
   PdfVsHtmlViewer,
   PdfJson,
-  // SuperscriptChecker,
-  PivotTableExtractor
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -165,8 +163,6 @@ function AppRoutes() {
           <Route index element={<Navigate to="pdf-vs-html" replace />} />
           <Route path="pdf-vs-html" element={<PdfVsHtmlViewer />} />
           <Route path="json-viewer" element={<PdfJson />} />
-          <Route path="pivot-table" element={<PivotTableExtractor />} />
-          {/* <Route path="superscript-checker" element={<SuperscriptChecker />} /> */}
         </Route>
       </Route>
     </Routes>

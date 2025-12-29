@@ -474,9 +474,9 @@
 
     &__viewer {
         flex: 1;
-        display: block; // Changed from flex to block to simplify scroll math
-        overflow-x: auto !important; // Forces horizontal scroll
-        overflow-y: auto !important; // Forces vertical scroll
+        display: block;
+        overflow-x: auto !important;
+        overflow-y: auto !important; 
         padding: 20px;
         background-color: #f1f5f9;
         height: 100%;
