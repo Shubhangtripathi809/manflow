@@ -15,6 +15,7 @@ class Task(models.Model):
         ('reviewed', 'Reviewed'),
         ('deployed', 'Deployed'),
         ('deferred', 'Deferred'),
+        ('backlog', 'Backlog')
     )
 
     PRIORITY_CHOICES = (
@@ -47,7 +48,6 @@ class Task(models.Model):
     # ----------------------------------------
 
     assigned_to = models.ManyToManyField(User, related_name='assigned_tasks')
-    
     assigned_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL, 

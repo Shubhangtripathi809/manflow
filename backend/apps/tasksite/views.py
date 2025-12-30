@@ -194,6 +194,7 @@ class UserPerformanceView(APIView):
             "completed": user_tasks.filter(status__iexact='completed').count(),
             "deployed": user_tasks.filter(status__iexact='deployed').count(),
             "deferred": user_tasks.filter(status__iexact='deferred').count(),
+            "Backlog": user_tasks.filter(status__iexact='Backlog').count(),
         }
         
         # 5. Serialize the task list for detailed history
