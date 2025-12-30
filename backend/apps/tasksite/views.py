@@ -184,12 +184,13 @@ class UserPerformanceView(APIView):
         user_tasks = Task.objects.filter(assigned_to=target_user)
 
         metrics = {
-            "total": user_tasks.count(),
-            "pending": user_tasks.filter(status__iexact="pending").count(),
-            "in_progress": user_tasks.filter(status__iexact="in_progress").count(),
-            "completed": user_tasks.filter(status__iexact="completed").count(),
-            "deployed": user_tasks.filter(status__iexact="deployed").count(),
-            "deferred": user_tasks.filter(status__iexact="deferred").count(),
+            "total": total_tasks,
+            "pending": user_tasks.filter(status__iexact='pending').count(),
+            "in_progress": user_tasks.filter(status__iexact='in_progress').count(),
+            "completed": user_tasks.filter(status__iexact='completed').count(),
+            "deployed": user_tasks.filter(status__iexact='deployed').count(),
+            "deferred": user_tasks.filter(status__iexact='deferred').count(),
+            "Backlog": user_tasks.filter(status__iexact='Backlog').count(),
         }
 
         task_serializer = TaskSerializer(user_tasks, many=True)

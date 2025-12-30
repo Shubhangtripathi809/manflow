@@ -17,8 +17,10 @@ class Project(UserStampedModel):
         TABLE_EXTRACTION = "table", "Table Extraction"
         DOCUMENT_CLASSIFICATION = "classification", "Document Classification"
         OCR = "ocr", "OCR"
-        NER = "ner", "Named Entity Recognition"
-        CONTENT_CREATION = "content_creation", "Content Creation"
+        Client = "client", "Client"
+        Internal = "internal", "Internal"
+        CONTENT_CREATION = "content_creation", "Content Creation",
+        Ideas = "ideas", "Ideas"
     
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)

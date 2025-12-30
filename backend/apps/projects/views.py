@@ -152,8 +152,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             name=file_name,
             source_file=file_key,
             # 2. Save it to the database!
-            file_type=file_type,
-            metadata=metadata, 
+            file_type=file_type, 
+            metadata=metadata,
             status=Document.Status.DRAFT, 
             created_by=request.user
         )

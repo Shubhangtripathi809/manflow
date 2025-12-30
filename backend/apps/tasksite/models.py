@@ -11,6 +11,7 @@ class Task(models.Model):
         ("reviewed", "Reviewed"),
         ("deployed", "Deployed"),
         ("deferred", "Deferred"),
+        ('backlog', 'Backlog')
     )
 
     PRIORITY_CHOICES = (
@@ -47,6 +48,10 @@ class Task(models.Model):
         blank=True,
     )
 
+<<<<<<< HEAD
+=======
+    assigned_to = models.ManyToManyField(User, related_name='assigned_tasks')
+>>>>>>> origin/harshitlens
     assigned_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

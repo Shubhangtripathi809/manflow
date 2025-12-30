@@ -14,11 +14,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key-change-in-production")
 DEBUG = config("DEBUG", default=True, cast=bool)
-
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
-    default="localhost,127.0.0.1,192.168.1.4",
+    default="localhost,127.0.0.1,3.233.241.87",
 ).split(",")
+
 
 # Application definition
 DJANGO_APPS = [
@@ -134,7 +134,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
+<<<<<<< HEAD
 default="http://localhost:3001,http://127.0.0.1:3001,http://192.168.1.4:3001",
+=======
+    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.23:5173"
+>>>>>>> origin/harshitlens
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
