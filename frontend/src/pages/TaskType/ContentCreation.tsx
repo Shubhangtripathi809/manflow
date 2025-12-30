@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -14,7 +14,8 @@ import {
     ChevronRight,
     FileText,
     FileJson,
-    Settings
+    Settings,
+    Maximize2
 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
@@ -52,7 +53,6 @@ interface Task {
     status: string;
 }
 
-// Reuse the SourcePreview logic for the Media Modal
 export function MediaPreviewModal({
     doc,
     projectId,
@@ -60,11 +60,14 @@ export function MediaPreviewModal({
 }: {
     doc: any;
     projectId: number;
-    onClose: () => void
+    onClose: () => void;
 }) {
     const [numPages, setNumPages] = useState<number | null>(null);
     const [pageNumber, setPageNumber] = useState(1);
     const [fileError, setFileError] = useState<string | null>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [pythonContent, setPythonContent] = useState<string>('');
+    const modalRef = useRef<HTMLDivElement>(null);
 
     const { data: downloadUrl, isLoading } = useQuery({
         queryKey: ['document-download-url', projectId, doc.id],
@@ -72,18 +75,93 @@ export function MediaPreviewModal({
         staleTime: 5 * 60 * 1000,
     });
 
+    const fileExtension = (doc.original_file_name || doc.name).split('.').pop()?.toLowerCase() || '';
+
+    // File type categorization
+    const excelTypes = ['xls', 'xlsx', 'csv'];
+    const pythonTypes = ['py'];
+    const zipTypes = ['zip'];
+    const pptTypes = ['ppt', 'pptx'];
+    const docTypes = ['doc', 'docx'];
+    const xmlTypes = ['xml'];
+    const videoTypes = ['mp4', 'mov', 'avi', 'webm', 'mkv', 'flv', 'wmv']; // ADD THIS LINE
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            modalRef.current?.requestFullscreen();
+            setIsFullscreen(true);
+        } else {
+            document.exitFullscreen();
+            setIsFullscreen(false);
+        }
+    };
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    // Handle Excel files
+    useEffect(() => {
+        if (excelTypes.includes(fileExtension) && downloadUrl) {
+            const hasOpened = sessionStorage.getItem(`opened-${doc.id}`);
+            if (!hasOpened) {
+                sessionStorage.setItem(`opened-${doc.id}`, 'true');
+                window.open(downloadUrl, '_blank');
+                onClose();
+            }
+        }
+    }, [fileExtension, downloadUrl, onClose, doc.id]);
+
+    // Cleanup session storage on unmount
+    useEffect(() => {
+        return () => {
+            sessionStorage.removeItem(`opened-${doc.id}`);
+        };
+    }, [doc.id]);
+
+    // Handle ZIP files 
+    const handleZipDownload = () => {
+        if (downloadUrl) {
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = doc.original_file_name || doc.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    };
+
+    // Render Python files as text
+    useEffect(() => {
+        if (pythonTypes.includes(fileExtension) && downloadUrl) {
+            fetch(downloadUrl)
+                .then(res => res.text())
+                .then(text => setPythonContent(text))
+                .catch(err => console.error('Failed to load Python file:', err));
+        }
+    }, [fileExtension, downloadUrl]);
+
     return (
-        <div className="content-creation__modal-overlay" onClick={onClose}>
+        <div className="content-creation__modal-overlay" onClick={onClose} ref={modalRef}>
             <div className="content-creation__modal-container max-w-4xl w-full p-6 bg-white" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-4 border-b pb-4">
                     <h3 className="text-xl font-bold truncate">{doc.original_file_name || doc.name}</h3>
                     <div className="flex items-center gap-2">
-                        {downloadUrl && (
-                            <a href={downloadUrl} download className="p-2 hover:bg-gray-100 rounded-full">
-                                <Download className="h-5 w-5" />
-                            </a>
+                        {downloadUrl && !zipTypes.includes(fileExtension) && (
+                            <>
+                                <button onClick={toggleFullscreen} className="p-2 hover:bg-gray-100 rounded-full" title="Fullscreen">
+                                    <Maximize2 className="h-5 w-5" />
+                                </button>
+                                <a href={downloadUrl} download className="p-2 hover:bg-gray-100 rounded-full" title="Download">
+                                    <Download className="h-5 w-5" />
+                                </a>
+                            </>
                         )}
-                        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+                        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full" title="Close">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
@@ -92,6 +170,48 @@ export function MediaPreviewModal({
                 <div className="flex flex-col items-center justify-center min-h-[400px]">
                     {isLoading ? (
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    ) : zipTypes.includes(fileExtension) ? (
+                        // ZIP files
+                        <div className="flex flex-col items-center gap-4">
+                            <FileText className="h-20 w-20 text-gray-400" />
+                            <p className="text-lg font-medium mt-4">ZIP Archive</p>
+                            <p className="text-sm text-gray-500 mb-6">No preview available for ZIP files</p>
+                            <button onClick={handleZipDownload} className="media-preview-download-btn">
+                                <Download className="h-5 w-5" />
+                                Download File
+                            </button>
+                        </div>
+                    ) : pythonTypes.includes(fileExtension) ? (
+                        // Python files
+                        <div className="w-full h-[70vh] overflow-auto bg-gray-900 rounded-lg p-4">
+                            <pre className="text-sm text-gray-100 font-mono whitespace-pre-wrap">
+                                <code>{pythonContent || 'Loading...'}</code>
+                            </pre>
+                        </div>
+                    ) : pptTypes.includes(fileExtension) || docTypes.includes(fileExtension) || xmlTypes.includes(fileExtension) ? (
+                        // PPT, DOC, XML - Open in new tab/external viewer
+                        <div className="flex flex-col items-center gap-4">
+                            <FileText className="h-20 w-20 text-gray-400" />
+                            <p className="text-lg font-medium mt-4">
+                                {pptTypes.includes(fileExtension) ? 'PowerPoint Presentation' :
+                                    docTypes.includes(fileExtension) ? 'Word Document' : 'XML File'}
+                            </p>
+                            <p className="text-sm text-gray-500 mb-6">
+                                This file will open in {pptTypes.includes(fileExtension) ? 'PowerPoint' :
+                                    docTypes.includes(fileExtension) ? 'Word' : 'a text editor'}
+                            </p>
+                            <button
+                                onClick={() => {
+                                    if (downloadUrl) {
+                                        window.open(downloadUrl, '_blank');
+                                        onClose();
+                                    }
+                                }}
+                                className="media-preview-download-btn"
+                            >
+                                Open File
+                            </button>
+                        </div>
                     ) : fileError ? (
                         <div className="text-destructive">{fileError}</div>
                     ) : doc.file_type === 'pdf' ? (
@@ -130,15 +250,62 @@ export function MediaPreviewModal({
                         </div>
                     ) : doc.file_type === 'image' ? (
                         <img src={downloadUrl} alt="Preview" className="max-h-[70vh] rounded-lg shadow-md" />
-                    ) : doc.file_type === 'video' ? (
-                        <video controls className="w-full max-h-[70vh] bg-black rounded-lg">
-                            <source src={downloadUrl} />
-                        </video>
+                    ) : (doc.file_type === 'video' || videoTypes.includes(fileExtension)) ? (
+                        // Video files - Check both file_type and extension
+                        <div className="flex flex-col items-center gap-4">
+                            <Film className="h-20 w-20 text-blue-500" />
+                            <p className="text-lg font-medium mt-4">Video File</p>
+                            <p className="text-sm text-gray-500 mb-6">Click below to open the video in a new tab</p>
+                            <button
+                                onClick={() => {
+                                    if (downloadUrl) {
+                                        window.open(downloadUrl, '_blank');
+                                        onClose();
+                                    }
+                                }}
+                                className="media-preview-download-btn"
+                            >
+                                <Film className="h-5 w-5" />
+                                Open Video
+                            </button>
+                        </div>
+
+                    ) : doc.file_type === 'json' ? (
+                        <div className="flex flex-col items-center gap-4">
+                            <FileJson className="h-20 w-20 text-yellow-600" />
+                            <p>JSON File</p>
+                            <a href={downloadUrl} download target="_blank" rel="noopener noreferrer" className="media-preview-download-btn">
+                                <Download className="h-5 w-5" />
+                                Download to View
+                            </a>
+                        </div>
+                    ) : pptTypes.includes(fileExtension) ? (
+                        // PowerPoint files - Open in new tab
+                        <div className="flex flex-col items-center gap-4">
+                            <FileText className="h-20 w-20 text-orange-500" />
+                            <p className="text-lg font-medium mt-4">PowerPoint Presentation</p>
+                            <p className="text-sm text-gray-500 mb-6">This file will open in PowerPoint Online</p>
+                            <button
+                                onClick={() => {
+                                    if (downloadUrl) {
+                                        window.open(downloadUrl, '_blank');
+                                        onClose();
+                                    }
+                                }}
+                                className="media-preview-download-btn"
+                            >
+                                <FileText className="h-5 w-5" />
+                                Open PPT
+                            </button>
+                        </div>
                     ) : (
                         <div className="flex flex-col items-center gap-4">
                             <FileText className="h-20 w-20 text-gray-300" />
                             <p>No preview available for this file type.</p>
-                            <a href={downloadUrl} download className="text-primary hover:underline font-bold">Download to View</a>
+                            <a href={downloadUrl} download target="_blank" rel="noopener noreferrer" className="media-preview-download-btn">
+                                <Download className="h-5 w-5" />
+                                Download to View
+                            </a>
                         </div>
                     )}
                 </div>
