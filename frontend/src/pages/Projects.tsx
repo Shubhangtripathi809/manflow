@@ -20,8 +20,9 @@ const TASK_TYPES = [
   { value: 'table', label: 'Table Extraction' },
   { value: 'classification', label: 'Document Classification' },
   { value: 'ocr', label: 'OCR' },
-  { value: 'ner', label: 'Named Entity Recognition' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'client', label: 'Client' },
+  { value: 'internal', label: 'Internal' },
+  { value: 'ideas', label: 'Ideas' },
 ];
 
 export function Projects() {
@@ -52,7 +53,7 @@ export function Projects() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
+      {/* <div className="flex gap-2 flex-wrap">
         {TASK_TYPES.map((type) => (
           <button
             key={type.value}
@@ -66,7 +67,7 @@ export function Projects() {
             {type.label}
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* Projects Grid */}
       {isLoading ? (
@@ -99,15 +100,37 @@ export function Projects() {
                       {project.description}
                     </p>
                   )}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <FileText className="h-4 w-4" />
-                      {project.document_count || 0} docs
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {project.member_count || 0} members
-                    </span>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-4 w-4" />
+                        {project.document_count || 0} docs
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        {project.member_count || 0} members
+                      </span>
+                    </div>
+
+                    {/* Member Names Section */}
+                    {project.members && project.members.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {project.members.slice(0, 3).map((member) => (
+                          <Badge
+                            key={member.id}
+                            variant="outline"
+                            className="text-[10px] px-2 py-0 font-normal bg-muted/30"
+                          >
+                            {member.full_name}
+                          </Badge>
+                        ))}
+                        {project.members.length > 3 && (
+                          <span className="text-[10px] text-muted-foreground self-center">
+                            +{project.members.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-3">
                     Updated {formatRelativeTime(project.updated_at)}

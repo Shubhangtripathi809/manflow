@@ -12,7 +12,6 @@ import {
   Login,
   Projects,
   ProjectCreate,
-  ProjectDetail,
   DocumentCreate,
   DocumentDetail,
   Documents,
@@ -23,8 +22,6 @@ import {
   TeamPerformance,
   PdfVsHtmlViewer,
   PdfJson,
-  // SuperscriptChecker,
-  PivotTableExtractor
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -81,13 +78,10 @@ function ProjectDetailWrapper() {
   }
 
   // 2. Extraction & OCR - Use TaskDetails for these types
-  const taskDetailsTypes = ['key_value', 'table', 'ocr'];
+  const taskDetailsTypes = ['key_value', 'table', 'ocr', 'classification', 'client', 'internal', 'ideas'];
   if (taskDetailsTypes.includes(project.task_type)) {
     return <TaskDetails />;
   }
-
-  // 3. Default fallback UI
-  return <ProjectDetail />;
 }
 
 // Helper component to render the Admin UI for nested routes
@@ -165,8 +159,6 @@ function AppRoutes() {
           <Route index element={<Navigate to="pdf-vs-html" replace />} />
           <Route path="pdf-vs-html" element={<PdfVsHtmlViewer />} />
           <Route path="json-viewer" element={<PdfJson />} />
-          <Route path="pivot-table" element={<PivotTableExtractor />} />
-          {/* <Route path="superscript-checker" element={<SuperscriptChecker />} /> */}
         </Route>
       </Route>
     </Routes>

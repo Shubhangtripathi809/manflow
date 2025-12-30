@@ -1,9 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL as string;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+const API_URL =
+  import.meta.env.VITE_API_URL || 'http://3.233.241.87:8000/api/v1';
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://3.233.241.87:8000';
+  
 export const api = axios.create({
   baseURL: API_URL,
   headers: {

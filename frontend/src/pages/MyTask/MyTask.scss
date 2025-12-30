@@ -67,6 +67,9 @@
 .card-purple { 
     background-color: #f3e8ff;
 }
+.card-orange { 
+    background-color: #dba564; 
+}
 .card-green { 
     background-color: #e6ffed;
 }
@@ -86,6 +89,7 @@
 .deferred { background-color: #94a3b8; } 
 .pending { background-color: #f59e0b; } 
 .in_progress { background-color: #3b82f6; } 
+.backlog { background-color: #c186ad; }
 
 .status-badge {
     color: white;

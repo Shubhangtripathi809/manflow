@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, X } from 'lucide-react';
 import {
   Button,
@@ -66,7 +66,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 
         <select
           className="flex-1 min-w-[100px] h-full bg-transparent text-sm focus:outline-none"
-          value="" 
+          value=""
           onChange={(e) => handleSelect(Number(e.target.value))}
           disabled={availableOptions.length === 0}
         >
@@ -89,13 +89,15 @@ const TASK_TYPES = [
   { value: 'table', label: 'Table Extraction' },
   { value: 'classification', label: 'Document Classification' },
   { value: 'ocr', label: 'OCR' },
-  { value: 'ner', label: 'Named Entity Recognition' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'client', label: 'Client' },
+  { value: 'internal', label: 'Internal' },
   { value: 'content_creation', label: 'Content Creation' },
+  { value: 'ideas', label: 'Ideas' },
 ];
 
 export function ProjectCreate() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -103,20 +105,25 @@ export function ProjectCreate() {
   });
   const [assignedTo, setAssignedTo] = useState<number[]>([]);
   const [error, setError] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [taskTypeDropdownOpen, setTaskTypeDropdownOpen] = useState(false);
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['allUsers'],
     queryFn: usersApi.listAll,
     select: (data: AppUser[]) =>
       data.map((user) => ({
         value: user.id,
-        label: user.username, 
+        label: user.first_name && user.last_name
+          ? `${user.first_name} ${user.last_name}`
+          : user.username,
       })),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData & { assigned_to: number[] }) => 
+    mutationFn: (data: typeof formData & { assigned_to: number[] }) =>
       projectsApi.create(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       navigate('/projects');
     },
     onError: (err: any) => {
@@ -209,43 +216,119 @@ export function ProjectCreate() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="task_type" className="text-sm font-medium">
-                Task Type <span className="text-destructive">*</span>
-              </label>
-              <select
-                id="task_type"
-                name="task_type"
-                value={formData.task_type}
-                onChange={handleChange}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                {TASK_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Select the type of extraction or classification task
-              </p>
-            </div>
-            {/* Assigned To Multi-select */}
-            {usersLoading ? (
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Assigned To</label>
-                    <Input placeholder="Loading users..." disabled />
-                </div>
-            ) : (
-                <MultiSelect
-                    label="Assigned To"
-                    options={usersData || []}
-                    selectedValues={assignedTo}
-                    onChange={handleAssignedToChange}
-                    placeholder="Select users to assign the project"
-                />
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Task Type - Custom Dropdown Style */}
+              <div className="relative space-y-2">
+                <label className="text-sm font-medium">
+                  Task Type <span className="text-destructive">*</span>
+                </label>
 
+                <div
+                  className="w-full p-3 rounded-lg border border-input bg-background cursor-pointer flex items-center justify-between min-h-[50px] text-sm"
+                  onClick={() => setTaskTypeDropdownOpen(!taskTypeDropdownOpen)}
+                >
+                  <span className={formData.task_type ? "text-foreground" : "text-muted-foreground"}>
+                    {TASK_TYPES.find(t => t.value === formData.task_type)?.label || "Select Task Type..."}
+                  </span>
+                  <svg
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${taskTypeDropdownOpen ? 'rotate-180' : ''}`}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+
+                {taskTypeDropdownOpen && (
+                  <div className="absolute z-30 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                    {TASK_TYPES.map((type) => (
+                      <div
+                        key={type.value}
+                        className={`px-4 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground flex justify-between ${formData.task_type === type.value ? "bg-accent/50" : ""
+                          }`}
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, task_type: type.value }));
+                          setTaskTypeDropdownOpen(false);
+                        }}
+                      >
+                        <span>{type.label}</span>
+                        {formData.task_type === type.value && <span className="text-primary font-bold">✓</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Select the type of extraction or classification task
+                </p>
+              </div>
+
+              {/* Assigned To - Custom Dropdown Style */}
+              <div className="relative space-y-2">
+                <label className="text-sm font-medium">
+                  Assigned To <span className="text-destructive">*</span>
+                </label>
+
+                <div
+                  className="w-full p-3 rounded-lg border border-input bg-background cursor-pointer flex flex-wrap gap-2 min-h-[50px] text-sm"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                >
+                  {assignedTo.length === 0 && (
+                    <span className="text-muted-foreground">Select users...</span>
+                  )}
+
+                  {assignedTo.map((userId) => {
+                    const user = usersData?.find((u) => u.value === userId);
+                    if (!user) return null;
+
+                    return (
+                      <Badge
+                        key={userId}
+                        variant="secondary"
+                        className="px-2 py-1 flex items-center gap-1"
+                      >
+                        {user.label}
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssignedTo(assignedTo.filter((id) => id !== userId));
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+
+                {dropdownOpen && (
+                  <div className="absolute z-20 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                    {usersData
+                      ?.filter((user) => !assignedTo.includes(user.value))
+                      .map((user) => (
+                        <div
+                          key={user.value}
+                          className="px-4 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground flex justify-between"
+                          onClick={() => {
+                            setAssignedTo([...assignedTo, user.value]);
+                            setDropdownOpen(false);
+                          }}
+                        >
+                          <span>{user.label}</span>
+                        </div>
+                      ))}
+                    {usersData?.filter((user) => !assignedTo.includes(user.value)).length === 0 && (
+                      <div className="px-4 py-2 text-muted-foreground text-sm italic">
+                        All users assigned
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="flex gap-3 pt-4">
               <Button
                 type="submit"

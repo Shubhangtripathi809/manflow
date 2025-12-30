@@ -11,6 +11,7 @@ import { TaskCard, TaskDetailModal } from '@/pages/MyTask/MyTask';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
 import { MediaPreviewModal, MediaThumbnail } from './ContentCreation';
 import { pdfjs, Document as PDFDocument, Page as PDFPage } from 'react-pdf';
+import { FixedSizeList } from 'react-window';
 import './TaskDetails.scss';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -128,7 +129,7 @@ function GTUploadModal({
                                 }}
                                 disabled={isUploading}
                             />
-                            <span>LLM GT File</span>
+                            <span>LLM File</span>
                         </label>
                     </div>
 
@@ -237,17 +238,54 @@ function GTFileViewer({
                     </div>
                 ) : file.file_type === 'image' ? (
                     <img src={downloadUrl} alt="Preview" className="gt-file-viewer__image" />
+                ) : file.file_type === 'video' ? (
+                    // Video files - Open in new tab
+                    <div className="gt-file-viewer__unsupported">
+                        <Film className="h-20 w-20 text-blue-500" />
+                        <p className="text-lg font-medium mt-4">Video File</p>
+                        <p className="text-sm text-gray-500 mb-6">Click below to open the video</p>
+                        {downloadUrl && (
+                            <button
+                                onClick={() => window.open(downloadUrl, '_blank')}
+                                className="gt-download-btn"
+                            >
+                                <Film className="h-5 w-5" />
+                                Open Video
+                            </button>
+                        )}
+                    </div>
                 ) : file.file_type === 'json' ? (
                     <div className="gt-file-viewer__json">
                         <FileJson className="h-20 w-20" />
                         <p>JSON File</p>
-                        <a href={downloadUrl} download>Download to View</a>
+                        <a href={downloadUrl} download target="_blank" rel="noopener noreferrer">Download to View</a>
+                    </div>
+                ) : ['ppt', 'pptx'].includes(file.original_file_name.split('.').pop()?.toLowerCase() || '') ? (
+                    // PowerPoint files - Open in new tab
+                    <div className="gt-file-viewer__unsupported">
+                        <FileText className="h-20 w-20 text-orange-500" />
+                        <p className="text-lg font-medium mt-4">PowerPoint Presentation</p>
+                        <p className="text-sm text-gray-500 mb-6">This file will open in PowerPoint Online</p>
+                        {downloadUrl && (
+                            <button
+                                onClick={() => window.open(downloadUrl, '_blank')}
+                                className="gt-download-btn"
+                            >
+                                <FileText className="h-5 w-5" />
+                                Open PPT
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="gt-file-viewer__unsupported">
                         <FileText className="h-20 w-20" />
-                        <p>No preview available</p>
-                        <a href={downloadUrl} download>Download to View</a>
+                        <p>No preview available for this file type</p>
+                        {downloadUrl && (
+                            <a href={downloadUrl} download target="_blank" rel="noopener noreferrer" className="gt-download-btn">
+                                <Download className="h-5 w-5" />
+                                Download to View
+                            </a>
+                        )}
                     </div>
                 )}
             </div>
@@ -267,130 +305,79 @@ function GTComparisonView({
     projectId: number;
     onClose: () => void;
 }) {
-    // Synchronized Page State
-    const [currentPage, setCurrentPage] = useState(1);
-    const [inputPage, setInputPage] = useState("1");
-    const [maxPages, setMaxPages] = useState(1);
-    const [scale, setScale] = useState(1.0);
+    const [numPages, setNumPages] = useState<number>(0);
+    const [scale, setScale] = useState(1.1);
 
     const { data: runningGtUrl } = useQuery({
         queryKey: ['document-download-url', projectId, runningGtFile.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: runningGtFile.id }).then(res => res.url),
-        staleTime: 5 * 60 * 1000,
     });
 
     const { data: gtUrl } = useQuery({
         queryKey: ['document-download-url', projectId, gtFile.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: gtFile.id }).then(res => res.url),
-        staleTime: 5 * 60 * 1000,
     });
 
-    const handlePageJump = (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        const pageNum = parseInt(inputPage);
-        if (!isNaN(pageNum) && pageNum > 0 && pageNum <= maxPages) {
-            setCurrentPage(pageNum);
-        } else {
-            setInputPage(currentPage.toString());
-        }
-    };
+    // Individual Row Item
+    const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
+        <div style={{ ...style, display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid #e2e8f0' }}>
+            {/* Left side: LLM GT */}
+            <div className="gt-comparison__viewer" style={{ borderRight: '1px solid #cbd5e1', overflow: 'hidden' }}>
+                <PDFDocument file={runningGtUrl} loading={null} error={null}>
+                    <PDFPage
+                        pageNumber={index + 1}
+                        scale={scale}
+                        renderAnnotationLayer={false}
+                        renderTextLayer={false}
+                        loading={null}
+                    />
+                </PDFDocument>
+            </div>
+            {/* Right side: Original GT */}
+            <div className="gt-comparison__viewer" style={{ overflow: 'hidden' }}>
+                <PDFDocument file={gtUrl} loading={null} error={null}>
+                    <PDFPage
+                        pageNumber={index + 1}
+                        scale={scale}
+                        renderAnnotationLayer={false}
+                        renderTextLayer={false}
+                        loading={null}
+                    />
+                </PDFDocument>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="gt-comparison">
-            {/* 1. New Top Navigation Bar */}
+        <div className="gt-comparison" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+            {/* Hidden component to get the page count once */}
+            <div style={{ display: 'none' }}>
+                <PDFDocument file={gtUrl} onLoadSuccess={({ numPages }) => setNumPages(numPages)} />
+            </div>
+
             <div className="gt-comparison__nav-bar">
-                <div className="flex items-center gap-6">
-                    {/* Pagination Group */}
-                    <div className="flex items-center gap-2">
-                        <button
-                            className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                            disabled={currentPage <= 1}
-                            onClick={() => { const p = currentPage - 1; setCurrentPage(p); setInputPage(p.toString()); }}
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                        </button>
-                        <form onSubmit={handlePageJump} className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Page</span>
-                            <input
-                                type="text"
-                                className="gt-page-input"
-                                value={inputPage}
-                                onChange={(e) => setInputPage(e.target.value)}
-                                onBlur={handlePageJump}
-                            />
-                            <span className="text-sm text-gray-500">of {maxPages}</span>
-                        </form>
-                        <button
-                            className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                            disabled={currentPage >= maxPages}
-                            onClick={() => { const p = currentPage + 1; setCurrentPage(p); setInputPage(p.toString()); }}
-                        >
-                            <ChevronRight className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    {/* Vertical Divider */}
-                    <div className="w-px h-6 bg-gray-300" />
-
-                    {/* Zoom Controls */}
-                    <div className="flex items-center gap-3">
-                        <button
-                            className="p-1 hover:bg-gray-100 rounded border"
-                            onClick={() => setScale(prev => Math.max(prev - 0.2, 0.5))}
-                            title="Zoom Out"
-                        >
-                            <span className="px-1 text-lg font-bold">−</span>
-                        </button>
-                        <span className="text-sm font-semibold min-w-[45px] text-center">
-                            {Math.round(scale * 100)}%
-                        </span>
-                        <button
-                            className="p-1 hover:bg-gray-100 rounded border"
-                            onClick={() => setScale(prev => Math.min(prev + 0.2, 2.5))}
-                            title="Zoom In"
-                        >
-                            <span className="px-1 text-lg font-bold">+</span>
-                        </button>
-                    </div>
+                <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-sm border">
+                    <button className="p-1 hover:bg-slate-100 rounded" onClick={() => setScale(s => Math.max(s - 0.1, 0.5))}>
+                        <span className="text-xl font-bold">−</span>
+                    </button>
+                    <span className="text-sm font-mono font-bold w-12 text-center">{Math.round(scale * 100)}%</span>
+                    <button className="p-1 hover:bg-slate-100 rounded" onClick={() => setScale(s => Math.min(s + 0.1, 2.5))}>
+                        <span className="text-xl font-bold">+</span>
+                    </button>
                 </div>
             </div>
 
-            {/* 2. PDF Viewer Container */}
-            <div className="gt-comparison__container">
-                <div className="gt-comparison__side">
-                    <h3 className="gt-comparison__side-title">LLM GT</h3>
-                    <div className="gt-comparison__viewer">
-                        <PDFDocument
-                            file={runningGtUrl}
-                            onLoadSuccess={({ numPages }) => setMaxPages(prev => Math.max(prev, numPages))}
-                        >
-                            <PDFPage
-                                pageNumber={currentPage}
-                                scale={scale}
-                                renderTextLayer={true}
-                                renderAnnotationLayer={true}
-                                className="gt-pdf-page"
-                            />
-                        </PDFDocument>
-                    </div>
-                </div>
-
-                <div className="gt-comparison__side">
-                    <h3 className="gt-comparison__side-title">GT File</h3>
-                    <div className="gt-comparison__viewer">
-                        <PDFDocument
-                            file={gtUrl}
-                            onLoadSuccess={({ numPages }) => setMaxPages(prev => Math.max(prev, numPages))}
-                        >
-                            <PDFPage
-                                pageNumber={currentPage}
-                                scale={scale}
-                                renderTextLayer={true}
-                                renderAnnotationLayer={true}
-                            />
-                        </PDFDocument>
-                    </div>
-                </div>
+            <div style={{ flex: 1, width: '100%' }}>
+                {numPages > 0 && (
+                    <FixedSizeList
+                        height={window.innerHeight - 220}
+                        itemCount={numPages}
+                        itemSize={850 * scale}
+                        width={"100%"}
+                    >
+                        {Row}
+                    </FixedSizeList>
+                )}
             </div>
         </div>
     );
@@ -581,10 +568,17 @@ export function TaskDetails() {
             await documentsApi.uploadFileToS3(s3Url, s3Fields, file);
 
             const ext = file.name.split('.').pop()?.toLowerCase() || '';
+            const imageTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+            const docTypes = ['doc', 'docx', 'pdf', 'txt', 'rtf'];
+            const spreadsheetTypes = ['xls', 'xlsx', 'csv'];
+            const presentationTypes = ['ppt', 'pptx'];
+
             let mappedType = 'other';
-            if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) mappedType = 'image';
+            if (imageTypes.includes(ext)) mappedType = 'image';
             else if (ext === 'pdf') mappedType = 'pdf';
             else if (ext === 'json') mappedType = 'json';
+            else if (docTypes.includes(ext) || spreadsheetTypes.includes(ext) || presentationTypes.includes(ext)) mappedType = 'document';
+            else if (ext === 'zip' || ext === 'xml') mappedType = ext;
 
             const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
                 file_key: file_key,
@@ -741,7 +735,7 @@ export function TaskDetails() {
                                         className="hidden"
                                         onChange={handleFileUpload}
                                         disabled={isUploading}
-                                        accept="image/*,.pdf,.json"
+                                        accept="*"
                                     />
                                     {isUploading ? (
                                         <Loader2 className="content-creation__upload-icon animate-spin" />
@@ -751,7 +745,7 @@ export function TaskDetails() {
                                     <p className="content-creation__upload-text">
                                         {isUploading ? 'Uploading to S3...' : 'Drop documents here or click to browse'}
                                     </p>
-                                    <p className="content-creation__upload-subtext">PDF, Images, JSON (Max 500MB)</p>
+                                    <p className="content-creation__upload-subtext">All document types supported (Max 500MB)</p>
                                     {uploadError && <p className="text-destructive text-sm mt-2">{uploadError}</p>}
                                 </label>
                             </div>

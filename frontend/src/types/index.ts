@@ -52,8 +52,8 @@ export type TaskType =
   | 'table'
   | 'classification'
   | 'ocr'
-  | 'ner'
-  | 'custom'
+  | 'client'
+  | 'internal'
   | 'content-creation';
 
 export interface ProjectSettings {
