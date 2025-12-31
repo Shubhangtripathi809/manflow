@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import {
   LayoutDashboard,
@@ -53,6 +53,7 @@ const taskNavigation = [
 const TaskAccordion = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isTaskRoute = location.pathname.startsWith('/taskboard');
   const isCreateRoute = location.pathname.startsWith('/taskboard/create');
   const CREATION_ALLOWED_ROLES = ['admin', 'manager', 'annotator'];
@@ -68,6 +69,15 @@ const TaskAccordion = () => {
 
   const AccordionIcon = isOpen ? ChevronUp : ChevronDown;
 
+  // Handle header click with navigation
+  const handleHeaderClick = () => {
+    if (!isTaskRoute) {
+      navigate('/taskboard');
+    } else {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div className="space-y-1">
       {/* My Tasks Header */}
@@ -78,14 +88,14 @@ const TaskAccordion = () => {
             ? 'bg-primary text-primary-foreground'
             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
         )}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleHeaderClick}
       >
         <CheckSquare className="h-5 w-5" />
         <span className="flex-1">My Tasks</span>
         <AccordionIcon className="h-4 w-4" />
       </div>
 
-      {/* Collapsible Menu (Accordion Content) */}
+      {/* Collapsible Menu */}
       {isOpen && (
         <div className="ml-4 border-l pl-2 space-y-1">
           {taskNavigation.map((item) => (
@@ -165,7 +175,7 @@ const UserManagementAccordion = () => {
         <AccordionIcon className="h-4 w-4" />
       </div>
 
-      {/* Collapsible Menu (Accordion Content) */}
+      {/* Collapsible Menu  */}
       {isOpen && (
         <div className="ml-4 border-l pl-2 space-y-1">
           {userManagementNavigation.map((item) => (

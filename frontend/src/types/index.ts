@@ -99,7 +99,7 @@ export interface Document {
   metadata: Record<string, unknown>;
   status: DocumentStatus;
   current_gt_version?: GTVersion;
-  version_count: number;
+  assigned_users?: UserMinimal[];
   created_by: UserMinimal;
   created_at: string;
   updated_at: string;

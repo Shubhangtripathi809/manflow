@@ -156,9 +156,29 @@ export function MediaPreviewModal({
                                 <button onClick={toggleFullscreen} className="p-2 hover:bg-gray-100 rounded-full" title="Fullscreen">
                                     <Maximize2 className="h-5 w-5" />
                                 </button>
-                                <a href={downloadUrl} download className="p-2 hover:bg-gray-100 rounded-full" title="Download">
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const response = await fetch(downloadUrl);
+                                            const blob = await response.blob();
+                                            const url = window.URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = doc.original_file_name || doc.name;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            window.URL.revokeObjectURL(url);
+                                        } catch (error) {
+                                            console.error('Download failed:', error);
+                                            window.open(downloadUrl, '_blank');
+                                        }
+                                    }}
+                                    className="p-2 hover:bg-gray-100 rounded-full"
+                                    title="Download"
+                                >
                                     <Download className="h-5 w-5" />
-                                </a>
+                                </button>
                             </>
                         )}
                         <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full" title="Close">
@@ -197,13 +217,19 @@ export function MediaPreviewModal({
                                     docTypes.includes(fileExtension) ? 'Word Document' : 'XML File'}
                             </p>
                             <p className="text-sm text-gray-500 mb-6">
-                                This file will open in {pptTypes.includes(fileExtension) ? 'PowerPoint' :
-                                    docTypes.includes(fileExtension) ? 'Word' : 'a text editor'}
+                                This file will open in {pptTypes.includes(fileExtension) ? 'PowerPoint Online' :
+                                    docTypes.includes(fileExtension) ? 'Word Online' : 'a text editor'}
                             </p>
                             <button
                                 onClick={() => {
                                     if (downloadUrl) {
-                                        window.open(downloadUrl, '_blank');
+                                        // Use Microsoft Office Online viewer for PPT and DOC files
+                                        if (pptTypes.includes(fileExtension) || docTypes.includes(fileExtension)) {
+                                            const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(downloadUrl)}`;
+                                            window.open(officeViewerUrl, '_blank');
+                                        } else {
+                                            window.open(downloadUrl, '_blank');
+                                        }
                                         onClose();
                                     }
                                 }}

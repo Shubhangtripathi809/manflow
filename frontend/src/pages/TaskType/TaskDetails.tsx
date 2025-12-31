@@ -192,9 +192,29 @@ function GTFileViewer({
                 <h2>{file.original_file_name || file.name}</h2>
                 <div className="gt-file-viewer__actions">
                     {downloadUrl && (
-                        <a href={downloadUrl} download className="gt-file-viewer__download">
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const response = await fetch(downloadUrl);
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = file.original_file_name || file.name;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                    console.error('Download failed:', error);
+                                    window.open(downloadUrl, '_blank');
+                                }
+                            }}
+                            className="gt-file-viewer__download"
+                            title="Download"
+                        >
                             <Download className="h-5 w-5" />
-                        </a>
+                        </button>
                     )}
                 </div>
             </div>
@@ -261,14 +281,17 @@ function GTFileViewer({
                         <a href={downloadUrl} download target="_blank" rel="noopener noreferrer">Download to View</a>
                     </div>
                 ) : ['ppt', 'pptx'].includes(file.original_file_name.split('.').pop()?.toLowerCase() || '') ? (
-                    // PowerPoint files - Open in new tab
+                    // PowerPoint files - Open in Microsoft Office Online viewer
                     <div className="gt-file-viewer__unsupported">
                         <FileText className="h-20 w-20 text-orange-500" />
                         <p className="text-lg font-medium mt-4">PowerPoint Presentation</p>
                         <p className="text-sm text-gray-500 mb-6">This file will open in PowerPoint Online</p>
                         {downloadUrl && (
                             <button
-                                onClick={() => window.open(downloadUrl, '_blank')}
+                                onClick={() => {
+                                    const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(downloadUrl)}`;
+                                    window.open(officeViewerUrl, '_blank');
+                                }}
                                 className="gt-download-btn"
                             >
                                 <FileText className="h-5 w-5" />
