@@ -352,21 +352,24 @@ export const issuesApi = {
 export const taskApi = {
   list: async () => {
     const response = await api.get('/tasksite/');
-    return response.data;
-  },
+    const data = response.data;
+    if (data.tasks && Array.isArray(data.tasks)) {
+        data.tasks = data.tasks.map((task: any) => ({
+            ...task,
+            attachments: task.attachments || []
+        }));
+    }
+    
+    return data;
+},
 
   // Create a new task
-  create: async (data: {
-    heading: string;
-    description: string;
-    start_date: string;
-    end_date: string;
-    assigned_to: number[];
-    status: string;
-    priority: string;
-    project: number;
-  }) => {
-    const response = await api.post('/tasksite/', data);
+  create: async (formData: FormData) => {
+    const response = await api.post('/tasksite/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

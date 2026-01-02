@@ -441,3 +441,36 @@ export interface GetDownloadUrlPayload {
 export interface GetDownloadUrlResponse {
   url: string;
 }
+
+// Create task 
+export interface TaskAttachment {
+  id: number;
+  file_url: string;
+  file_name: string;
+  uploaded_at: string;
+}
+
+export interface TaskResponse {
+  message: string;
+  task: {
+    id: number;
+    heading: string;
+    description: string;
+    start_date: string | null;
+    end_date: string | null;
+    priority: string;
+    project: number;
+    project_details: {
+      id: number;
+      name: string;
+    };
+    assigned_to: number[];
+    assigned_to_user_details: User[];
+    assigned_by: number;
+    assigned_by_user_details: User;
+    status: string;
+    attachments: TaskAttachment[];
+    created_at: string;
+    updated_at: string;
+  };
+}
