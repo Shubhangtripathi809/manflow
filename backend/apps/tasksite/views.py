@@ -1,15 +1,18 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.generics import ListCreateAPIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import serializers
 
 # Ensure this import matches your project structure
 from apps.users.models import User
-from .models import Task
-from .serializers import TaskSerializer, TaskStatusUpdateSerializer, UserManagementSerializer
+from .models import Task, TaskComment
+from .serializers import TaskSerializer, TaskStatusUpdateSerializer, UserManagementSerializer, TaskCommentSerializer
 
 class AllUsersListView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -32,7 +35,7 @@ class AllUsersListView(APIView):
 class TaskListCreateView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-
+    parser_classes = (MultiPartParser, FormParser)
     def get(self, request):
         # --- UPDATE THIS CONDITION ---
         # Allow if Manager OR Superuser (Admin)
@@ -206,4 +209,29 @@ class UserPerformanceView(APIView):
             "performance_metrics": metrics,
             "task_history": task_serializer.data
         }, status=status.HTTP_200_OK)
-    
+class TaskCommentListCreateView(ListCreateAPIView):
+    serializer_class = TaskCommentSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Get comments for a specific task.
+        """
+        task_id = self.kwargs['task_id']
+        return TaskComment.objects.filter(task_id=task_id).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        """
+        Save the comment with the current user and the specific task.
+        """
+        task_id = self.kwargs['task_id']
+        task = get_object_or_404(Task, id=task_id)
+
+        # --- Security Check ---
+        # Only allow comments if user is Manager/Admin OR is assigned to the task
+        is_assigned = task.assigned_to.filter(id=self.request.user.id).exists()
+        if not (self.request.user.is_manager or self.request.user.is_superuser or is_assigned):
+            raise serializers.ValidationError("You do not have permission to comment on this task.")
+        
+        serializer.save(user=self.request.user, task=task)

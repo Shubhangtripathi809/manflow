@@ -42,7 +42,8 @@ LOCAL_APPS = [
     "apps.groundtruth",
     "apps.testing",
     "apps.issues",
-    "apps.tasksite"
+    "apps.tasksite",
+    "apps.task_ai",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -130,7 +131,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.23:5173"
+    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.4:5173"
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL", default=True, cast=bool)  # For development

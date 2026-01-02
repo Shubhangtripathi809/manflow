@@ -66,3 +66,32 @@ class Task(models.Model):
 
     def __str__(self):
         return self.heading
+    
+class TaskAttachment(models.Model):
+    task = models.ForeignKey(
+        Task, 
+        related_name='attachments',  # This name is crucial for the serializer
+        on_delete=models.CASCADE
+    )
+    file = models.FileField(upload_to='task_documents/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"File for task {self.task_id}"
+    
+class TaskComment(models.Model):
+    task = models.ForeignKey(
+        Task, 
+        related_name='comments', 
+        on_delete=models.CASCADE
+    )
+    user = models.ForeignKey(
+        User, 
+        related_name='task_comments', 
+        on_delete=models.CASCADE
+    )
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on {self.task.heading}"
