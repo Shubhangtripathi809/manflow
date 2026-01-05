@@ -5,7 +5,6 @@ import {
   FolderKanban,
   FileText,
   TestTube2,
-  AlertCircle,
   Settings,
   LogOut,
   Users,
@@ -21,19 +20,17 @@ import {
   Crown,
   TrendingUp,
   Braces,
-  Type,
-  Table,
   ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { Profile } from './Profile'
 
 const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Documents', href: '/documents', icon: FileText },
   { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
-  { name: 'Issues', href: '/issues', icon: AlertCircle },
   { name: 'Tools', href: '/tools', icon: Cog },
 ];
 
@@ -204,8 +201,6 @@ const UserManagementAccordion = () => {
 const toolsNavigation = [
   { id: 'PDF_HTML', name: 'PDF vs HTML', href: '/tools/pdf-vs-html', icon: FileText },
   { id: 'JSON', name: 'JSON Viewer', href: '/tools/json-viewer', icon: Braces },
-  // { id: 'PIVOT', name: 'Pivot Table', href: '/tools/pivot-table', icon: Table },
-  // { id: 'SUPERSCRIPT', name: 'Superscript Checker', href: '/tools/superscript-checker', icon: Type },
 ];
 
 const ToolsAccordion = () => {
@@ -259,6 +254,7 @@ const ToolsAccordion = () => {
 export function Sidebar() {
   const { user, logout, isLoading, hasRole } = useAuth();
   const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const myTaskItem = { name: 'My Tasks', href: '/taskboard', icon: CheckSquare };
   const adminItem = { name: 'Team Management', href: '/admin/user-roles', icon: Crown };
@@ -271,7 +267,7 @@ export function Sidebar() {
     ...baseNavigation.slice(2),
   ];
 
-  // Insert Team Management placeholder if user is allowed
+  // Team Management placeholder if user is allowed
   if (shouldShowAdminLink) {
     const toolIndex = navigation.findIndex(item => item.name === 'Tools');
     if (toolIndex !== -1) {
@@ -326,7 +322,10 @@ export function Sidebar() {
         )}
       </nav>
       <div className="border-t p-4">
-        <div className="flex items-center gap-3">
+        <div
+          className="flex items-center gap-3 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
+          onClick={() => setProfileOpen(true)}
+        >
           {isLoading ? (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 animate-pulse" />
           ) : (
@@ -369,6 +368,9 @@ export function Sidebar() {
             </>
           )}
         </div>
+
+        {/* Add Profile Component at the end */}
+        <Profile isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
       </div>
     </div>
   );

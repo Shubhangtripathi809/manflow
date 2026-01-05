@@ -5,6 +5,7 @@ import {
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { taskApi, usersApi } from '@/services/api';
+import { TaskComment } from '@/types';
 import './MyTask.scss';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -200,7 +201,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
     const [newUsers, setNewUsers] = useState<number[]>([]);
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const [newDocuments, setNewDocuments] = useState<File[]>([]);
-    const [comments, setComments] = useState<Array<{ id: string, user: string, text: string, timestamp: string }>>([]);
+    const [comments, setComments] = useState<TaskComment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [showAddUserDropdown, setShowAddUserDropdown] = useState(false);
     const [availableUsers, setAvailableUsers] = useState<Array<{ id: number, username: string, first_name: string, last_name: string }>>([]);
@@ -221,6 +222,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             alert('Failed to update task status. Check console for details.');
         },
     });
+
+    // Fetch existing comments from the server when the task modal opens
+    useEffect(() => {
+        const fetchComments = async () => {
+            try {
+                const data = await taskApi.getComments(task.id);
+                // Defensive check: ensure data is an array before setting state
+                setComments(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error('Failed to fetch comments:', error);
+                setComments([]); // Fallback to empty array on error
+            }
+        };
+        if (task.id) fetchComments();
+    }, [task.id]);
+
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => {
@@ -373,6 +390,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             alert('Failed to upload documents. Please try again.');
         } finally {
             setUploadingDocs(false);
+        }
+    };
+
+    const handleAddComment = async () => {
+        if (!newComment.trim()) return;
+        try {
+            // This calls the API we added to api.ts
+            const savedComment = await taskApi.addComment(task.id, { content: newComment });
+            // The API returns a full TaskComment object which matches your state
+            setComments(prev => [...prev, savedComment]);
+            setNewComment('');
+        } catch (error) {
+            console.error('Failed to save comment:', error);
         }
     };
 
@@ -755,16 +785,20 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                         {/* Comments List */}
                         <div className="max-h-64 overflow-y-auto space-y-3 bg-gray-50 rounded-lg p-4">
-                            {comments.length === 0 ? (
+                            {!Array.isArray(comments) || comments.length === 0 ? (
                                 <p className="text-sm text-gray-500 text-center py-4">No comments yet</p>
                             ) : (
                                 comments.map(comment => (
                                     <div key={comment.id} className="bg-white rounded-lg p-3 shadow-sm">
                                         <div className="flex items-start justify-between mb-1">
-                                            <span className="font-semibold text-sm text-gray-800">{comment.user}</span>
-                                            <span className="text-xs text-gray-500">{new Date(comment.timestamp).toLocaleString()}</span>
+                                            <span className="font-semibold text-sm text-gray-800">
+                                                {comment.user_details.username}
+                                            </span>
+                                            <span className="text-xs text-gray-500">
+                                                {new Date(comment.created_at).toLocaleString()}
+                                            </span>
                                         </div>
-                                        <p className="text-sm text-gray-700">{comment.text}</p>
+                                        <p className="text-sm text-gray-700">{comment.content}</p>
                                     </div>
                                 ))
                             )}
@@ -777,33 +811,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 onKeyPress={(e) => {
-                                    if (e.key === 'Enter' && newComment.trim()) {
-                                        const comment = {
-                                            id: Date.now().toString(),
-                                            user: user?.username || 'Anonymous',
-                                            text: newComment,
-                                            timestamp: new Date().toISOString()
-                                        };
-                                        setComments([...comments, comment]);
-                                        setNewComment('');
+                                    // Trigger the API helper on Enter key
+                                    if (e.key === 'Enter') {
+                                        handleAddComment();
                                     }
                                 }}
                                 placeholder="Type a comment..."
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                             <button
-                                onClick={() => {
-                                    if (newComment.trim()) {
-                                        const comment = {
-                                            id: Date.now().toString(),
-                                            user: user?.username || 'Anonymous',
-                                            text: newComment,
-                                            timestamp: new Date().toISOString()
-                                        };
-                                        setComments([...comments, comment]);
-                                        setNewComment('');
-                                    }
-                                }}
+                                onClick={handleAddComment} // Trigger the API helper on Click
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                             >
                                 <Send className="w-4 h-4" />
@@ -915,17 +932,22 @@ export const MyTask: React.FC<MyTaskProps> = () => {
     const pathParts = location.pathname.split('/').filter(p => p);
     const activeFilter = pathParts.length > 1 && pathParts[1].toUpperCase() !== 'CREATE' ? pathParts[1].toUpperCase() : 'ALL';
 
-    // 1. Strictly typed useQuery
-    const { data: tasks = [], isLoading: loading } = useQuery<Task[]>({
+    const { data: tasksData, isLoading: loading } = useQuery({
         queryKey: ['tasks'],
         queryFn: async () => {
             const data = await taskApi.list();
-            if (data && Array.isArray(data.tasks)) return data.tasks;
-            if (data && Array.isArray(data.results)) return data.results;
-            return [];
+            return data;
         },
         enabled: !!user,
     });
+
+    const tasks = React.useMemo(() => {
+    if (!tasksData) return [];
+    if (Array.isArray(tasksData)) return tasksData;
+    if (Array.isArray(tasksData.tasks)) return tasksData.tasks;
+    if (Array.isArray(tasksData.results)) return tasksData.results;
+    return [];
+}, [tasksData]);
 
     // 2.handleAddNewTaskClick
     const handleAddNewTaskClick = useCallback(() => {
@@ -963,23 +985,24 @@ export const MyTask: React.FC<MyTaskProps> = () => {
         }
     }, [queryClient]);
 
-    const filteredTasks = tasks.filter((task: Task) => {
+    const filteredTasks = Array.isArray(tasks) ? tasks.filter((task: Task) => {
         const matchesFilter = activeFilter === 'ALL' || task.status.toUpperCase() === activeFilter.toUpperCase();
         const matchesSearch = searchQuery.trim() === '' ||
             task.heading.toLowerCase().includes(searchQuery.toLowerCase()) ||
             task.description.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesFilter && matchesSearch;
-    });
+    }) : [];
 
     const getTaskStats = () => {
+        const taskArray = Array.isArray(tasks) ? tasks : [];
         return {
-            total: tasks.length,
-            completed: tasks.filter((t: Task) => t.status.toLowerCase() === 'completed').length,
-            pending: tasks.filter((t: Task) => t.status.toLowerCase() === 'pending').length,
-            backlog: tasks.filter((t: Task) => t.status.toLowerCase() === 'backlog').length,
-            inProgress: tasks.filter((t: Task) => t.status.toLowerCase() === 'in_progress').length,
-            deployed: tasks.filter((t: Task) => t.status.toLowerCase() === 'deployed').length,
-            deferred: tasks.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
+            total: taskArray.length,
+            completed: taskArray.filter((t: Task) => t.status.toLowerCase() === 'completed').length,
+            pending: taskArray.filter((t: Task) => t.status.toLowerCase() === 'pending').length,
+            backlog: taskArray.filter((t: Task) => t.status.toLowerCase() === 'backlog').length,
+            inProgress: taskArray.filter((t: Task) => t.status.toLowerCase() === 'in_progress').length,
+            deployed: taskArray.filter((t: Task) => t.status.toLowerCase() === 'deployed').length,
+            deferred: taskArray.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
         };
     }
 
