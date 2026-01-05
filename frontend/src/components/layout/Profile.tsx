@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    Menu,
+    ChevronDown,
     X,
     LayoutDashboard,
     FolderKanban,
@@ -13,9 +13,15 @@ import {
     Clock,
     CheckCircle,
     Activity,
+    Plus,
+    Trash2,
+    Edit2,
+    Save,
+    X as XIcon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { projectsApi, documentsApi, taskApi } from '@/services/api';
+import { projectsApi, documentsApi, taskApi, authApi } from '@/services/api';
+import { Skill } from '@/types';
 import { cn } from '@/lib/utils';
 import './Profile.scss';
 import { Sidebar } from './Sidebar';
@@ -30,14 +36,69 @@ interface ProfileProps {
 export function Profile({ isOpen, onClose }: ProfileProps) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState<TabType>('overview');
-    const [menuOpen, setMenuOpen] = useState(false);
+    console.log('[Profile] Render - isOpen:', isOpen, 'pathname:', location.pathname);
+    const { data: freshUserData, refetch: refetchUser } = useQuery({
+        queryKey: ['fresh-user-data'],
+        queryFn: () => authApi.getMe(),
+        enabled: isOpen,
+    });
+    const [skills, setSkills] = useState<Skill[]>([]);
+    const [isAddingSkill, setIsAddingSkill] = useState(false);
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [levelDropdownOpen, setLevelDropdownOpen] = useState(false);
+    const [newSkill, setNewSkill] = useState<Skill>({
+        name: '',
+        proficiency: 'Beginner',
+        category: 'other'
+    });
+    const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+    const categories = ['frontend', 'backend', 'other'];
+    const levelOptions: Array<{ label: string; value: Skill['proficiency'] }> = [
+        { label: 'Learning', value: 'Learning' },
+        { label: 'Beginner', value: 'Beginner' },
+        { label: 'Intermediate', value: 'Intermediate' },
+        { label: 'Advance', value: 'Advance' },
+    ];
 
+    const queryClient = useQueryClient();
+    console.log('[Profile Debug] Component Rendered. Current window.location:', window.location.pathname);
+    console.log('[Profile Debug] Router location.pathname:', location.pathname);
+    console.log('[Profile Debug] Modal isOpen state:', isOpen);
+
+
+    // Sync fresh user data with skills when profile opens
+    useEffect(() => {
+        if (isOpen && freshUserData?.skills) {
+            setSkills(freshUserData.skills);
+        }
+    }, [isOpen, freshUserData]);
+
+    // Refetch user data when profile opens
     useEffect(() => {
         if (isOpen) {
-            onClose();
+            refetchUser();
         }
-    }, [location.pathname]);
+    }, [isOpen, refetchUser]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.level-dropdown') &&
+                !target.closest('.level-dropdown-trigger') &&
+                !target.closest('.skill-category-select') &&
+                !target.closest('[data-category-dropdown]')) {
+                setLevelDropdownOpen(false);
+                setCategoryDropdownOpen(false);
+            }
+        };
+
+        if (levelDropdownOpen || categoryDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [levelDropdownOpen, categoryDropdownOpen]);
 
     const { data: projectsData } = useQuery({
         queryKey: ['projects'],
@@ -60,20 +121,58 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
         enabled: !!user?.id,
     });
 
+    // Mutation for updating skills
+    const updateSkillsMutation = useMutation({
+        mutationFn: (updatedSkills: Skill[]) => authApi.updateSkills(updatedSkills),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user'] });
+            queryClient.invalidateQueries({ queryKey: ['fresh-user-data'] });
+            refetchUser();
+        },
+    });
+
     const projects = projectsData?.results || [];
     const documents = documentsData?.results || [];
     const tasks = tasksData?.tasks || tasksData?.results || [];
 
-
     const handleNavigation = (href: string) => {
         navigate(href);
-        onClose();
     };
 
     const handleLogout = () => {
         logout();
         onClose();
         navigate('/login');
+    };
+
+    // Skill handlers
+    const handleAddSkill = () => {
+        if (newSkill.name.trim()) {
+            const updatedSkills = [...skills, newSkill];
+            setSkills(updatedSkills);
+            updateSkillsMutation.mutate(updatedSkills);
+            setNewSkill({ name: '', proficiency: 'Beginner', category: 'other' });
+            setIsAddingSkill(false);
+        }
+    };
+
+    const handleUpdateSkill = (index: number) => {
+        updateSkillsMutation.mutate(skills);
+        setEditingIndex(null);
+    };
+
+    const handleDeleteSkill = (index: number) => {
+        const updatedSkills = skills.filter((_, i) => i !== index);
+        setSkills(updatedSkills);
+        updateSkillsMutation.mutate(updatedSkills);
+    };
+
+   const handleCancelEdit = () => {
+        setEditingIndex(null);
+        setIsAddingSkill(false);
+        setNewSkill({ name: '', proficiency: 'Beginner', category: 'other' }); 
+        setLevelDropdownOpen(false);
+        setCategoryDropdownOpen(false);
     };
 
     const stats = {
@@ -264,81 +363,300 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
         </div>
     );
 
-    const renderSkills = () => (
-        <div className="profile-skills">
-            <div className="skills-empty">
-                <Star className="skills-icon" />
-                <h3>No skills items yet</h3>
+    const renderSkills = () => {
+        const groupedSkills = {
+            frontend: skills.filter(s => s.category === 'frontend'),
+            backend: skills.filter(s => s.category === 'backend'),
+            other: skills.filter(s => s.category === 'other'),
+        };
+
+        const renderSkillCard = (skill: typeof skills[0], index: number, category: string) => {
+            const actualIndex = skills.findIndex(s => s.name === skill.name && s.category === category);
+            const isEditing = editingIndex === actualIndex;
+
+            return (
+                <div key={actualIndex} className="skill-card">
+                    {isEditing ? (
+                        <div className="skill-edit">
+                            <input
+                                type="text"
+                                value={skills[actualIndex].name}
+                                onChange={(e) => {
+                                    const updated = [...skills];
+                                    updated[actualIndex].name = e.target.value;
+                                    setSkills(updated);
+                                }}
+                                className="skill-input"
+                                placeholder="Skill name"
+                            />
+                            <select
+                                value={skills[actualIndex].category}
+                                onChange={(e) => {
+                                    const updated = [...skills];
+                                    updated[actualIndex].category = e.target.value;
+                                    setSkills(updated);
+                                }}
+                                className="skill-category-select"
+                            >
+                                <option value="frontend">Frontend</option>
+                                <option value="backend">Backend</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <div className="skill-actions">
+                                <button onClick={() => handleUpdateSkill(actualIndex)} className="btn-save">
+                                    <Save className="h-4 w-4" />
+                                </button>
+                                <button onClick={handleCancelEdit} className="btn-cancel">
+                                    <XIcon className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="skill-header">
+                                <h4 className="skill-name">{skill.name}</h4>
+                                <div className="skill-actions">
+                                    <button onClick={() => setEditingIndex(actualIndex)} className="btn-edit">
+                                        <Edit2 className="h-4 w-4" />
+                                    </button>
+                                    <button onClick={() => handleDeleteSkill(actualIndex)} className="btn-delete">
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="skill-progress">
+                                <div className="skill-progress-bar" style={{
+                                    width: skill.proficiency === 'Advance' ? '100%' :
+                                        skill.proficiency === 'Intermediate' ? '75%' :
+                                            skill.proficiency === 'Beginner' ? '50%' : '25%'
+                                }} />
+                            </div>
+                            <div className="skill-level">{skill.proficiency} Level</div>
+                        </>
+                    )}
+                </div>
+            );
+        };
+
+        return (
+            <div className="profile-skills">
+                {/* Add Skill Button at Top */}
+                <div className="skills-header mb-6 flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-gray-900">My Skills</h2>
+                    <button
+                        onClick={() => setIsAddingSkill(true)}
+                        className="btn-add-skill-compact"
+                        disabled={isAddingSkill}
+                    >
+                        <Plus className="h-5 w-5" />
+                        Add Skill
+                    </button>
+                </div>
+
+                {/* Add Skill Form */}
+                {isAddingSkill && (
+                    <div className="add-skill-form-improved mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-800">Add New Skill</h3>
+                            <button
+                                onClick={handleCancelEdit}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="skill-input-container relative">
+                                <label className="text-sm font-medium text-gray-700 mb-2 block">Skill Name</label>
+                                <input
+                                    type="text"
+                                    value={newSkill.name}
+                                    onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
+                                    onFocus={() => {
+                                        setLevelDropdownOpen(false);
+                                        setCategoryDropdownOpen(false);
+                                    }}
+                                    placeholder="e.g., React, Python, UI/UX Design"
+                                    className="skill-input w-full"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="relative z-0" data-category-dropdown>
+                                    <label className="text-sm font-medium text-gray-700 mb-2 block">Category</label>
+                                    <div
+                                        className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex items-center justify-between min-h-[42px] text-sm transition-colors"
+                                        onClick={() => {
+                                            setCategoryDropdownOpen(!categoryDropdownOpen);
+                                            setLevelDropdownOpen(false);
+                                        }}
+                                    >
+                                        <span className="capitalize text-gray-700">{newSkill.category}</span>
+                                        <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", categoryDropdownOpen && "rotate-180")} />
+                                    </div>
+                                    {categoryDropdownOpen && (
+                                        <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+                                            {categories.map((cat) => (
+                                                <div
+                                                    key={cat}
+                                                    className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm capitalize flex items-center justify-between"
+                                                    onClick={() => {
+                                                        setNewSkill({ ...newSkill, category: cat });
+                                                        setCategoryDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    <span>{cat}</span>
+                                                    {newSkill.category === cat && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="relative z-10 level-dropdown">
+                                    <label className="text-sm font-medium text-gray-700 mb-2 block">Proficiency Level</label>
+                                    <div
+                                        className="level-dropdown-trigger w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex items-center justify-between min-h-[42px] text-sm transition-colors"
+                                        onClick={() => {
+                                            setLevelDropdownOpen(!levelDropdownOpen);
+                                            setCategoryDropdownOpen(false);
+                                        }}
+                                    >
+                                        <span className="text-gray-700">{newSkill.proficiency}</span>
+                                        <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", levelDropdownOpen && "rotate-180")} />
+                                    </div>
+
+                                    {levelDropdownOpen && (
+                                        <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                                            {levelOptions.map((opt) => (
+                                                <div
+                                                    key={opt.label}
+                                                    className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 flex items-center justify-between"
+                                                    onClick={() => {
+                                                        setNewSkill({ ...newSkill, proficiency: opt.value });
+                                                        setLevelDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    {opt.label}
+                                                    {newSkill.proficiency === opt.label && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="form-actions flex gap-3 pt-2">
+                                <button onClick={handleAddSkill} className="btn-primary flex-1">Add Skill</button>
+                                <button onClick={handleCancelEdit} className="btn-secondary">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {skills.length === 0 && !isAddingSkill ? (
+                    <div className="skills-empty">
+                        <Star className="skills-icon" />
+                        <h3>No skills added yet</h3>
+                        <p>Start building your skills profile</p>
+                    </div>
+                ) : (
+                    <>
+                        {groupedSkills.backend.length > 0 && (
+                            <div className="skills-category">
+                                <h3 className="category-title">Backend Skills</h3>
+                                <div className="skills-grid">
+                                    {groupedSkills.backend.map((skill, idx) => renderSkillCard(skill, idx, 'backend'))}
+                                </div>
+                            </div>
+                        )}
+
+                        {groupedSkills.frontend.length > 0 && (
+                            <div className="skills-category">
+                                <h3 className="category-title">Frontend Skills</h3>
+                                <div className="skills-grid">
+                                    {groupedSkills.frontend.map((skill, idx) => renderSkillCard(skill, idx, 'frontend'))}
+                                </div>
+                            </div>
+                        )}
+
+                        {groupedSkills.other.length > 0 && (
+                            <div className="skills-category">
+                                <h3 className="category-title">Other Skills</h3>
+                                <div className="skills-grid">
+                                    {groupedSkills.other.map((skill, idx) => renderSkillCard(skill, idx, 'other'))}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
-        </div>
-    );
+        );
+    };
 
     if (!isOpen) return null;
 
     return (
-    <div className="fixed inset-0 z-50 bg-background flex overflow-hidden">
-        
-        {/* Left Sidebar*/}
-       <aside 
-            className="w-64 border-r bg-card flex-shrink-0"
-            onClick={(e) => {
-                if ((e.target as HTMLElement).closest('a, button')) {
-                    onClose();
-                }
-            }}
-        >
-            <Sidebar />
-        </aside>
+        <div className="fixed inset-0 z-50 bg-background flex overflow-hidden">
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white">
-            
-            {/* Header */}
-            <div className="profile-header flex items-center justify-between p-4 border-b">
-                <div className="header-left flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white font-bold">
-                        {user?.username?.charAt(0).toUpperCase()}
+            {/* Left Sidebar*/}
+            <aside
+                className="w-64 border-r bg-card flex-shrink-0"
+            >
+                <Sidebar />
+            </aside>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 bg-white">
+
+                {/* Header */}
+                <div className="profile-header flex items-center justify-between p-4 border-b">
+                    <div className="header-left flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white font-bold">
+                            {user?.username?.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm font-semibold">{user?.username}</span>
                     </div>
-                    <span className="text-sm font-semibold">{user?.username}</span>
-                </div>
-                <button 
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors" 
-                    onClick={onClose}
-                >
-                    <X className="h-6 w-6 text-slate-500" />
-                </button>
-            </div>
-
-            {/* Content Tabs */}
-            <div className="profile-tabs flex gap-8 px-8 py-4 border-b">
-                {(['overview', 'tasks', 'projects', 'skills'] as const).map((tab) => (
                     <button
-                        key={tab}
-                        className={cn(
-                            'flex items-center gap-2 pb-2 text-sm font-medium transition-all border-b-2',
-                            activeTab === tab 
-                                ? 'border-primary text-primary' 
-                                : 'border-transparent text-muted-foreground hover:text-foreground'
-                        )}
-                        onClick={() => setActiveTab(tab)}
+                        className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                        onClick={onClose}
                     >
-                        {tab === 'overview' && <LayoutDashboard className="h-4 w-4" />}
-                        {tab === 'tasks' && <CheckSquare className="h-4 w-4" />}
-                        {tab === 'projects' && <FolderKanban className="h-4 w-4" />}
-                        {tab === 'skills' && <Star className="h-4 w-4" />}
-                        <span className="capitalize">{tab}</span>
+                        <X className="h-6 w-6 text-slate-500" />
                     </button>
-                ))}
-            </div>
+                </div>
 
-            {/* Scrollable Content */}
-            <div className="profile-content flex-1 overflow-y-auto p-8">
-                {activeTab === 'overview' && renderOverview()}
-                {activeTab === 'tasks' && renderTasks()}
-                {activeTab === 'projects' && renderProjects()}
-                {activeTab === 'skills' && renderSkills()}
+                {/* Content Tabs */}
+                <div className="profile-tabs flex gap-8 px-8 py-4 border-b">
+                    {(['overview', 'tasks', 'projects', 'skills'] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            className={cn(
+                                'flex items-center gap-2 pb-2 text-sm font-medium transition-all border-b-2',
+                                activeTab === tab
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                            )}
+                            onClick={() => setActiveTab(tab)}
+                        >
+                            {tab === 'overview' && <LayoutDashboard className="h-4 w-4" />}
+                            {tab === 'tasks' && <CheckSquare className="h-4 w-4" />}
+                            {tab === 'projects' && <FolderKanban className="h-4 w-4" />}
+                            {tab === 'skills' && <Star className="h-4 w-4" />}
+                            <span className="capitalize">{tab}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="profile-content flex-1 overflow-y-auto p-8">
+                    {activeTab === 'overview' && renderOverview()}
+                    {activeTab === 'tasks' && renderTasks()}
+                    {activeTab === 'projects' && renderProjects()}
+                    {activeTab === 'skills' && renderSkills()}
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
 }

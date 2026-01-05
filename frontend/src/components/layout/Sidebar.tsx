@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -254,7 +254,8 @@ const ToolsAccordion = () => {
 export function Sidebar() {
   const { user, logout, isLoading, hasRole } = useAuth();
   const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+  
 
   const myTaskItem = { name: 'My Tasks', href: '/taskboard', icon: CheckSquare };
   const adminItem = { name: 'Team Management', href: '/admin/user-roles', icon: Crown };
@@ -324,7 +325,7 @@ export function Sidebar() {
       <div className="border-t p-4">
         <div
           className="flex items-center gap-3 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
-          onClick={() => setProfileOpen(true)}
+          onClick={() => navigate('/profile')}
         >
           {isLoading ? (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 animate-pulse" />
@@ -368,9 +369,6 @@ export function Sidebar() {
             </>
           )}
         </div>
-
-        {/* Add Profile Component at the end */}
-        <Profile isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
       </div>
     </div>
   );

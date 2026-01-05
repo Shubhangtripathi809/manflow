@@ -16,12 +16,9 @@ import type { Project } from '@/types';
 
 const TASK_TYPES = [
   { value: '', label: 'All Types' },
-  { value: 'key_value', label: 'Key-Value Extraction' },
-  { value: 'table', label: 'Table Extraction' },
-  { value: 'classification', label: 'Document Classification' },
-  { value: 'ocr', label: 'OCR' },
   { value: 'client', label: 'Client' },
   { value: 'internal', label: 'Internal' },
+  { value: 'content_creation', label: 'Content Creation' },
   { value: 'ideas', label: 'Ideas' },
 ];
 

@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse } from '@/types';
+import type { AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.18:8000/api/v1';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.18:8001/';
@@ -109,6 +109,13 @@ export const authApi = {
     const response = await api.get('/auth/me/');
     return response.data;
   },
+
+  updateSkills: async (skills: Skill[]) => {
+    // Sends the array of skill objects as verified in Postman
+    const response = await api.patch('/auth/me/', { skills });
+    return response.data;
+  },
+
 };
 
 // Projects API
@@ -197,17 +204,17 @@ export const documentsApi = {
     formData.append('file', file);
     await axios.post(s3Url, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data', 
+        'Content-Type': 'multipart/form-data',
       },
     });
   },
 
   // This `create` now expects the final S3 file_key
- create: async (data: { 
-    project: number; 
-    name: string; 
+  create: async (data: {
+    project: number;
+    name: string;
     description: string;
-    file_key: string; 
+    file_key: string;
     initial_gt_data?: Record<string, unknown>;
     file_type: string;
     original_file_name: string;
@@ -315,38 +322,38 @@ export const testRunsApi = {
 };
 
 // Issues API
-export const issuesApi = {
-  list: async (params?: {
-    project?: number;
-    status?: string;
-    priority?: string;
-    assignee?: number;
-  }) => {
-    const response = await api.get('/issues/', { params });
-    return response.data;
-  },
+// export const issuesApi = {
+//   list: async (params?: {
+//     project?: number;
+//     status?: string;
+//     priority?: string;
+//     assignee?: number;
+//   }) => {
+//     const response = await api.get('/issues/', { params });
+//     return response.data;
+//   },
 
-  get: async (id: string) => {
-    const response = await api.get(`/issues/${id}/`);
-    return response.data;
-  },
+//   get: async (id: string) => {
+//     const response = await api.get(`/issues/${id}/`);
+//     return response.data;
+//   },
 
-  create: async (data: {
-    project: number;
-    title: string;
-    description?: string;
-    priority?: string;
-    issue_type?: string;
-  }) => {
-    const response = await api.post('/issues/', data);
-    return response.data;
-  },
+//   create: async (data: {
+//     project: number;
+//     title: string;
+//     description?: string;
+//     priority?: string;
+//     issue_type?: string;
+//   }) => {
+//     const response = await api.post('/issues/', data);
+//     return response.data;
+//   },
 
-  update: async (id: string, data: Partial<{ title: string; status: string; priority: string }>) => {
-    const response = await api.patch(`/issues/${id}/`, data);
-    return response.data;
-  },
-};
+//   update: async (id: string, data: Partial<{ title: string; status: string; priority: string }>) => {
+//     const response = await api.patch(`/issues/${id}/`, data);
+//     return response.data;
+//   },
+// };
 
 // Add New Task API
 export const taskApi = {
@@ -354,14 +361,14 @@ export const taskApi = {
     const response = await api.get('/tasksite/');
     const data = response.data;
     if (data.tasks && Array.isArray(data.tasks)) {
-        data.tasks = data.tasks.map((task: any) => ({
-            ...task,
-            attachments: task.attachments || []
-        }));
+      data.tasks = data.tasks.map((task: any) => ({
+        ...task,
+        attachments: task.attachments || []
+      }));
     }
-    
+
     return data;
-},
+  },
 
   // Create a new task
   create: async (formData: FormData) => {
@@ -430,6 +437,18 @@ export const taskApi = {
       recent_activity: recentActivity,
     };
 
+  },
+
+  // Get comments for a specific task
+  getComments: async (taskId: number) => {
+    const response = await api.get<TaskComment[]>(`/tasksite/${taskId}/comments/`);
+    return response.data;
+  },
+
+  // Post a new comment to a task
+  addComment: async (taskId: number, data: CreateTaskCommentPayload) => {
+    const response = await api.post<TaskComment>(`/tasksite/${taskId}/comments/`, data);
+    return response.data;
   },
 
 };

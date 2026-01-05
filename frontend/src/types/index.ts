@@ -8,6 +8,13 @@ export interface User {
   avatar?: string;
   is_active: boolean;
   date_joined: string;
+  skills?: Skill[];
+}
+
+export interface Skill {
+  name: string;
+  proficiency: 'Learning' | 'Beginner' | 'Intermediate' | 'Advance';
+  category: string;
 }
 
 export interface UserMinimal {
@@ -82,6 +89,58 @@ export interface Label {
   description: string;
   is_default: boolean;
   created_at: string;
+}
+
+export interface TaskAttachment {
+  id: number;
+  file_url: string;
+  file_name: string;
+  uploaded_at: string;
+}
+
+export interface TaskResponse {
+  message: string;
+  task: {
+    id: number;
+    heading: string;
+    description: string;
+    start_date: string | null;
+    end_date: string | null;
+    priority: string;
+    project: number;
+    project_details: {
+      id: number;
+      name: string;
+    };
+    assigned_to: number[];
+    assigned_to_user_details: User[];
+    assigned_by: number;
+    assigned_by_user_details: User;
+    status: string;
+    attachments: TaskAttachment[];
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+// In taskdetailmodal comment section 
+export interface TaskComment {
+  id: number;
+  task: number;
+  user: number;
+  user_details: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  content: string;
+  created_at: string;
+}
+
+export interface CreateTaskCommentPayload {
+  content: string;
 }
 
 // Document types
@@ -442,35 +501,3 @@ export interface GetDownloadUrlResponse {
   url: string;
 }
 
-// Create task 
-export interface TaskAttachment {
-  id: number;
-  file_url: string;
-  file_name: string;
-  uploaded_at: string;
-}
-
-export interface TaskResponse {
-  message: string;
-  task: {
-    id: number;
-    heading: string;
-    description: string;
-    start_date: string | null;
-    end_date: string | null;
-    priority: string;
-    project: number;
-    project_details: {
-      id: number;
-      name: string;
-    };
-    assigned_to: number[];
-    assigned_to_user_details: User[];
-    assigned_by: number;
-    assigned_by_user_details: User;
-    status: string;
-    attachments: TaskAttachment[];
-    created_at: string;
-    updated_at: string;
-  };
-}
