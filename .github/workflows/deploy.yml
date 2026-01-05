@@ -1,0 +1,44 @@
+name: Deploy ZanFlow (Django + React)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup SSH access to EC2
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2.pem
+          chmod 400 ~/.ssh/ec2.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      # 3. Deploy application using Docker Compose
+      - name: Deploy to EC2
+        run: |
+          ssh -i ~/.ssh/ec2.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "➡️ Moving to app directory"
+            cd ${{ secrets.APP_DIR }}
+
+            echo "⬇️ Pulling latest code"
+            git pull origin main
+
+            echo "🛑 Stopping running containers"
+            docker-compose down
+
+            echo "🚀 Building & starting containers"
+            docker-compose up -d --build
+
+            echo "✅ Deployment completed successfully"
+          EOF
