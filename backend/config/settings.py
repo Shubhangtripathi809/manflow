@@ -44,6 +44,7 @@ LOCAL_APPS = [
     "apps.issues",
     "apps.tasksite",
     "apps.task_ai",
+    
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

@@ -13,10 +13,10 @@ class Project(UserStampedModel):
     """
     
     class TaskType(models.TextChoices):
-        KEY_VALUE_EXTRACTION = "key_value", "Key-Value Extraction"
-        TABLE_EXTRACTION = "table", "Table Extraction"
-        DOCUMENT_CLASSIFICATION = "classification", "Document Classification"
-        OCR = "ocr", "OCR"
+        # KEY_VALUE_EXTRACTION = "key_value", "Key-Value Extraction"
+        # TABLE_EXTRACTION = "table", "Table Extraction"
+        # DOCUMENT_CLASSIFICATION = "classification", "Document Classification"
+        # OCR = "ocr", "OCR"
         Client = "client", "Client"
         Internal = "internal", "Internal"
         CONTENT_CREATION = "content_creation", "Content Creation",
@@ -27,7 +27,7 @@ class Project(UserStampedModel):
     task_type = models.CharField(
         max_length=50,
         choices=TaskType.choices,
-        default=TaskType.KEY_VALUE_EXTRACTION,
+        default=TaskType.Client,
     )
     
     # Project settings (JSON)
