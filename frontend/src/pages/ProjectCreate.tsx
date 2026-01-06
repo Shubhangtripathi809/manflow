@@ -85,10 +85,6 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
 };
 
 const TASK_TYPES = [
-  // { value: 'key_value', label: 'Key-Value Extraction' },
-  // { value: 'table', label: 'Table Extraction' },
-  // { value: 'classification', label: 'Document Classification' },
-  // { value: 'ocr', label: 'OCR' },
   { value: 'client', label: 'Client' },
   { value: 'internal', label: 'Internal' },
   { value: 'content_creation', label: 'Content Creation' },

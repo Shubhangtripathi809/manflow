@@ -54,61 +54,61 @@ const getStatusConfig = (status: Task['status']) => {
     switch (normalizedStatus) {
         case 'PENDING':
             return {
-                bg: 'bg-yellow-100 dark:bg-yellow-900/20',
+                bg: 'bg-yellow-50 dark:bg-yellow-900/20',
                 text: 'text-yellow-800 dark:text-yellow-300',
                 badge: 'bg-yellow-500',
-                cardClass: 'card-yellow',
+                cardClass: 'card-pending',
                 label: 'PENDING',
                 icon: Clock
             };
         case 'BACKLOG':
             return {
-                bg: 'bg-orange-100 dark:bg-orange-900/20',
+                bg: 'bg-orange-50 dark:bg-orange-900/20',
                 text: 'text-orange-800 dark:text-orange-300',
                 badge: 'bg-orange-500',
-                cardClass: 'card-orange',
+                cardClass: 'card-backlog',
                 label: 'BACKLOG',
                 icon: ListTodo
             };
         case 'IN_PROGRESS':
             return {
-                bg: 'bg-blue-100 dark:bg-blue-900/20',
+                bg: 'bg-blue-50 dark:bg-blue-900/20',
                 text: 'text-blue-800 dark:text-blue-300',
                 badge: 'bg-blue-500',
-                cardClass: 'card-blue',
+                cardClass: 'card-in-progress',
                 label: 'IN PROGRESS',
                 icon: PlayCircle
             };
         case 'COMPLETED':
             return {
-                bg: 'bg-green-100 dark:bg-green-900/20',
+                bg: 'bg-green-50 dark:bg-green-900/20',
                 text: 'text-green-800 dark:text-green-300',
                 badge: 'bg-green-500',
-                cardClass: 'card-green',
+                cardClass: 'card-completed',
                 label: 'COMPLETED',
                 icon: CheckCircle
             };
         case 'DEPLOYED':
             return {
-                bg: 'bg-purple-100 dark:bg-purple-900/20',
+                bg: 'bg-purple-50 dark:bg-purple-900/20',
                 text: 'text-purple-800 dark:text-purple-300',
                 badge: 'bg-purple-500',
-                cardClass: 'card-purple',
+                cardClass: 'card-deployed',
                 label: 'DEPLOYED',
                 icon: CheckSquare
             };
         case 'DEFERRED':
             return {
-                bg: 'bg-gray-100 dark:bg-gray-800',
+                bg: 'bg-gray-50 dark:bg-gray-800',
                 text: 'text-gray-800 dark:text-gray-300',
                 badge: 'bg-gray-500',
-                cardClass: 'card-light-green',
+                cardClass: 'card-deferred',
                 label: 'DEFERRED',
                 icon: Pause
             };
         default:
             return {
-                bg: 'bg-gray-100 dark:bg-gray-800',
+                bg: 'bg-gray-50 dark:bg-gray-800',
                 text: 'text-gray-800 dark:text-gray-300',
                 badge: 'bg-gray-500',
                 cardClass: 'card-gray',
@@ -801,7 +801,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                             ) : comments.length === 0 ? (
                                 <p className="text-sm text-gray-500 text-center py-4">No comments yet</p>
                             ) : (
-                                comments.map(comment => (
+                                comments.map((comment: TaskComment) => (
                                     <div key={comment.id} className="bg-white rounded-lg p-3 shadow-sm">
                                         <div className="flex items-start justify-between mb-1">
                                             <span className="font-semibold text-sm text-gray-800">
@@ -982,11 +982,23 @@ export const MyTask: React.FC<MyTaskProps> = () => {
         setSelectedTask(null);
     }, []);
 
-    // 3. Replace setTasks with queryClient cache updates
     const handleSelectedTaskUpdate = useCallback((updatedTask: Task) => {
-        queryClient.setQueryData<Task[]>(['tasks'], (oldData) => {
-            return oldData ? oldData.map((t: Task) => (t.id === updatedTask.id ? updatedTask : t)) : [updatedTask];
+        queryClient.setQueryData<any>(['tasks'], (oldData: any) => {
+            if (!oldData) return oldData;
+            if (oldData.tasks && Array.isArray(oldData.tasks)) {
+                return {
+                    ...oldData,
+                    tasks: oldData.tasks.map((t: any) => t.id === updatedTask.id ? updatedTask : t)
+                };
+            }
+
+            if (Array.isArray(oldData)) {
+                return oldData.map((t: any) => t.id === updatedTask.id ? updatedTask : t);
+            }
+
+            return oldData;
         });
+
         setSelectedTask(updatedTask);
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }, [queryClient]);
@@ -994,9 +1006,21 @@ export const MyTask: React.FC<MyTaskProps> = () => {
     const handleDeleteTask = useCallback(async (id: number) => {
         try {
             await taskApi.delete(id);
-            queryClient.setQueryData<Task[]>(['tasks'], (oldData) => {
-                return oldData ? oldData.filter((t: Task) => t.id !== id) : [];
+            queryClient.setQueryData(['tasks'], (oldData: any) => {
+                if (!oldData) return oldData;
+                if (oldData.tasks && Array.isArray(oldData.tasks)) {
+                    return {
+                        ...oldData,
+                        tasks: oldData.tasks.filter((t: any) => t.id !== id)
+                    };
+                }
+                if (Array.isArray(oldData)) {
+                    return oldData.filter((t: any) => t.id !== id);
+                }
+
+                return oldData;
             });
+
             setSelectedTask(null);
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
         } catch (error) {

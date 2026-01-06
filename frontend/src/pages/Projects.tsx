@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState  } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, FolderKanban, FileText, Users } from 'lucide-react';
+import { Plus, FolderKanban, FileText, Users, UsersIcon } from 'lucide-react';
 import {
   Button,
   Card,
@@ -24,6 +24,7 @@ const TASK_TYPES = [
 
 export function Projects() {
   const [filter, setFilter] = useState<string>('');
+  const [openMembersCard, setOpenMembersCard] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['projects', filter],
@@ -48,23 +49,6 @@ export function Projects() {
           </Button>
         </Link>
       </div>
-
-      {/* Filters */}
-      {/* <div className="flex gap-2 flex-wrap">
-        {TASK_TYPES.map((type) => (
-          <button
-            key={type.value}
-            onClick={() => setFilter(type.value)}
-            className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-              filter === type.value
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted hover:bg-muted/80'
-            }`}
-          >
-            {type.label}
-          </button>
-        ))}
-      </div> */}
 
       {/* Projects Grid */}
       {isLoading ? (
@@ -103,10 +87,102 @@ export function Projects() {
                         <FileText className="h-4 w-4" />
                         {project.document_count || 0} docs
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {project.member_count || 0} members
-                      </span>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOpenMembersCard(openMembersCard === project.id ? null : project.id);
+                          }}
+                          className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
+                        >
+                          <Users className="h-4 w-4" />
+                          {project.member_count || 0} members
+                        </button>
+
+                        {openMembersCard === project.id && (
+                          <>
+                            {/* Backdrop */}
+                            <div
+                              className="fixed inset-0 z-[100]"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setOpenMembersCard(null);
+                              }}
+                            />
+
+                            {/* Popup */}
+                            <div
+                              className="absolute left-0 top-full mt-2 z-[101] w-72 bg-background border border-border rounded-lg shadow-xl"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                            >
+                              <div className="p-3 border-b border-border">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                                    <UsersIcon className="h-4 w-4" />
+                                    Project Members
+                                  </h4>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {project.members?.length || project.member_count || 0}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="max-h-64 overflow-y-auto p-2">
+                                {project.members && project.members.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {project.members.map((member) => {
+                                      const userData = member.user;
+                                      const initials = userData.full_name
+                                        .split(' ')
+                                        .map(n => n[0])
+                                        .join('')
+                                        .toUpperCase()
+                                        .slice(0, 2);
+
+                                      return (
+                                        <div
+                                          key={member.id}
+                                          className="flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors"
+                                        >
+                                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                                            {initials}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">
+                                              {userData.full_name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate">
+                                              @{userData.username}
+                                            </p>
+                                          </div>
+                                          {member.role === 'owner' && (
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                              Owner
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-8">
+                                    <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                                    <p className="text-sm text-muted-foreground">
+                                      No members assigned
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     {/* Member Names Section */}

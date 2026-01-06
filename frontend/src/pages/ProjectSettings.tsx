@@ -25,13 +25,10 @@ import { projectsApi } from '@/services/api';
 import type { Project, Label, TaskType } from '@/types';
 
 const TASK_TYPES = [
-  { value: 'key_value', label: 'Key-Value Extraction' },
-  { value: 'table', label: 'Table Extraction' },
-  { value: 'classification', label: 'Document Classification' },
-  { value: 'ocr', label: 'OCR' },
   { value: 'client', label: 'Client' },
   { value: 'internal', label: 'Internal' },
   { value: 'content_creation', label: 'Content Creation' },
+  { value: 'ideas', label: 'Ideas' },
 ];
 
 const PRESET_COLORS = [

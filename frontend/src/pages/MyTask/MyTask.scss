@@ -64,42 +64,48 @@
     }
 }
 
-.card-purple { 
-    background-color: #f3e8ff;
-}
-.card-orange { 
-    background-color: #dba564; 
-}
-.card-green { 
-    background-color: #e6ffed;
-}
-.card-light-green {
-    background-color: #e0f8e0; 
-}
-.card-yellow { 
-    background-color: #fffde7; 
-}
-.card-blue {
-    background-color: #e8f5ff;
+// Clean, minimal card backgrounds with white base
+.card-pending { 
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
 }
 
+.card-backlog { 
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
+}
 
-// .deployed { background-color: #8b5cf6; } 
-// .completed { background-color: #10b981; } 
-// .deferred { background-color: #94a3b8; } 
-// .pending { background-color: #f59e0b; } 
-// .in_progress { background-color: #3b82f6; } 
-// .backlog { background-color: #c186ad; }
+.card-in-progress {
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
+}
 
-// .status-badge {
-//     color: white;
-//     font-size: 0.65rem !important;
-// }
+.card-completed { 
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
+}
+
+.card-deployed {
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
+}
+
+.card-deferred {
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
+    opacity: 0.9;
+}
+
+.card-gray {
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
+}
+
 
 // Task Description Styling
 .task-description-preview,
 .task-description-content {
-    // Reset and base styles
+
     line-height: 1.6;
     word-wrap: break-word;
     

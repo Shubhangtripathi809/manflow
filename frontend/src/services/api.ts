@@ -321,40 +321,6 @@ export const testRunsApi = {
   },
 };
 
-// Issues API
-// export const issuesApi = {
-//   list: async (params?: {
-//     project?: number;
-//     status?: string;
-//     priority?: string;
-//     assignee?: number;
-//   }) => {
-//     const response = await api.get('/issues/', { params });
-//     return response.data;
-//   },
-
-//   get: async (id: string) => {
-//     const response = await api.get(`/issues/${id}/`);
-//     return response.data;
-//   },
-
-//   create: async (data: {
-//     project: number;
-//     title: string;
-//     description?: string;
-//     priority?: string;
-//     issue_type?: string;
-//   }) => {
-//     const response = await api.post('/issues/', data);
-//     return response.data;
-//   },
-
-//   update: async (id: string, data: Partial<{ title: string; status: string; priority: string }>) => {
-//     const response = await api.patch(`/issues/${id}/`, data);
-//     return response.data;
-//   },
-// };
-
 // Add New Task API
 export const taskApi = {
   list: async () => {

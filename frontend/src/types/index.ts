@@ -24,6 +24,8 @@ export interface UserMinimal {
   avatar?: string;
 }
 
+
+
 // Project types
 export interface Project {
   id: number;
@@ -39,8 +41,16 @@ export interface Project {
   labels: Label[];
   member_count: number;
   document_count: number;
+  members?: ProjectMember[];
 }
 
+export interface ProjectMember {
+  id: number;
+  user: UserMinimal;
+  full_name: string;
+  role: 'owner' | 'member';
+  joined_at: string;
+}
 //  In create task load project name from project list API
 export interface ProjectMinimal {
   id: number;
@@ -55,13 +65,10 @@ export interface PaginatedProjectsResponse {
 }
 
 export type TaskType =
-  | 'key_value'
-  | 'table'
-  | 'classification'
-  | 'ocr'
   | 'client'
   | 'internal'
-  | 'content-creation';
+  | 'content-creation'
+  | 'ideas';
 
 export interface ProjectSettings {
   metrics?: string[];
@@ -122,6 +129,13 @@ export interface TaskResponse {
     updated_at: string;
   };
 }
+
+// export interface PaginatedTasksResponse {
+//   tasks: Task[];
+//   count?: number;
+//   next?: string | null;
+//   previous?: string | null;
+// }
 
 // In taskdetailmodal comment section 
 export interface TaskComment {
