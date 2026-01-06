@@ -14,16 +14,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Backend checks
-      - name: Backend – install & test
+      - name: Backend tests
         run: |
           cd backend
           pip install -r requirements.txt
           python manage.py test
 
-      # Frontend checks
-      - name: Frontend – build check
+      - name: Frontend build
         run: |
           cd frontend
           npm install
           npm run build
+
