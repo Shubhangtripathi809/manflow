@@ -1,0 +1,29 @@
+name: CI – ZanFlow
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Backend checks
+      - name: Backend – install & test
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          python manage.py test
+
+      # Frontend checks
+      - name: Frontend – build check
+        run: |
+          cd frontend
+          npm install
+          npm run build
