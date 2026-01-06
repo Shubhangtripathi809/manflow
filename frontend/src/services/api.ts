@@ -441,14 +441,14 @@ export const taskApi = {
 
   // Get comments for a specific task
   getComments: async (taskId: number) => {
-    const response = await api.get<TaskComment[]>(`/tasksite/${taskId}/comments/`);
-    return response.data;
+    const response = await api.get<any>(`/tasksite/${taskId}/comments/`);
+    return response.data.results || [];
   },
 
   // Post a new comment to a task
-  addComment: async (taskId: number, data: CreateTaskCommentPayload) => {
+ addComment: async (taskId: number, data: CreateTaskCommentPayload) => {
     const response = await api.post<TaskComment>(`/tasksite/${taskId}/comments/`, data);
-    return response.data;
+    return response.data; 
   },
 
 };

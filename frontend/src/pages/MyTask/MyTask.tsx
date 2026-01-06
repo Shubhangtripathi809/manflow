@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    CheckSquare, Calendar, Clock, Plus, Grid3X3, List, Search, Users, AlertCircle, CheckCircle, PlayCircle, Pause, ArrowLeft, Bell, X, Trash2, Save, User as UserIcon, Edit3, Loader2, ListTodo, ChevronDown, ChevronUp, FileText, Download, Send
+    CheckSquare, Calendar, Clock, Plus, Grid3X3, List, Search, Users, AlertCircle, CheckCircle, PlayCircle, Pause, Bell, X, Trash2, Save, User as UserIcon, Edit3, Loader2, ListTodo, ChevronDown, ChevronUp, FileText, Download, Send
 } from 'lucide-react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -201,7 +201,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
     const [newUsers, setNewUsers] = useState<number[]>([]);
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const [newDocuments, setNewDocuments] = useState<File[]>([]);
-    const [comments, setComments] = useState<TaskComment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [showAddUserDropdown, setShowAddUserDropdown] = useState(false);
     const [availableUsers, setAvailableUsers] = useState<Array<{ id: number, username: string, first_name: string, last_name: string }>>([]);
@@ -223,20 +222,20 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         },
     });
 
-    // Fetch existing comments from the server when the task modal opens
-    useEffect(() => {
-        const fetchComments = async () => {
-            try {
-                const data = await taskApi.getComments(task.id);
-                // Defensive check: ensure data is an array before setting state
-                setComments(Array.isArray(data) ? data : []);
-            } catch (error) {
-                console.error('Failed to fetch comments:', error);
-                setComments([]); // Fallback to empty array on error
-            }
-        };
-        if (task.id) fetchComments();
-    }, [task.id]);
+    // Fetch comments using React Query instead of useEffect + useState
+    const { data: commentsData, isLoading: loadingComments } = useQuery({
+        queryKey: ['task-comments', task.id],
+        queryFn: () => taskApi.getComments(task.id),
+        enabled: !!task.id,
+        refetchInterval: 10000,
+    });
+
+    const comments = React.useMemo(() => {
+        if (!commentsData) return [];
+        if (Array.isArray(commentsData)) return commentsData;
+        if (commentsData.results && Array.isArray(commentsData.results)) return commentsData.results;
+        return [];
+    }, [commentsData]);
 
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -393,17 +392,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         }
     };
 
-    const handleAddComment = async () => {
-        if (!newComment.trim()) return;
-        try {
-            // This calls the API we added to api.ts
-            const savedComment = await taskApi.addComment(task.id, { content: newComment });
-            // The API returns a full TaskComment object which matches your state
-            setComments(prev => [...prev, savedComment]);
+    // Add mutation for creating comments
+    const addCommentMutation = useMutation({
+        mutationFn: (content: string) => taskApi.addComment(task.id, { content }),
+        onSuccess: (newComment) => {
+            queryClient.setQueryData<TaskComment[]>(['task-comments', task.id], (old) => {
+                const currentComments = Array.isArray(old) ? old : [];
+                return [...currentComments, newComment];
+            });
             setNewComment('');
-        } catch (error) {
+            queryClient.invalidateQueries({ queryKey: ['task-comments', task.id] });
+        },
+        onError: (error) => {
             console.error('Failed to save comment:', error);
-        }
+            alert('Failed to save comment. Please try again.');
+        },
+    });
+
+    const handleAddComment = () => {
+        if (!newComment.trim()) return;
+        addCommentMutation.mutate(newComment.trim());
     };
 
     return (
@@ -785,14 +793,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                         {/* Comments List */}
                         <div className="max-h-64 overflow-y-auto space-y-3 bg-gray-50 rounded-lg p-4">
-                            {!Array.isArray(comments) || comments.length === 0 ? (
+                            {loadingComments ? (
+                                <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
+                                    <span className="text-sm text-gray-600">Loading comments...</span>
+                                </div>
+                            ) : comments.length === 0 ? (
                                 <p className="text-sm text-gray-500 text-center py-4">No comments yet</p>
                             ) : (
                                 comments.map(comment => (
                                     <div key={comment.id} className="bg-white rounded-lg p-3 shadow-sm">
                                         <div className="flex items-start justify-between mb-1">
                                             <span className="font-semibold text-sm text-gray-800">
-                                                {comment.user_details.username}
+                                                {comment.user_details.first_name || comment.user_details.username}
                                             </span>
                                             <span className="text-xs text-gray-500">
                                                 {new Date(comment.created_at).toLocaleString()}
@@ -811,7 +824,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 onKeyPress={(e) => {
-                                    // Trigger the API helper on Enter key
                                     if (e.key === 'Enter') {
                                         handleAddComment();
                                     }
@@ -820,10 +832,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                             <button
-                                onClick={handleAddComment} // Trigger the API helper on Click
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                onClick={handleAddComment}
+                                disabled={addCommentMutation.isPending || !newComment.trim()}
+                                className={`px-4 py-2 rounded-lg transition-colors flex items-center ${addCommentMutation.isPending || !newComment.trim()
+                                    ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    }`}
                             >
-                                <Send className="w-4 h-4" />
+                                {addCommentMutation.isPending ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Send className="w-4 h-4" />
+                                )}
                             </button>
                         </div>
                     </section>
@@ -942,12 +962,12 @@ export const MyTask: React.FC<MyTaskProps> = () => {
     });
 
     const tasks = React.useMemo(() => {
-    if (!tasksData) return [];
-    if (Array.isArray(tasksData)) return tasksData;
-    if (Array.isArray(tasksData.tasks)) return tasksData.tasks;
-    if (Array.isArray(tasksData.results)) return tasksData.results;
-    return [];
-}, [tasksData]);
+        if (!tasksData) return [];
+        if (Array.isArray(tasksData)) return tasksData;
+        if (Array.isArray(tasksData.tasks)) return tasksData.tasks;
+        if (Array.isArray(tasksData.results)) return tasksData.results;
+        return [];
+    }, [tasksData]);
 
     // 2.handleAddNewTaskClick
     const handleAddNewTaskClick = useCallback(() => {
