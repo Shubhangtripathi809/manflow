@@ -7,7 +7,8 @@ import {
     X, Download, Film, FileJson, ChevronLeft, ChevronRight, Trash2
 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
-import { TaskCard, TaskDetailModal } from '@/pages/MyTask/MyTask';
+import { TaskCard } from '@/pages/MyTask/MyTask';
+import { TaskDetailModal } from '../MyTask/TaskDetailModal';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
 import { MediaPreviewModal, MediaThumbnail } from './ContentCreation';
 import { pdfjs, Document as PDFDocument, Page as PDFPage } from 'react-pdf';

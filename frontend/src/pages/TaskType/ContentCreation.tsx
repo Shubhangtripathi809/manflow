@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
-import { TaskCard, TaskDetailModal } from '@/pages/MyTask/MyTask';
+import { TaskCard } from '../MyTask/MyTask';
+import { TaskDetailModal } from '../MyTask/TaskDetailModal';
 import { Document as PDFDocument, Page as PDFPage, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';

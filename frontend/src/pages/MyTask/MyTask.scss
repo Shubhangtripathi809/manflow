@@ -4,7 +4,6 @@
     background-color: #f7f9fc;
 }
 
-
 .task-manager-sidebar {
     width: 280px; 
     min-width: 280px;
@@ -18,10 +17,7 @@
     border-radius: 0 50px 50px 0;
     margin-right: 1rem;
     position: relative;
-    
-    &:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
+    &:hover { background-color: rgba(255, 255, 255, 0.1); }
 }
 
 .task-sidebar-link-active {
@@ -29,7 +25,6 @@
     color: #3f51b5 !important; 
     font-weight: 600;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    
     &::before {
         content: '';
         position: absolute;
@@ -42,7 +37,6 @@
     }
 }
 
-/* --- Main Content Area --- */
 .task-main-content-area {
     flex-grow: 1;
     padding: 2rem;
@@ -54,213 +48,26 @@
         padding: 1.5rem !important;
         border-radius: 0.75rem;
     }
-
     & > div {
         text-align: center;
-        
-        & > div:first-child {
-            font-size: 1.5rem; 
-        }
+        & > div:first-child { font-size: 1.5rem; }
     }
 }
 
-// Clean, minimal card backgrounds with white base
-.card-pending { 
+// Card Backgrounds
+.card-pending, .card-backlog, .card-in-progress, 
+.card-completed, .card-deployed, .card-deferred, .card-gray { 
     background-color: #ffffff;
     border: 1px solid #f3f4f6;
 }
 
-.card-backlog { 
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
-}
+.card-deferred { opacity: 0.9; }
 
-.card-in-progress {
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
-}
-
-.card-completed { 
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
-}
-
-.card-deployed {
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
-}
-
-.card-deferred {
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
-    opacity: 0.9;
-}
-
-.card-gray {
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
-}
-
-
-// Task Description Styling
-.task-description-preview,
-.task-description-content {
-
+// Preview styling for the Board Cards
+.task-description-preview {
     line-height: 1.6;
     word-wrap: break-word;
-    
-    // Headings
-    h1, h2, h3, h4, h5, h6 {
-        font-weight: 600;
-        margin-top: 1em;
-        margin-bottom: 0.5em;
-        color: #1f2937;
-    }
-    
-    h1 { font-size: 1.5em; }
-    h2 { font-size: 1.3em; }
-    h3 { font-size: 1.1em; }
-    
-    // Paragraphs
-    p {
-        margin-bottom: 0.75em;
-    }
-    
-    // Lists
-    ul, ol {
-        margin-left: 1.5em;
-        margin-bottom: 0.75em;
-        padding-left: 0.5em;
-    }
-    
-    ul {
-        list-style-type: disc;
-    }
-    
-    ol {
-        list-style-type: decimal;
-    }
-    
-    li {
-        margin-bottom: 0.25em;
-    }
-    
-    // Text formatting
-    strong, b {
-        font-weight: 600;
-        color: #111827;
-    }
-    
-    em, i {
-        font-style: italic;
-    }
-    
-    u {
-        text-decoration: underline;
-    }
-    
-    s, strike {
-        text-decoration: line-through;
-    }
-    
-    // Links
-    a {
-        color: #2563eb;
-        text-decoration: underline;
-        
-        &:hover {
-            color: #1d4ed8;
-        }
-    }
-    
-    // Code blocks
-    pre {
-        background-color: #f3f4f6;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.375rem;
-        padding: 0.75rem;
-        overflow-x: auto;
-        font-family: 'Courier New', monospace;
-        font-size: 0.875em;
-        margin-bottom: 0.75em;
-    }
-    
-    code {
-        background-color: #f3f4f6;
-        padding: 0.125rem 0.25rem;
-        border-radius: 0.25rem;
-        font-family: 'Courier New', monospace;
-        font-size: 0.875em;
-    }
-    
-    pre code {
-        background-color: transparent;
-        padding: 0;
-    }
-    
-    // Blockquotes
-    blockquote {
-        border-left: 4px solid #e5e7eb;
-        padding-left: 1rem;
-        margin-left: 0;
-        margin-bottom: 0.75em;
-        color: #6b7280;
-        font-style: italic;
-    }
-    
-    // Tables
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 0.75em;
-        
-        td, th {
-            border: 1px solid #e5e7eb;
-            padding: 0.5rem;
-            text-align: left;
-        }
-        
-        th {
-            background-color: #f9fafb;
-            font-weight: 600;
-        }
-        
-        tr:nth-child(even) {
-            background-color: #f9fafb;
-        }
-    }
-    
-    // Images
-    img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 0.375rem;
-        margin: 0.75em 0;
-    }
-    
-    // Text alignment
-    [style*="text-align: left"] {
-        text-align: left;
-    }
-    
-    [style*="text-align: center"] {
-        text-align: center;
-    }
-    
-    [style*="text-align: right"] {
-        text-align: right;
-    }
-}
-
-// Specific styles for preview
-.task-description-preview {
     table, pre, blockquote {
         display: none;
     }
-}
-
-// Full content display in modal
-.task-description-content {
-    max-width: 100%;
-    overflow-x: auto;
 }
