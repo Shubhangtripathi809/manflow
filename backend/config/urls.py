@@ -23,6 +23,7 @@ urlpatterns = [
         path("issues/", include("apps.issues.urls")),
         path("groundtruth/", include("apps.groundtruth.urls")),
         path('task-ai/', include('apps.task_ai.urls')),
+        path('api-testing/', include('apps.api_testing.urls')),
     ])),
     
     # API Documentation
