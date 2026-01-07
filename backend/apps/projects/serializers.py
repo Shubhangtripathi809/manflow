@@ -44,6 +44,11 @@ class ProjectSerializer(serializers.ModelSerializer):
     """
     created_by = UserMinimalSerializer(read_only=True)
     labels = LabelSerializer(many=True, read_only=True)
+    members = ProjectMembershipSerializer(
+        source="projectmembership_set", 
+        many=True, 
+        read_only=True
+    )
     member_count = serializers.SerializerMethodField()
     document_count = serializers.SerializerMethodField()
     
@@ -53,7 +58,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "id", "name", "description", "task_type",
             "project_settings", "default_labels", "is_active",
             "created_by", "created_at", "updated_at",
-            "labels", "member_count", "document_count",
+            "labels","members","member_count", "document_count",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
     
