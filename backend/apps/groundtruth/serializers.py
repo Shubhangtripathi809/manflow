@@ -123,11 +123,11 @@ class DocumentSerializer(serializers.ModelSerializer):
             "id", "project", "name", "description",
             "source_file", "source_file_url", "file_type", "file_size",
             "metadata", "status", "current_gt_version", "version_count",
-            "created_by", "created_at", "updated_at",
+            "created_by", "created_at", "updated_at"
         ]
         read_only_fields = [
             "id", "file_size", "current_gt_version",
-            "created_by", "created_at", "updated_at",
+            "created_by", "created_at", "updated_at"
         ]
 
 

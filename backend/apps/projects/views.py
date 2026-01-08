@@ -56,9 +56,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
+        # Use prefetch_related to load members and users in one go
+        queryset = Project.objects.prefetch_related(
+            "projectmembership_set__user", 
+            "labels"
+        )
+        
         if user.is_admin:
-            return Project.objects.all()
-        return Project.objects.filter(
+            return queryset
+        
+        return queryset.filter(
             Q(members=user) | Q(created_by=user)
         ).distinct()
     

@@ -14,11 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key-change-in-production")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config(
-    "ALLOWED_HOSTS",
-    default="localhost,127.0.0.1,3.233.241.87",
-).split(",")
-
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,192.168.1.18").split(",")
 
 # Application definition
 DJANGO_APPS = [
@@ -46,7 +42,10 @@ LOCAL_APPS = [
     "apps.groundtruth",
     "apps.testing",
     "apps.issues",
-    "apps.tasksite"
+    "apps.tasksite",
+    "apps.task_ai",
+    "apps.api_testing",
+    
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -134,16 +133,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:3001,http://127.0.0.1:3001,http://3.233.241.87:3001",
+    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.4:5173"
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL", default=True, cast=bool)  # For development
 
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
