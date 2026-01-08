@@ -515,3 +515,24 @@ export interface GetDownloadUrlResponse {
   url: string;
 }
 
+// Create AI based Task Generation 
+export interface AITaskSuggestionPayload {
+  project_id: number;
+  description: string;
+}
+
+export interface AITaskSuggestionResponse {
+  heading: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  assigned_to: number[];
+  project: number;
+  status: string;
+  priority: string;
+  ai_metadata: {
+    required_skills: string[];
+    assignment_reasoning: string;
+  };
+}
+

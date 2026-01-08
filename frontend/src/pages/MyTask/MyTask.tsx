@@ -8,6 +8,7 @@ import { taskApi } from '@/services/api';
 import './MyTask.scss';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskDetailModal } from './TaskDetailModal';
+import { AITask } from './AITask';
 
 interface Task {
     id: number;
@@ -87,6 +88,7 @@ export const MyTask: React.FC = () => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [showAITaskModal, setShowAITaskModal] = useState(false);
 
     const activeFilter = location.pathname.split('/').filter(p => p)[1]?.toUpperCase() || 'ALL';
 
@@ -130,6 +132,16 @@ export const MyTask: React.FC = () => {
         deferred: tasks.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
     };
 
+    const handleAITaskGenerate = useCallback(async (projectId: number, description: string) => {
+        // TODO: Implement AI task generation logic here
+        // This is where you'll call your AI API endpoint
+        console.log('Generating AI task for project:', projectId, 'with description:', description);
+        // After successful generation, you might want to:
+        // 1. Call the AI API
+        // 2. Invalidate queries to refresh the task list
+        // queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    }, [queryClient]);
+
     return (
         <div className="task-main-content-area w-full">
             {location.pathname.startsWith('/taskboard') && !location.pathname.endsWith('/create') ? (
@@ -145,9 +157,24 @@ export const MyTask: React.FC = () => {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {['admin', 'manager', 'annotator'].includes(user?.role || '') && (
-                                        <button onClick={() => navigate('/taskboard/create')} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg"><Plus className="w-4 h-4 mr-2" /> Add New</button>
+                                        <>
+                                            <button
+                                                onClick={() => navigate('/taskboard/create')}
+                                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg"
+                                            >
+                                                <Plus className="w-4 h-4 mr-2" />
+                                                Add New
+                                            </button>
+
+                                            <button
+                                                onClick={() => setShowAITaskModal(true)}
+                                                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg"
+                                            >
+                                                Generate Task by AI
+                                            </button>
+                                        </>
                                     )}
-                                    <div className="px-4 py-2 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">{activeFilter} Tasks ({filteredTasks.length})</div>
+
                                 </div>
                             </div>
                             {/* Stats Grid */}
@@ -160,7 +187,7 @@ export const MyTask: React.FC = () => {
                                     { label: 'Deployed', val: stats.deployed, color: 'text-purple-600' },
                                     { label: 'Deferred', val: stats.deferred, color: 'text-gray-600' }
                                 ].map(s => (
-                                    <div key={s.label} className="p-4 rounded-lg bg-white shadow-sm text-center stat-card">
+                                    <div key={s.label} className="p-4 rounded-lg bg-white shadow-sm text-center stat-card border border-[#d0d5dd]">
                                         <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
                                         <div className="text-sm text-gray-600">{s.label}</div>
                                     </div>
@@ -185,11 +212,18 @@ export const MyTask: React.FC = () => {
                 )
             ) : <Outlet />}
             {selectedTask && (
-                <TaskDetailModal 
-                    task={selectedTask} 
-                    onClose={handleCloseTaskDetail} 
-                    onDelete={handleDeleteTask} 
-                    onTaskUpdated={handleSelectedTaskUpdate} 
+                <TaskDetailModal
+                    task={selectedTask}
+                    onClose={handleCloseTaskDetail}
+                    onDelete={handleDeleteTask}
+                    onTaskUpdated={handleSelectedTaskUpdate}
+                />
+            )}
+
+            {showAITaskModal && (
+                <AITask
+                    onClose={() => setShowAITaskModal(false)}
+                    onGenerate={handleAITaskGenerate}
                 />
             )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     X,
     Calendar,
@@ -7,7 +7,6 @@ import {
     AlertCircle,
     ArrowLeft,
     Briefcase,
-    Plus,
     User,
     Flag,
     Paperclip,
@@ -16,6 +15,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
 import { ProjectMinimal } from '@/types';
+import { AITaskSuggestionResponse } from '@/types';
 
 interface UserOption {
     value: string;
@@ -42,6 +42,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     fixedProjectId
 }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const queryClient = useQueryClient();
     const [heading, setHeading] = useState('');
     const [description, setDescription] = useState('');
@@ -187,19 +188,67 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     }, [fixedProjectId, allProjectOptions.length]);
 
     useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-        const target = event.target as HTMLElement;
-        if (!target.closest('.relative')) {
-            setStatusDropdownOpen(false);
-            setPriorityDropdownOpen(false);
-            setDropdownOpen(false);
-            setProjectDropdownOpen(false);
-        }
-    };
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.relative')) {
+                setStatusDropdownOpen(false);
+                setPriorityDropdownOpen(false);
+                setDropdownOpen(false);
+                setProjectDropdownOpen(false);
+            }
+        };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-}, []);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        const aiGeneratedTask = location.state?.aiGeneratedTask as AITaskSuggestionResponse;
+        if (aiGeneratedTask) {
+            console.log('🤖 AI Task Data Received:', aiGeneratedTask);
+
+            // Set all form fields
+            setHeading(aiGeneratedTask.heading || '');
+            setStartDate(aiGeneratedTask.start_date || '');
+            setEndDate(aiGeneratedTask.end_date || '');
+            setStatus(aiGeneratedTask.status || 'pending');
+            setPriority(aiGeneratedTask.priority || 'medium');
+            setAssignedToList(aiGeneratedTask.assigned_to || []);
+
+            if (aiGeneratedTask.project) {
+                setSelectedProjects([aiGeneratedTask.project]);
+            }
+
+            // Handle description for contentEditable div
+            if (aiGeneratedTask.description) {
+                const desc = aiGeneratedTask.description;
+                console.log('📝 Setting description:', desc);
+                setDescription(desc);
+                const updateEditor = (attempt = 0) => {
+                    if (editorRef.current) {
+                        console.log('✅ Editor ref found, updating content');
+                        editorRef.current.innerHTML = desc;
+                        editorRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+                    } else if (attempt < 5) {
+                        console.log(`⏳ Editor ref not ready, retry ${attempt + 1}/5`);
+                        setTimeout(() => updateEditor(attempt + 1), 100);
+                    } else {
+                        console.error('❌ Failed to update editor after 5 attempts');
+                    }
+                };
+
+                updateEditor();
+            }
+
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, navigate, location.pathname]);
+
+    useEffect(() => {
+        if (editorRef.current && description && editorRef.current.innerHTML !== description) {
+            editorRef.current.innerHTML = description;
+        }
+    }, [description]);
 
     const handleClose = () => {
         if (isModal && onClose) {
@@ -561,7 +610,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                `}</style>
                             </div>
 
-                           <div className="border-t border-gray-200 pt-4">
+                            <div className="border-t border-gray-200 pt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Status */}
                                     <div>

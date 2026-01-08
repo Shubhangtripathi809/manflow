@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload } from '@/types';
+import type { AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, 
+  GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.18:8000/api/v1';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.18:8001/';
@@ -415,6 +416,15 @@ export const taskApi = {
  addComment: async (taskId: number, data: CreateTaskCommentPayload) => {
     const response = await api.post<TaskComment>(`/tasksite/${taskId}/comments/`, data);
     return response.data; 
+  },
+
+  // Create AI-based task suggestion
+  suggestTask: async (data: AITaskSuggestionPayload) => {
+    const response = await api.post<AITaskSuggestionResponse>(
+      '/task-ai/suggest-task/',
+      data
+    );
+    return response.data;
   },
 
 };

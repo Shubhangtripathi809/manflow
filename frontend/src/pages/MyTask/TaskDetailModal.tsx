@@ -299,7 +299,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                         <div className="timeline bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Timeline</label>
+                                    <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Timeline</label>
                                     <div className="flex items-center gap-3 text-sm font-semibold text-gray-700">
                                         <span className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-green-500" /> {formatDate(task.start_date)}</span>
                                         <span className="text-gray-300">→</span>
@@ -307,7 +307,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Task Status</label>
+                                    <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Task Status</label>
                                     <button
                                         onClick={() => setShowStatusDropdown(!showStatusDropdown)}
                                         className={`inline-flex items-center px-4 py-2 rounded-xl border text-xs font-bold ${getStatusConfig(selectedStatus).bg} ${getStatusConfig(selectedStatus).text}`}
@@ -332,14 +332,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                         {/* 2. Description Div */}
                         <div className="description bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Description</label>
+                            <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Description</label>
                             <div className="text-sm text-gray-600 leading-relaxed task-description-content" dangerouslySetInnerHTML={{ __html: task.description }} />
                         </div>
 
                         {/* 3. Project Assignees*/}
                         <div className="project-assignees bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                             <div className="flex items-center justify-between mb-3 cursor-pointer" onClick={() => setAssignedMembersOpen(!assignedMembersOpen)}>
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Assignees</label>
+                                <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400">Assignees</label>
                                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${assignedMembersOpen ? 'rotate-180' : ''}`} />
                             </div>
 
@@ -495,7 +495,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                         {/* 5. Discussion */}
                         <div className="discussion bg-white rounded-xl p-4 border border-gray-100 shadow-sm space-y-3">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Discussion ({comments.length})</label>
+                            <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400">Discussion ({comments.length})</label>
                             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                                 {comments.map((comment: { id: React.Key | null | undefined; user_details: { first_name: any[]; username: any[]; }; created_at: string | number | Date; content: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; }) => (
                                     <div key={comment.id} className="flex gap-2.5">
