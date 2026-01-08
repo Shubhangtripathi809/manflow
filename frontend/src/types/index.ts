@@ -8,6 +8,13 @@ export interface User {
   avatar?: string;
   is_active: boolean;
   date_joined: string;
+  skills?: Skill[];
+}
+
+export interface Skill {
+  name: string;
+  proficiency: 'Learning' | 'Beginner' | 'Intermediate' | 'Advance';
+  category: string;
 }
 
 export interface UserMinimal {
@@ -16,6 +23,8 @@ export interface UserMinimal {
   full_name: string;
   avatar?: string;
 }
+
+
 
 // Project types
 export interface Project {
@@ -32,8 +41,16 @@ export interface Project {
   labels: Label[];
   member_count: number;
   document_count: number;
+  members?: ProjectMember[];
 }
 
+export interface ProjectMember {
+  id: number;
+  user: UserMinimal;
+  full_name: string;
+  role: 'owner' | 'member';
+  joined_at: string;
+}
 //  In create task load project name from project list API
 export interface ProjectMinimal {
   id: number;
@@ -48,13 +65,10 @@ export interface PaginatedProjectsResponse {
 }
 
 export type TaskType =
-  | 'key_value'
-  | 'table'
-  | 'classification'
-  | 'ocr'
   | 'client'
   | 'internal'
-  | 'content-creation';
+  | 'content-creation'
+  | 'ideas';
 
 export interface ProjectSettings {
   metrics?: string[];
@@ -84,6 +98,65 @@ export interface Label {
   created_at: string;
 }
 
+export interface TaskAttachment {
+  id: number;
+  file_url: string;
+  file_name: string;
+  uploaded_at: string;
+}
+
+export interface TaskResponse {
+  message: string;
+  task: {
+    id: number;
+    heading: string;
+    description: string;
+    start_date: string | null;
+    end_date: string | null;
+    priority: string;
+    project: number;
+    project_details: {
+      id: number;
+      name: string;
+    };
+    assigned_to: number[];
+    assigned_to_user_details: User[];
+    assigned_by: number;
+    assigned_by_user_details: User;
+    status: string;
+    attachments: TaskAttachment[];
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+// export interface PaginatedTasksResponse {
+//   tasks: Task[];
+//   count?: number;
+//   next?: string | null;
+//   previous?: string | null;
+// }
+
+// In taskdetailmodal comment section 
+export interface TaskComment {
+  id: number;
+  task: number;
+  user: number;
+  user_details: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  content: string;
+  created_at: string;
+}
+
+export interface CreateTaskCommentPayload {
+  content: string;
+}
+
 // Document types
 export interface Document {
   id: string;
@@ -99,7 +172,7 @@ export interface Document {
   metadata: Record<string, unknown>;
   status: DocumentStatus;
   current_gt_version?: GTVersion;
-  version_count: number;
+  assigned_users?: UserMinimal[];
   created_by: UserMinimal;
   created_at: string;
   updated_at: string;
@@ -441,3 +514,25 @@ export interface GetDownloadUrlPayload {
 export interface GetDownloadUrlResponse {
   url: string;
 }
+
+// Create AI based Task Generation 
+export interface AITaskSuggestionPayload {
+  project_id: number;
+  description: string;
+}
+
+export interface AITaskSuggestionResponse {
+  heading: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  assigned_to: number[];
+  project: number;
+  status: string;
+  priority: string;
+  ai_metadata: {
+    required_skills: string[];
+    assignment_reasoning: string;
+  };
+}
+

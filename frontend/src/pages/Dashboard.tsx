@@ -13,6 +13,7 @@ import {
   Filter,
   ChevronDown,
   Calendar,
+  Users,
 } from 'lucide-react';
 import {
   Button,
@@ -26,7 +27,6 @@ import { projectsApi, documentsApi, taskApi, } from '@/services/api';
 import { formatRelativeTime, getStatusColor } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project, Document } from '@/types';
-import { TaskCard } from '@/pages/MyTask/MyTask';
 
 // Type Definitions
 type TaskStatus = 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred';
@@ -56,7 +56,7 @@ export function Dashboard() {
   const navigate = useNavigate();
 
   // State Management
-  const [selectedTaskStatus, setSelectedTaskStatus] = React.useState<TaskStatus>('pending');
+  const [selectedTaskStatus, setSelectedTaskStatus] = React.useState<TaskStatus>('in_progress');
   const [showStatusFilter, setShowStatusFilter] = React.useState(false);
 
   // Data Fetching
@@ -72,7 +72,7 @@ export function Dashboard() {
 
   const { data: tasksData } = useQuery({
     queryKey: ['tasks'],
-    queryFn: () => projectsApi.list(),
+    queryFn: () => taskApi.list(),
   });
 
   const { data: tasksResponse } = useQuery({
@@ -81,8 +81,8 @@ export function Dashboard() {
   });
 
   // Data Processing
-  const projects = projectsData?.results || projectsData || [];
-  const documents = documentsData?.results || documentsData || [];
+  const projects = (projectsData?.results || []) as Project[];
+  const documents = (documentsData?.results || []) as Document[];
 
   const allTasks: Task[] = React.useMemo(() => {
     if (!tasksResponse) {
@@ -97,9 +97,6 @@ export function Dashboard() {
     } else if (Array.isArray(tasksResponse)) {
       tasks = tasksResponse;
     }
-
-
-    // Log first task to see structure
     if (tasks.length > 0) {
     }
 
@@ -144,11 +141,86 @@ export function Dashboard() {
     approvedDocs: documents.filter((d: Document) => d.status === 'approved').length,
   };
 
-  const recentProjects = projects.slice(0, 5);
-  const recentDocuments = documents.slice(0, 5);
+  const recentProjects = Array.isArray(projects) ? projects.slice(0, 5) : [];
+  const recentDocuments = Array.isArray(documents) ? documents.slice(0, 5) : [];
 
   const isLoading = projectsLoading || docsLoading;
 
+  const getStatusConfig = (status: string) => {
+    const normalizedStatus = status.toUpperCase();
+
+    switch (normalizedStatus) {
+      case 'PENDING':
+        return {
+          bg: 'bg-yellow-100 dark:bg-yellow-900/20',
+          text: 'text-yellow-800 dark:text-yellow-300',
+          badge: 'bg-yellow-500',
+          label: 'PENDING',
+          icon: Clock
+        };
+      case 'BACKLOG':
+        return {
+          bg: 'bg-orange-100 dark:bg-orange-900/20',
+          text: 'text-orange-800 dark:text-orange-300',
+          badge: 'bg-orange-500',
+          label: 'BACKLOG',
+          icon: AlertCircle
+        };
+      case 'IN_PROGRESS':
+        return {
+          bg: 'bg-blue-100 dark:bg-blue-900/20',
+          text: 'text-blue-800 dark:text-blue-300',
+          badge: 'bg-blue-500',
+          label: 'IN PROGRESS',
+          icon: Clock
+        };
+      case 'COMPLETED':
+        return {
+          bg: 'bg-green-100 dark:bg-green-900/20',
+          text: 'text-green-800 dark:text-green-300',
+          badge: 'bg-green-500',
+          label: 'COMPLETED',
+          icon: CheckCircle
+        };
+      case 'DEPLOYED':
+        return {
+          bg: 'bg-purple-100 dark:bg-purple-900/20',
+          text: 'text-purple-800 dark:text-purple-300',
+          badge: 'bg-purple-500',
+          label: 'DEPLOYED',
+          icon: CheckCircle
+        };
+      case 'DEFERRED':
+        return {
+          bg: 'bg-gray-100 dark:bg-gray-800',
+          text: 'text-gray-800 dark:text-gray-300',
+          badge: 'bg-gray-500',
+          label: 'DEFERRED',
+          icon: AlertCircle
+        };
+      default:
+        return {
+          bg: 'bg-gray-100 dark:bg-gray-800',
+          text: 'text-gray-800 dark:text-gray-300',
+          badge: 'bg-gray-500',
+          label: normalizedStatus,
+          icon: AlertCircle
+        };
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short'
+      });
+    } catch {
+      return dateString;
+    }
+  };
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
@@ -245,52 +317,54 @@ export function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Pending Review - Design 1: Compact List */}
+        {/* Compact List */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              {statusOptions.find(s => s.value === selectedTaskStatus)?.label}
-            </CardTitle>
-            <div className="relative">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowStatusFilter(!showStatusFilter)}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Filter
-                <ChevronDown className="h-3 w-3" />
-              </Button>
+            <CardTitle className="flex items-center gap-3">
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowStatusFilter(!showStatusFilter)}
+                  className="h-8 w-12 flex items-center justify-center p-0"
+                >
+                  <Filter className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
 
-              {showStatusFilter && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setShowStatusFilter(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
-                    {statusOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          setSelectedTaskStatus(option.value);
-                          setShowStatusFilter(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors flex items-center justify-between ${selectedTaskStatus === option.value ? 'bg-gray-100' : ''
-                          }`}
-                      >
-                        <span className={option.color}>{option.label}</span>
-                        {selectedTaskStatus === option.value && (
-                          <CheckCircle className="h-4 w-4 text-primary" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                {showStatusFilter && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowStatusFilter(false)}
+                    />
+                    <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
+                      {statusOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setSelectedTaskStatus(option.value);
+                            setShowStatusFilter(false);
+                          }}
+                          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors flex items-center justify-between ${selectedTaskStatus === option.value ? 'bg-gray-100' : ''
+                            }`}
+                        >
+                          <span className={option.color}>{option.label}</span>
+                          {selectedTaskStatus === option.value && (
+                            <CheckCircle className="h-4 w-4 text-primary" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Dynamic Status Label */}
+              <span>
+                {statusOptions.find((s) => s.value === selectedTaskStatus)?.label}
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {filteredTasks.length === 0 ? (
@@ -306,14 +380,57 @@ export function Dashboard() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto p-2">
-                {filteredTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onTaskClick={() => navigate(`/taskboard`)}
-                  />
-                ))}
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {filteredTasks.map((task) => {
+                  const statusConfig = getStatusConfig(task.status);
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={() => navigate(`/taskboard/${task.status.toLowerCase()}`)} // ✅ UPDATED
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-gray-100"
+                    >
+                      {/* Left Section: Task Info */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                          <CheckCircle className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{task.heading}</div>
+                          <div className="text-sm text-muted-foreground truncate">
+                            {task.description}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Section: Metadata */}
+                      <div className="flex items-center gap-4 ml-4 flex-shrink-0">
+                        {/* Project Name */}
+                        {task.project_name && (
+                          <span className="text-xs text-muted-foreground hidden md:block">
+                            {task.project_name}
+                          </span>
+                        )}
+
+                        {/* Assignees Count */}
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground hidden sm:flex">
+                          <Users className="h-3 w-3" />
+                          <span>{task.assigned_to.length}</span>
+                        </div>
+
+                        {/* Due Date */}
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground hidden lg:flex">
+                          <Calendar className="h-3 w-3" />
+                          <span>{formatDate(task.end_date)}</span>
+                        </div>
+
+                        {/* Status Badge */}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.text}`}>
+                          {statusConfig.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>

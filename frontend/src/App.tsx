@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
 import { TaskDetails} from '@/pages/TaskType/TaskDetails';
+import { Profile } from '@/components/layout/Profile';
 import {
   Dashboard,
   Login,
@@ -78,7 +79,7 @@ function ProjectDetailWrapper() {
   }
 
   // 2. Extraction & OCR - Use TaskDetails for these types
-  const taskDetailsTypes = ['key_value', 'table', 'ocr', 'classification', 'client', 'internal', 'ideas'];
+  const taskDetailsTypes = ['client', 'internal', 'Content Creation',  'ideas'];
   if (taskDetailsTypes.includes(project.task_type)) {
     return <TaskDetails />;
   }
@@ -112,6 +113,7 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile isOpen={true} onClose={() => {}} />} />
 
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
@@ -125,8 +127,6 @@ function AppRoutes() {
         <Route path="/test-runs" element={<div>Test Runs (Phase 2)</div>} />
         <Route path="/test-runs/:id" element={<div>Test Run Detail (Phase 2)</div>} />
 
-        <Route path="/issues" element={<div>Issues (Phase 3)</div>} />
-        <Route path="/issues/:id" element={<div>Issue Detail (Phase 3)</div>} />
         <Route path="/settings" element={<div>Settings</div>} />
 
         {/* Taskboard Routes */}

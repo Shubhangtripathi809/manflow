@@ -9,7 +9,11 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: Infinity,           
+      gcTime: 1000 * 60 * 60,        
+      refetchOnWindowFocus: false,   
+      refetchOnMount: false, 
+      refetchOnReconnect: false,     
       retry: 1,
     },
   },
@@ -21,7 +25,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <App />
       </BrowserRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
     </QueryClientProvider>
   </React.StrictMode>
 );

@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     X,
     Calendar,
-    Info,
     CheckCircle,
     AlertCircle,
     ArrowLeft,
     Briefcase,
-    ListTodo,
-    Plus,
+    User,
+    Flag,
+    Paperclip,
+    Type,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
 import { ProjectMinimal } from '@/types';
+import { AITaskSuggestionResponse } from '@/types';
 
 interface UserOption {
     value: string;
@@ -39,12 +42,16 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     fixedProjectId
 }) => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const queryClient = useQueryClient();
     const [heading, setHeading] = useState('');
     const [description, setDescription] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [assignedToList, setAssignedToList] = useState<number[]>([]);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+    const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
     const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
     const [allProjectOptions, setAllProjectOptions] = useState<ProjectOption[]>([]);
@@ -56,6 +63,64 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [isDataLoading, setIsDataLoading] = useState(true);
     const [success, setSuccess] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
+    const [labels, setLabels] = useState('');
+    const editorRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const execCommand = (command: string, value: string | undefined = undefined) => {
+        document.execCommand(command, false, value);
+        editorRef.current?.focus();
+    };
+
+    const handleEditorInput = () => {
+        if (editorRef.current) {
+            setDescription(editorRef.current.innerHTML);
+        }
+    };
+
+    const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = `<img src="${event.target?.result}" style="max-width: 100%; height: auto;" />`;
+                document.execCommand('insertHTML', false, img);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const insertTable = () => {
+        const table = `
+        <table border="1" style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">Cell 1</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">Cell 2</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">Cell 3</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">Cell 4</td>
+            </tr>
+        </table>
+    `;
+        document.execCommand('insertHTML', false, table);
+        editorRef.current?.focus();
+    };
+
+    const insertList = (ordered: boolean) => {
+        execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList');
+    };
+
+    const insertLink = () => {
+        const url = prompt('Enter URL:');
+        if (url) {
+            execCommand('createLink', url);
+        }
+    };
+
+    const toggleAlignment = (align: string) => {
+        execCommand(`justify${align.charAt(0).toUpperCase() + align.slice(1)}`);
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -69,26 +134,24 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     };
 
     const priorityOptions = [
-        { value: 'high', label: 'High' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'low', label: 'Low' },
+        { value: 'high', label: 'High', color: 'text-red-600', icon: '🔴' },
+        { value: 'medium', label: 'Medium', color: 'text-orange-600', icon: '🟡' },
+        { value: 'low', label: 'Low', color: 'text-green-600', icon: '🟢' },
     ];
 
     const statusOptions = [
-        { value: 'pending', label: 'Pending' },
-        { value: 'backlog', label: 'Backlog' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'completed', label: 'Completed' },
-        { value: 'deployed', label: 'Deployed' },
-        { value: 'deferred', label: 'Deferred' },
+        { value: 'pending', label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
+        { value: 'backlog', label: 'Backlog', color: 'bg-gray-100 text-gray-800' },
+        { value: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
+        { value: 'completed', label: 'Completed', color: 'bg-green-100 text-green-800' },
+        { value: 'deployed', label: 'Deployed', color: 'bg-purple-100 text-purple-800' },
+        { value: 'deferred', label: 'Deferred', color: 'bg-gray-100 text-gray-600' },
     ];
 
-    // Fetch dynamic user and project lists
     useEffect(() => {
         const fetchDynamicData = async () => {
             setIsDataLoading(true);
             try {
-                // 1. Fetch Users
                 const userData = await usersApi.listAll();
                 const mappedUsers: UserOption[] = userData.map((user: any) => ({
                     value: String(user.id),
@@ -97,7 +160,6 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 }));
                 setAllUserOptions(mappedUsers);
 
-                // 2. Fetch Projects
                 const projectData = await projectsApi.list();
                 const mappedProjects: ProjectOption[] = projectData.results.map((project: ProjectMinimal) => ({
                     id: project.id,
@@ -115,7 +177,6 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         fetchDynamicData();
     }, []);
 
-    // Handle fixed project logic for Content Creation Dashboard
     useEffect(() => {
         if (fixedProjectId && allProjectOptions.length > 0) {
             const currentProject = allProjectOptions.find(p => p.id === fixedProjectId);
@@ -125,6 +186,69 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             }
         }
     }, [fixedProjectId, allProjectOptions.length]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.relative')) {
+                setStatusDropdownOpen(false);
+                setPriorityDropdownOpen(false);
+                setDropdownOpen(false);
+                setProjectDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        const aiGeneratedTask = location.state?.aiGeneratedTask as AITaskSuggestionResponse;
+        if (aiGeneratedTask) {
+            console.log('🤖 AI Task Data Received:', aiGeneratedTask);
+
+            // Set all form fields
+            setHeading(aiGeneratedTask.heading || '');
+            setStartDate(aiGeneratedTask.start_date || '');
+            setEndDate(aiGeneratedTask.end_date || '');
+            setStatus(aiGeneratedTask.status || 'pending');
+            setPriority(aiGeneratedTask.priority || 'medium');
+            setAssignedToList(aiGeneratedTask.assigned_to || []);
+
+            if (aiGeneratedTask.project) {
+                setSelectedProjects([aiGeneratedTask.project]);
+            }
+
+            // Handle description for contentEditable div
+            if (aiGeneratedTask.description) {
+                const desc = aiGeneratedTask.description;
+                console.log('📝 Setting description:', desc);
+                setDescription(desc);
+                const updateEditor = (attempt = 0) => {
+                    if (editorRef.current) {
+                        console.log('✅ Editor ref found, updating content');
+                        editorRef.current.innerHTML = desc;
+                        editorRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+                    } else if (attempt < 5) {
+                        console.log(`⏳ Editor ref not ready, retry ${attempt + 1}/5`);
+                        setTimeout(() => updateEditor(attempt + 1), 100);
+                    } else {
+                        console.error('❌ Failed to update editor after 5 attempts');
+                    }
+                };
+
+                updateEditor();
+            }
+
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, navigate, location.pathname]);
+
+    useEffect(() => {
+        if (editorRef.current && description && editorRef.current.innerHTML !== description) {
+            editorRef.current.innerHTML = description;
+        }
+    }, [description]);
 
     const handleClose = () => {
         if (isModal && onClose) {
@@ -140,28 +264,31 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         setError(null);
         setSuccess(null);
 
-        // --- VALIDATION ---
         if (!heading || !description || !startDate || !endDate || assignedToList.length === 0 || selectedProjects.length === 0) {
-            setError('Please fill in all required fields (Task Heading, Description, Dates, Assigned To, and Project).');
+            setError('Please fill in all required fields.');
             setLoading(false);
             return;
         }
         const projectId = selectedProjects[0];
 
         try {
-            const payload = {
-                heading,
-                description,
-                start_date: `${startDate}T09:00:00Z`,
-                end_date: `${endDate}T18:00:00Z`,
-                assigned_to: assignedToList,
-                status,
-                priority,
-                project: projectId,
-            };
+            const formData = new FormData();
+            formData.append('heading', heading);
+            formData.append('description', description);
+            formData.append('start_date', `${startDate}T09:00:00Z`);
+            formData.append('end_date', `${endDate}T18:00:00Z`);
+            formData.append('status', status);
+            formData.append('priority', priority);
+            formData.append('project', String(projectId));
+            assignedToList.forEach(id => {
+                formData.append('assigned_to', String(id));
+            });
+            attachments.forEach((file) => {
+                formData.append('uploaded_files', file);
+            });
 
-            await taskApi.create(payload);
-
+            await taskApi.create(formData);
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
             setSuccess('Task created successfully!');
 
             setTimeout(() => {
@@ -182,391 +309,576 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     if (isDataLoading) {
         return (
             <div className="flex items-center justify-center h-full min-h-screen">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-black" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
                 <p className="ml-3 text-gray-600">Loading resources...</p>
             </div>
         );
     }
 
     return (
-        <div className={isModal ? "" : "min-h-screen bg-gray-50 p-8 flex justify-center"}>
-            <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden">
-                {/* Header Section */}
-                <div className="p-6 border-b bg-white flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
+        <div className={isModal ? "" : "min-h-screen bg-gray-50 py-4 px-6"}>
+            <div className="max-w-4xl mx-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
                         {!isModal && (
                             <button
                                 onClick={handleClose}
-                                className="p-2 rounded-full text-black hover:bg-gray-100 transition-colors"
+                                className="p-2 rounded hover:bg-gray-100 transition-colors"
                             >
-                                <ArrowLeft className="w-6 h-6" />
+                                <ArrowLeft className="w-5 h-5 text-gray-600" />
                             </button>
                         )}
-                        <h1 className="text-3xl font-bold text-black">Create New Task</h1>
+                        <div>
+                            <h1 className="text-2xl font-semibold text-gray-900">Create task</h1>
+                            <p className="text-sm text-gray-500 mt-1">Fill in the details below to create a new task</p>
+                        </div>
                     </div>
-                    <button
-                        onClick={handleClose}
-                        className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
+                    {isModal && (
+                        <button onClick={handleClose} className="p-2 rounded hover:bg-gray-100">
+                            <X className="w-5 h-5 text-gray-600" />
+                        </button>
+                    )}
                 </div>
 
-                {/* Form Body */}
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                    {error && (
-                        <div className="p-3 rounded-lg bg-red-100 text-red-800 flex items-start text-sm">
-                            <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-                            {error}
-                        </div>
-                    )}
-                    {success && (
-                        <div className="p-3 rounded-lg bg-green-100 text-green-800 flex items-start text-sm">
-                            <CheckCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-                            {success}
-                        </div>
-                    )}
-
-                    {/* Task Heading */}
-                    <div>
-                        <label htmlFor="heading" className="block text-lg font-semibold mb-2 text-gray-800">
-                            Task Heading <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="heading"
-                            value={heading}
-                            onChange={(e) => setHeading(e.target.value)}
-                            className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black transition-shadow"
-                            placeholder="e.g., Implement dark mode toggle"
-                            required
-                        />
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                        <label htmlFor="description" className="block text-lg font-semibold mb-2 text-gray-800">
-                            Description <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                            id="description"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={5}
-                            className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black transition-shadow"
-                            placeholder="Detail the requirements, goals, and acceptance criteria for the task."
-                            required
-                        ></textarea>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Start Date */}
-                        <div>
-                            <label htmlFor="startDate" className="block text-lg font-semibold mb-2 text-gray-800">
-                                Start Date <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="date"
-                                    id="startDate"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
-                                    required
-                                />
-                                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none opacity-0" />
-                            </div>
-                        </div>
-
-                        {/* End Date */}
-                        <div>
-                            <label htmlFor="endDate" className="block text-lg font-semibold mb-2 text-gray-800">
-                                End Date <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="date"
-                                    id="endDate"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
-                                    required
-                                />
-                                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none opacity-0" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Assigned To */}
-                        <div className="relative">
-                            <label className="block text-lg font-semibold mb-2 text-gray-800">
-                                Assigned To <span className="text-red-500">*</span>
-                            </label>
-
-                            {/* Tag Input Box */}
-                            <div
-                                className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 cursor-pointer flex flex-wrap gap-2 min-h-[50px]"
-                                onClick={() => setDropdownOpen(!dropdownOpen)}
-                            >
-                                {assignedToList.length === 0 && (
-                                    <span className="text-gray-500">Select users...</span>
-                                )}
-
-                                {/* Selected User Tags */}
-                                {assignedToList.map((userId) => {
-                                    const user = allUserOptions.find(u => u.id === userId);
-                                    if (!user) return null;
-
-                                    return (
-                                        <span
-                                            key={userId}
-                                            className="px-2 py-1 bg-gray-200 text-gray-800 rounded-md flex items-center gap-1"
-                                        >
-                                            {user.label}
-                                            <button
-                                                type="button"
-                                                className="text-gray-600 hover:text-red-500"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setAssignedToList(
-                                                        assignedToList.filter(id => id !== userId)
-                                                    );
-                                                }}
-                                            >
-                                                ×
-                                            </button>
-                                        </span>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Dropdown List */}
-                            {dropdownOpen && (
-                                <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                                    {allUserOptions
-                                        .filter((user) => !assignedToList.includes(user.id))
-                                        .map((user) => (
-                                            <div
-                                                key={user.id}
-                                                className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between"
-                                                onClick={() => {
-                                                    setAssignedToList([...assignedToList, user.id]);
-                                                    setDropdownOpen(false);
-                                                }}
-                                            >
-                                                <span>{user.label}</span>
-                                            </div>
-                                        ))}
-                                    {allUserOptions.filter((user) => !assignedToList.includes(user.id)).length === 0 && (
-                                        <div className="px-4 py-2 text-gray-500 text-sm italic">All users assigned</div>
-                                    )}
+                <form onSubmit={handleSubmit}>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                        {/* Alerts */}
+                        {error && (
+                            <div className="p-4 bg-red-50 border-b border-red-100 flex items-start gap-3">
+                                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-red-800">Error</p>
+                                    <p className="text-sm text-red-700 mt-1">{error}</p>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Project Multi-Select Dropdown */}
-                        <div className="relative">
-                            <label className="block text-lg font-semibold mb-2 text-gray-800">
-                                Project <span className="text-red-500">*</span>
-                            </label>
-
-                            {/* Project Tag Input Box */}
-                            <div
-                                className={`w-full p-3 rounded-lg border border-gray-300 bg-gray-50 flex flex-wrap gap-2 min-h-[50px] ${fixedProjectId ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}
-                                onClick={() => !fixedProjectId && setProjectDropdownOpen(!projectDropdownOpen)}
-                            >
-                                {selectedProjects.length === 0 && (
-                                    <span className="text-gray-500">Select projects...</span>
-                                )}
-
-                                {/* Selected Project Tags */}
-                                {selectedProjects.map((projectId) => {
-                                    const project = allProjectOptions.find(p => p.id === projectId);
-                                    if (!project) return null;
-
-                                    return (
-                                        <span
-                                            key={projectId}
-                                            className="px-2 py-1 bg-gray-200 text-gray-800 rounded-md flex items-center gap-1"
-                                        >
-                                            {project.name}
-                                            {!fixedProjectId && (
-                                                <button
-                                                    type="button"
-                                                    className="text-gray-600 hover:text-red-500"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedProjects(
-                                                            selectedProjects.filter(id => id !== projectId)
-                                                        );
-                                                    }}
-                                                >
-                                                    ×
-                                                </button>
-                                            )}
-                                        </span>
-                                    );
-                                })}
-                                <Briefcase className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                            </div>
-
-                            {/* Project Dropdown List */}
-                            {projectDropdownOpen && (
-                                <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                                    {allProjectOptions.length === 0 ? (
-                                        <div className="p-4 text-center text-gray-500">No projects available.</div>
-                                    ) : (
-                                        allProjectOptions.map((project) => {
-                                            const isSelected = selectedProjects.includes(project.id);
-
-                                            return (
-                                                <div
-                                                    key={project.id}
-                                                    className={`px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between ${isSelected ? "bg-blue-50" : ""
-                                                        }`}
-                                                    onClick={() => {
-                                                        if (isSelected) {
-                                                            setSelectedProjects([]);
-                                                        } else {
-                                                            setSelectedProjects([project.id]);
-                                                            setProjectDropdownOpen(false);
-                                                        }
-                                                    }}
-                                                >
-                                                    <span>{project.name}</span>
-                                                    {isSelected && <span className="text-blue-600 font-bold">✓</span>}
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Status */}
-                        <div>
-                            <label htmlFor="status" className="block text-lg font-semibold mb-2 text-gray-800">
-                                Status
-                            </label>
-                            <div className="relative">
-                                <select
-                                    id="status"
-                                    value={status}
-                                    onChange={(e) => setStatus(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 appearance-none text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
-                                >
-                                    {statusOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ListTodo className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        {/* Priority */}
-                        <div>
-                            <label htmlFor="priority" className="block text-lg font-semibold mb-2 text-gray-800">
-                                Priority
-                            </label>
-                            <div className="relative">
-                                <select
-                                    id="priority"
-                                    value={priority}
-                                    onChange={(e) => setPriority(e.target.value)}
-                                    className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 appearance-none text-gray-900 focus:ring-black focus:border-black focus:ring-black focus:border-black"
-                                >
-                                    {priorityOptions.map(option => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                </select>
-                                <Info className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Attachments Section */}
-                    <div className="space-y-2">
-                        <label className="block text-lg font-semibold text-gray-800">
-                            Attachments
-                        </label>
-                        <div 
-                            className="border-2 border-dashed border-gray-300 rounded-lg p-8 bg-gray-50 flex flex-col items-center justify-center transition-colors hover:bg-gray-100 cursor-pointer relative"
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={(e) => {
-                                e.preventDefault();
-                                if (e.dataTransfer.files) {
-                                    const droppedFiles = Array.from(e.dataTransfer.files);
-                                    setAttachments(prev => [...prev, ...droppedFiles]);
-                                }
-                            }}
-                        >
-                            <input
-                                type="file"
-                                multiple
-                                onChange={handleFileChange}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                accept=".pdf,image/*,.ppt,.pptx,.xml,.json,.html"
-                            />
-                            <div className="text-center">
-                                <Plus className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-                                <p className="text-sm text-gray-600">
-                                    <span className="font-semibold text-black">Click to upload</span> or drag and drop
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    PDF, Images, PPT, XML, JSON, HTML (Max 10MB)
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* File Preview List */}
-                        {attachments.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                                {attachments.map((file, index) => (
-                                    <div key={index} className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm">
-                                        <div className="flex items-center space-x-3 overflow-hidden">
-                                            <div className="p-2 bg-blue-50 rounded">
-                                                <Briefcase className="w-4 h-4 text-blue-600" />
-                                            </div>
-                                            <div className="truncate">
-                                                <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
-                                                <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeAttachment(index)}
-                                            className="p-1 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
                             </div>
                         )}
-                    </div>
+                        {success && (
+                            <div className="p-4 bg-green-50 border-b border-green-100 flex items-start gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-green-800">{success}</p>
+                                </div>
+                            </div>
+                        )}
 
-                    {/* Action Buttons */}
-                    <div className="flex justify-end space-x-4 pt-6">
-                        <button
-                            type="button"
-                            onClick={handleClose}
-                            className="px-8 py-3 rounded-lg text-sm font-medium transition-colors duration-200 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                            disabled={loading}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className={`px-8 py-3 rounded-lg text-sm font-medium transition-colors duration-200 bg-black text-white hover:bg-black/90 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            disabled={loading}
-                        >
-                            {loading ? 'Creating Task...' : 'Create Task'}
-                        </button>
+                        <div className="p-5 space-y-4">
+                            {/* Project Selection */}
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                    <Briefcase className="w-4 h-4" />
+                                    Project <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <div
+                                        className={`w-full p-2.5 rounded border border-gray-300 bg-white flex flex-wrap gap-2 min-h-[42px] ${fixedProjectId ? 'cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-gray-400'} transition-colors`}
+                                        onClick={() => !fixedProjectId && setProjectDropdownOpen(!projectDropdownOpen)}
+                                    >
+                                        {selectedProjects.length === 0 ? (
+                                            <span className="text-gray-400 text-sm">Select a project</span>
+                                        ) : (
+                                            selectedProjects.map((projectId) => {
+                                                const project = allProjectOptions.find(p => p.id === projectId);
+                                                if (!project) return null;
+                                                return (
+                                                    <span key={projectId} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm font-medium flex items-center gap-1">
+                                                        {project.name}
+                                                        {!fixedProjectId && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedProjects([]);
+                                                                }}
+                                                                className="hover:text-red-600"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
+                                                    </span>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                    {projectDropdownOpen && (
+                                        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                            {allProjectOptions.map((project) => (
+                                                <div
+                                                    key={project.id}
+                                                    className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm"
+                                                    onClick={() => {
+                                                        setSelectedProjects([project.id]);
+                                                        setProjectDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    {project.name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Task Title */}
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                    <Type className="w-4 h-4" />
+                                    Task title <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={heading}
+                                    onChange={(e) => setHeading(e.target.value)}
+                                    className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                    placeholder="Enter a concise task title"
+                                    required
+                                />
+                            </div>
+
+                            {/*  Description Section */}
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                    Description <span className="text-red-500">*</span>
+                                </label>
+                                <div className="border border-gray-300 rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500">
+                                    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 bg-white">
+                                        {/* Bold */}
+                                        <button
+                                            type="button"
+                                            onClick={() => execCommand('bold')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Bold"
+                                        >
+                                            <strong className="text-sm font-semibold">B</strong>
+                                        </button>
+
+                                        {/* Italic */}
+                                        <button
+                                            type="button"
+                                            onClick={() => execCommand('italic')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Italic"
+                                        >
+                                            <em className="text-sm">I</em>
+                                        </button>
+
+                                        {/* Underline */}
+                                        <button
+                                            type="button"
+                                            onClick={() => execCommand('underline')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Underline"
+                                        >
+                                            <span className="text-sm underline">U</span>
+                                        </button>
+
+                                        {/* Strikethrough */}
+                                        <button
+                                            type="button"
+                                            onClick={() => execCommand('strikeThrough')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Strikethrough"
+                                        >
+                                            <span className="text-sm line-through">S</span>
+                                        </button>
+
+                                        {/* Link */}
+                                        <button
+                                            type="button"
+                                            onClick={insertLink}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Insert Link"
+                                        >
+                                            <span className="text-sm">🔗</span>
+                                        </button>
+
+                                        <div className="w-px h-4 bg-gray-300 mx-1" />
+
+                                        {/* Bulleted List */}
+                                        <button
+                                            type="button"
+                                            onClick={() => insertList(false)}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Bulleted List"
+                                        >
+                                            <span className="text-sm">☰</span>
+                                        </button>
+
+                                        {/* Numbered List */}
+                                        <button
+                                            type="button"
+                                            onClick={() => insertList(true)}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Numbered List"
+                                        >
+                                            <span className="text-sm">≡</span>
+                                        </button>
+
+                                        <div className="w-px h-4 bg-gray-300 mx-1" />
+
+                                        {/* Align Left */}
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleAlignment('left')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Align Left"
+                                        >
+                                            <span className="text-sm">⊣</span>
+                                        </button>
+
+                                        {/* Align Center */}
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleAlignment('center')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Align Center"
+                                        >
+                                            <span className="text-sm">≡</span>
+                                        </button>
+
+                                        {/* Align Right */}
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleAlignment('right')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Align Right"
+                                        >
+                                            <span className="text-sm">⊢</span>
+                                        </button>
+
+                                        <div className="w-px h-4 bg-gray-300 mx-1" />
+
+                                        {/* Code Block */}
+                                        <button
+                                            type="button"
+                                            onClick={() => execCommand('formatBlock', '<pre>')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors font-mono text-xs"
+                                            title="Code Block"
+                                        >
+                                            {'</>'}
+                                        </button>
+
+                                        <div className="w-px h-4 bg-gray-300 mx-1" />
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageFile}
+                                            className="hidden"
+                                        />
+
+                                        {/* Table */}
+                                        <button
+                                            type="button"
+                                            onClick={insertTable}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                            title="Insert Table"
+                                        >
+                                            <span className="text-sm">⊞</span>
+                                        </button>
+
+                                        {/* Undo/Redo placeholder */}
+                                        <button
+                                            type="button"
+                                            onClick={() => execCommand('undo')}
+                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors ml-auto"
+                                            title="Undo"
+                                        >
+                                            <span className="text-sm">↶</span>
+                                        </button>
+                                    </div>
+
+                                    {/* ContentEditable Editor */}
+                                    <div
+                                        ref={editorRef}
+                                        contentEditable
+                                        onInput={handleEditorInput}
+                                        className="w-full p-3 text-sm text-gray-700 outline-none min-h-[120px] bg-[#fdfdfd]"
+                                        data-placeholder="Type @ to mention a teammate and notify them about this work item."
+                                        style={{
+                                            whiteSpace: 'pre-wrap',
+                                            wordWrap: 'break-word'
+                                        }}
+                                    />
+                                </div>
+                                <style>{`
+                                        div[contenteditable]:empty:before {
+                                        content: attr(data-placeholder);
+                                        color: #9ca3af;
+                                        pointer-events: none;
+                                        }
+                               `}</style>
+                            </div>
+
+                            <div className="border-t border-gray-200 pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Status */}
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                            Status
+                                        </label>
+                                        <div className="relative">
+                                            <div
+                                                className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex items-center justify-between min-h-[42px] transition-colors"
+                                                onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                                            >
+                                                <span className="text-sm text-gray-700">
+                                                    {statusOptions.find(opt => opt.value === status)?.label || 'Select status'}
+                                                </span>
+                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                            {statusDropdownOpen && (
+                                                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                                    {statusOptions.map((option) => (
+                                                        <div
+                                                            key={option.value}
+                                                            className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm flex items-center justify-between"
+                                                            onClick={() => {
+                                                                setStatus(option.value);
+                                                                setStatusDropdownOpen(false);
+                                                            }}
+                                                        >
+                                                            <span>{option.label}</span>
+                                                            {status === option.value && (
+                                                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Priority */}
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                            <Flag className="w-4 h-4" />
+                                            Priority
+                                        </label>
+                                        <div className="relative">
+                                            <div
+                                                className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex items-center justify-between min-h-[42px] transition-colors"
+                                                onClick={() => setPriorityDropdownOpen(!priorityDropdownOpen)}
+                                            >
+                                                <span className="text-sm text-gray-700">
+                                                    {priorityOptions.find(opt => opt.value === priority)?.icon}{' '}
+                                                    {priorityOptions.find(opt => opt.value === priority)?.label || 'Select priority'}
+                                                </span>
+                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                            {priorityDropdownOpen && (
+                                                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                                    {priorityOptions.map((option) => (
+                                                        <div
+                                                            key={option.value}
+                                                            className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm flex items-center justify-between"
+                                                            onClick={() => {
+                                                                setPriority(option.value);
+                                                                setPriorityDropdownOpen(false);
+                                                            }}
+                                                        >
+                                                            <span>
+                                                                {option.icon} {option.label}
+                                                            </span>
+                                                            {priority === option.value && (
+                                                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Start Date */}
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                            <Calendar className="w-4 h-4" />
+                                            Start date <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* End Date */}
+                                    <div>
+                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                            <Calendar className="w-4 h-4" />
+                                            Duration date <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Assignees and Labels Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Assignees */}
+                                <div>
+                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                        <User className="w-4 h-4" />
+                                        Assignees <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div
+                                            className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex flex-wrap gap-2 min-h-[42px] transition-colors"
+                                            onClick={() => setDropdownOpen(!dropdownOpen)}
+                                        >
+                                            {assignedToList.length === 0 ? (
+                                                <span className="text-gray-400 text-sm">Assign to team members</span>
+                                            ) : (
+                                                assignedToList.map((userId) => {
+                                                    const user = allUserOptions.find(u => u.id === userId);
+                                                    if (!user) return null;
+                                                    return (
+                                                        <span key={userId} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium flex items-center gap-1">
+                                                            {user.label}
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setAssignedToList(assignedToList.filter(id => id !== userId));
+                                                                }}
+                                                                className="hover:text-red-600"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </span>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                        {dropdownOpen && (
+                                            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                                {allUserOptions.filter((user) => !assignedToList.includes(user.id)).map((user) => (
+                                                    <div
+                                                        key={user.id}
+                                                        className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm"
+                                                        onClick={() => {
+                                                            setAssignedToList([...assignedToList, user.id]);
+                                                            setDropdownOpen(false);
+                                                        }}
+                                                    >
+                                                        {user.label}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right: Labels*/}
+                                <div>
+                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                        <Flag className="w-4 h-4 text-gray-400" />
+                                        Labels
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={labels}
+                                        onChange={(e) => setLabels(e.target.value)}
+                                        placeholder="e.g. frontend, bug, enhancement"
+                                        className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                    />
+                                    <p className="text-[10px] text-gray-400 mt-1 italic">Separate labels with commas</p>
+                                </div>
+                            </div>
+
+                            {/* Attachments */}
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                    <Paperclip className="w-4 h-4" />
+                                    Attachments
+                                </label>
+                                <div
+                                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors cursor-pointer relative bg-gray-50"
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        if (e.dataTransfer.files) {
+                                            const droppedFiles = Array.from(e.dataTransfer.files);
+                                            setAttachments(prev => [...prev, ...droppedFiles]);
+                                        }
+                                    }}
+                                >
+                                    <input
+                                        type="file"
+                                        multiple
+                                        onChange={handleFileChange}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        accept=".pdf,image/*,.ppt,.pptx,.xml,.json,.html"
+                                    />
+                                    <div className="text-center">
+                                        <Paperclip className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">PDF, Images, Documents (Max 10MB each)</p>
+                                    </div>
+                                </div>
+
+                                {attachments.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                        {attachments.map((file, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    <Paperclip className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                                    <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                                                    <span className="text-xs text-gray-500 flex-shrink-0">
+                                                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeAttachment(index)}
+                                                    className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-red-600 flex-shrink-0"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={handleClose}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                                disabled={loading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={loading}
+                            >
+                                {loading ? 'Creating...' : 'Create task'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

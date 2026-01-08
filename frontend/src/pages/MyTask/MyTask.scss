@@ -4,7 +4,6 @@
     background-color: #f7f9fc;
 }
 
-
 .task-manager-sidebar {
     width: 280px; 
     min-width: 280px;
@@ -18,10 +17,7 @@
     border-radius: 0 50px 50px 0;
     margin-right: 1rem;
     position: relative;
-    
-    &:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
+    &:hover { background-color: rgba(255, 255, 255, 0.1); }
 }
 
 .task-sidebar-link-active {
@@ -29,7 +25,6 @@
     color: #3f51b5 !important; 
     font-weight: 600;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    
     &::before {
         content: '';
         position: absolute;
@@ -42,7 +37,6 @@
     }
 }
 
-/* --- Main Content Area --- */
 .task-main-content-area {
     flex-grow: 1;
     padding: 2rem;
@@ -54,44 +48,26 @@
         padding: 1.5rem !important;
         border-radius: 0.75rem;
     }
-
     & > div {
         text-align: center;
-        
-        & > div:first-child {
-            font-size: 1.5rem; 
-        }
+        & > div:first-child { font-size: 1.5rem; }
     }
 }
 
-.card-purple { 
-    background-color: #f3e8ff;
-}
-.card-orange { 
-    background-color: #dba564; 
-}
-.card-green { 
-    background-color: #e6ffed;
-}
-.card-light-green {
-    background-color: #e0f8e0; 
-}
-.card-yellow { 
-    background-color: #fffde7; 
-}
-.card-blue {
-    background-color: #e8f5ff;
+// Card Backgrounds
+.card-pending, .card-backlog, .card-in-progress, 
+.card-completed, .card-deployed, .card-deferred, .card-gray { 
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
 }
 
+.card-deferred { opacity: 0.9; }
 
-.deployed { background-color: #8b5cf6; } 
-.completed { background-color: #10b981; } 
-.deferred { background-color: #94a3b8; } 
-.pending { background-color: #f59e0b; } 
-.in_progress { background-color: #3b82f6; } 
-.backlog { background-color: #c186ad; }
-
-.status-badge {
-    color: white;
-    font-size: 0.65rem !important;
+// Preview styling for the Board Cards
+.task-description-preview {
+    line-height: 1.6;
+    word-wrap: break-word;
+    table, pre, blockquote {
+        display: none;
+    }
 }

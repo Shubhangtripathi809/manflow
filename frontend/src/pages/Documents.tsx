@@ -7,7 +7,7 @@ import {
   Filter,
   Plus,
   ChevronDown,
-  FolderKanban,
+  Trash2,
 } from 'lucide-react';
 import {
   Button,
@@ -236,18 +236,19 @@ export function Documents() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="text-left py-3 px-4 font-medium">Document</th>
+                    <th className="w-10"></th>
                     <th className="text-left py-3 px-4 font-medium">Project</th>
                     <th className="text-left py-3 px-4 font-medium">Type</th>
                     <th className="text-left py-3 px-4 font-medium">Status</th>
-                    <th className="text-left py-3 px-4 font-medium">Versions</th>
                     <th className="text-left py-3 px-4 font-medium">Updated</th>
+                    <th className="text-left py-3 px-4 font-medium">Uploaded</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredDocuments.map((doc: Document) => (
                     <tr
                       key={doc.id}
-                      className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                      className="border-b hover:bg-muted/50 cursor-pointer transition-colors group"
                       onClick={() => window.location.href = `/documents/${doc.id}`}
                     >
                       <td className="py-3 px-4">
@@ -265,13 +266,28 @@ export function Documents() {
                           </div>
                         </div>
                       </td>
+                      {/* Insert Trash button cell before the Project cell */}
+                      <td className="py-3 px-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Are you sure you want to delete this document?')) {
+                              documentsApi.delete(doc.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
                       <td className="py-3 px-4">
                         <Link
                           to={`/projects/${doc.project}`}
                           onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-2 text-sm hover:text-primary"
                         >
-                          <FolderKanban className="h-4 w-4" />
                           {doc.project_name || `Project ${doc.project}`}
                         </Link>
                       </td>
@@ -283,11 +299,13 @@ export function Documents() {
                           {doc.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {doc.version_count || 0}
-                      </td>
                       <td className="py-3 px-4 text-muted-foreground text-sm">
                         {formatRelativeTime(doc.updated_at)}
+                      </td>
+                      <td className="py-3 px-4 text-sm font-medium text-muted-foreground">
+                        {doc.assigned_users && doc.assigned_users.length > 0
+                          ? doc.assigned_users.map(u => u.full_name || u.username).join(', ')
+                          : doc.created_by?.full_name || doc.created_by?.username || 'System'}
                       </td>
                     </tr>
                   ))}

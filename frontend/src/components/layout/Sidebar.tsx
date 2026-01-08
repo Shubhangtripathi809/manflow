@@ -1,11 +1,10 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { useState, useMemo } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   FolderKanban,
   FileText,
   TestTube2,
-  AlertCircle,
   Settings,
   LogOut,
   Users,
@@ -21,19 +20,17 @@ import {
   Crown,
   TrendingUp,
   Braces,
-  Type,
-  Table,
   ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { Profile } from './Profile'
 
 const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Documents', href: '/documents', icon: FileText },
   { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
-  { name: 'Issues', href: '/issues', icon: AlertCircle },
   { name: 'Tools', href: '/tools', icon: Cog },
 ];
 
@@ -53,6 +50,7 @@ const taskNavigation = [
 const TaskAccordion = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isTaskRoute = location.pathname.startsWith('/taskboard');
   const isCreateRoute = location.pathname.startsWith('/taskboard/create');
   const CREATION_ALLOWED_ROLES = ['admin', 'manager', 'annotator'];
@@ -68,6 +66,15 @@ const TaskAccordion = () => {
 
   const AccordionIcon = isOpen ? ChevronUp : ChevronDown;
 
+  // Handle header click with navigation
+  const handleHeaderClick = () => {
+    if (!isTaskRoute) {
+      navigate('/taskboard');
+    } else {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div className="space-y-1">
       {/* My Tasks Header */}
@@ -78,14 +85,14 @@ const TaskAccordion = () => {
             ? 'bg-primary text-primary-foreground'
             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
         )}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleHeaderClick}
       >
         <CheckSquare className="h-5 w-5" />
         <span className="flex-1">My Tasks</span>
         <AccordionIcon className="h-4 w-4" />
       </div>
 
-      {/* Collapsible Menu (Accordion Content) */}
+      {/* Collapsible Menu */}
       {isOpen && (
         <div className="ml-4 border-l pl-2 space-y-1">
           {taskNavigation.map((item) => (
@@ -165,7 +172,7 @@ const UserManagementAccordion = () => {
         <AccordionIcon className="h-4 w-4" />
       </div>
 
-      {/* Collapsible Menu (Accordion Content) */}
+      {/* Collapsible Menu  */}
       {isOpen && (
         <div className="ml-4 border-l pl-2 space-y-1">
           {userManagementNavigation.map((item) => (
@@ -194,8 +201,6 @@ const UserManagementAccordion = () => {
 const toolsNavigation = [
   { id: 'PDF_HTML', name: 'PDF vs HTML', href: '/tools/pdf-vs-html', icon: FileText },
   { id: 'JSON', name: 'JSON Viewer', href: '/tools/json-viewer', icon: Braces },
-  // { id: 'PIVOT', name: 'Pivot Table', href: '/tools/pivot-table', icon: Table },
-  // { id: 'SUPERSCRIPT', name: 'Superscript Checker', href: '/tools/superscript-checker', icon: Type },
 ];
 
 const ToolsAccordion = () => {
@@ -249,6 +254,8 @@ const ToolsAccordion = () => {
 export function Sidebar() {
   const { user, logout, isLoading, hasRole } = useAuth();
   const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
+  const navigate = useNavigate();
+  
 
   const myTaskItem = { name: 'My Tasks', href: '/taskboard', icon: CheckSquare };
   const adminItem = { name: 'Team Management', href: '/admin/user-roles', icon: Crown };
@@ -261,7 +268,7 @@ export function Sidebar() {
     ...baseNavigation.slice(2),
   ];
 
-  // Insert Team Management placeholder if user is allowed
+  // Team Management placeholder if user is allowed
   if (shouldShowAdminLink) {
     const toolIndex = navigation.findIndex(item => item.name === 'Tools');
     if (toolIndex !== -1) {
@@ -316,7 +323,10 @@ export function Sidebar() {
         )}
       </nav>
       <div className="border-t p-4">
-        <div className="flex items-center gap-3">
+        <div
+          className="flex items-center gap-3 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
+          onClick={() => navigate('/profile')}
+        >
           {isLoading ? (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 animate-pulse" />
           ) : (
