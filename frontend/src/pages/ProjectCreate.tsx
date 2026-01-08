@@ -115,17 +115,21 @@ export function ProjectCreate() {
       })),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: typeof formData & { assigned_to: number[] }) =>
-      projectsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      navigate('/projects');
-    },
-    onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Failed to create project');
-    },
-  });
+ const createMutation = useMutation({
+  mutationFn: (data: typeof formData & { assigned_to: number[] }) => {
+    return projectsApi.create(data);
+  },
+  onSuccess: (data) => { 
+    queryClient.invalidateQueries({ 
+      queryKey: ['projects'],
+      exact: false 
+    });   
+    navigate('/projects');
+  },
+  onError: (err: any) => {
+    setError(err.response?.data?.detail || 'Failed to create project');
+  },
+});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

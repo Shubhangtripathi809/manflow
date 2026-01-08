@@ -1,4 +1,4 @@
-import { useState  } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus, FolderKanban, FileText, Users, UsersIcon } from 'lucide-react';
@@ -29,9 +29,20 @@ export function Projects() {
   const { data, isLoading } = useQuery({
     queryKey: ['projects', filter],
     queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
-  const projects = data?.results || data || [];
+  const projects = (() => {
+
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object' && 'results' in data && Array.isArray(data.results)) {
+      return data.results;
+    }
+    return [];
+  })() as Project[];
+
 
   return (
     <div className="space-y-6">
@@ -55,9 +66,9 @@ export function Projects() {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      ) : projects.length > 0 ? (
+      ) : projects && projects.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project: Project) => (
+          {projects.map((project) => (
             <Link key={project.id} to={`/projects/${project.id}`}>
               <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">
@@ -69,7 +80,7 @@ export function Projects() {
                       <div>
                         <CardTitle className="text-lg">{project.name}</CardTitle>
                         <Badge variant="secondary" className="mt-1">
-                          {project.task_type.replace('_', ' ')}
+                          {project.task_type?.replace('_', ' ') || 'General'}
                         </Badge>
                       </div>
                     </div>
