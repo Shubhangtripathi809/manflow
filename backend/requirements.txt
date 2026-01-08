@@ -26,7 +26,9 @@ python-decouple>=3.8
 
 # Utilities
 Pillow>=9.0.0
-
+cryptography==46.0.3
+celery==5.6.2
+redis==7.1.0
 # Development (optional)
 ipython>=8.0.0
 
