@@ -202,7 +202,6 @@ export function Projects() {
                         {project.members.slice(0, 3).map((member) => (
                           <Badge
                             key={member.id}
-                            variant="outline"
                             className="text-[10px] px-2 py-0 font-normal bg-muted/30"
                           >
                             {member.full_name}

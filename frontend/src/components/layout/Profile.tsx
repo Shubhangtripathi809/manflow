@@ -68,7 +68,7 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
     console.log('[Profile Debug] Modal isOpen state:', isOpen);
 
 
-    // Sync fresh user data with skills when profile opens
+    // user data with skills when profile opens
     useEffect(() => {
         if (isOpen && freshUserData?.skills) {
             setSkills(freshUserData.skills);
@@ -167,10 +167,10 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
         updateSkillsMutation.mutate(updatedSkills);
     };
 
-   const handleCancelEdit = () => {
+    const handleCancelEdit = () => {
         setEditingIndex(null);
         setIsAddingSkill(false);
-        setNewSkill({ name: '', proficiency: 'Beginner', category: 'other' }); 
+        setNewSkill({ name: '', proficiency: 'Beginner', category: 'other' });
         setLevelDropdownOpen(false);
         setCategoryDropdownOpen(false);
     };
@@ -187,7 +187,7 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
     const renderOverview = () => (
         <div className="profile-overview">
             <div className="profile-stats-grid">
-                <div className="stat-card">
+                <div className="stat-card cursor-pointer" onClick={() => handleNavigation('/projects')}>
                     <div className="stat-icon projects">
                         <FolderKanban />
                     </div>
@@ -196,7 +196,7 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
                         <div className="stat-label">Projects</div>
                     </div>
                 </div>
-                <div className="stat-card">
+                <div className="stat-card cusrsor -pointer" onClick={() => handleNavigation('/documents')}>
                     <div className="stat-icon documents">
                         <FileText />
                     </div>
@@ -205,7 +205,7 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
                         <div className="stat-label">Documents</div>
                     </div>
                 </div>
-                <div className="stat-card">
+                <div className="stat-card cursor-pointer" onClick={() => handleNavigation('/taskboard')}>
                     <div className="stat-icon tasks">
                         <CheckSquare />
                     </div>
@@ -214,7 +214,7 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
                         <div className="stat-label">Total Tasks</div>
                     </div>
                 </div>
-                <div className="stat-card">
+                <div className="stat-card cursor-pointer" onClick={() => handleNavigation('/taskboard/completed')}>
                     <div className="stat-icon completed">
                         <CheckCircle />
                     </div>
@@ -269,100 +269,6 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
         </div>
     );
 
-    const renderTasks = () => {
-        const tasksByStatus = {
-            pending: tasks.filter((t: any) => t.status.toLowerCase() === 'pending'),
-            in_progress: tasks.filter((t: any) => t.status.toLowerCase() === 'in_progress'),
-            completed: tasks.filter((t: any) => t.status.toLowerCase() === 'completed'),
-        };
-
-        return (
-            <div className="profile-tasks">
-                <div className="tasks-summary">
-                    <div className="summary-card pending">
-                        <Clock />
-                        <div>
-                            <div className="summary-value">{tasksByStatus.pending.length}</div>
-                            <div className="summary-label">Pending</div>
-                        </div>
-                    </div>
-                    <div className="summary-card progress">
-                        <Activity />
-                        <div>
-                            <div className="summary-value">{tasksByStatus.in_progress.length}</div>
-                            <div className="summary-label">In Progress</div>
-                        </div>
-                    </div>
-                    <div className="summary-card completed">
-                        <CheckCircle />
-                        <div>
-                            <div className="summary-value">{tasksByStatus.completed.length}</div>
-                            <div className="summary-label">Completed</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="tasks-list">
-                    {tasks.slice(0, 10).map((task: any) => (
-                        <div key={task.id} className="task-item" onClick={() => handleNavigation('/taskboard')}>
-                            <div className="task-icon">
-                                <CheckSquare />
-                            </div>
-                            <div className="task-content">
-                                <div className="task-title">{task.heading}</div>
-                                <div className="task-meta">
-                                    {task.project_name && <span>{task.project_name}</span>}
-                                    {task.end_date && (
-                                        <>
-                                            <span>•</span>
-                                            <span>{new Date(task.end_date).toLocaleDateString()}</span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                            <span className={cn('task-status', task.status.toLowerCase())}>
-                                {task.status}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    const renderProjects = () => (
-        <div className="profile-projects">
-            <div className="projects-grid">
-                {projects.map((project: any) => (
-                    <div
-                        key={project.id}
-                        className="project-card"
-                        onClick={() => handleNavigation(`/projects/${project.id}`)}
-                    >
-                        <div className="project-header">
-                            <div className="project-icon">
-                                <FolderKanban />
-                            </div>
-                            <div className="project-badge">{project.task_type}</div>
-                        </div>
-                        <div className="project-title">{project.name}</div>
-                        <div className="project-description">{project.description}</div>
-                        <div className="project-stats">
-                            <div className="project-stat">
-                                <FileText className="stat-icon" />
-                                <span>{project.document_count || 0} docs</span>
-                            </div>
-                            <div className="project-stat">
-                                <Users className="stat-icon" />
-                                <span>{project.member_count || 0} members</span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
     const renderSkills = () => {
         const groupedSkills = {
             frontend: skills.filter(s => s.category === 'frontend'),
@@ -389,19 +295,41 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
                                 className="skill-input"
                                 placeholder="Skill name"
                             />
-                            <select
-                                value={skills[actualIndex].category}
-                                onChange={(e) => {
-                                    const updated = [...skills];
-                                    updated[actualIndex].category = e.target.value;
-                                    setSkills(updated);
-                                }}
-                                className="skill-category-select"
-                            >
-                                <option value="frontend">Frontend</option>
-                                <option value="backend">Backend</option>
-                                <option value="other">Other</option>
-                            </select>
+                            {/* Custom Proficiency Level Dropdown */}
+                            <div className="relative z-20 level-dropdown">
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">Proficiency Level</label>
+                                <div
+                                    className="level-dropdown-trigger w-full p-2 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex items-center justify-between min-h-[36px] text-sm transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setLevelDropdownOpen(editingIndex === actualIndex ? !levelDropdownOpen : true);
+                                        setEditingIndex(actualIndex);
+                                    }}
+                                >
+                                    <span className="text-gray-700">{skills[actualIndex].proficiency}</span>
+                                    <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", levelDropdownOpen && editingIndex === actualIndex && "rotate-180")} />
+                                </div>
+
+                                {levelDropdownOpen && editingIndex === actualIndex && (
+                                    <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                                        {levelOptions.map((opt) => (
+                                            <div
+                                                key={opt.label}
+                                                className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 flex items-center justify-between"
+                                                onClick={() => {
+                                                    const updated = [...skills];
+                                                    updated[actualIndex].proficiency = opt.value;
+                                                    setSkills(updated);
+                                                    setLevelDropdownOpen(false);
+                                                }}
+                                            >
+                                                {opt.label}
+                                                {skills[actualIndex].proficiency === opt.value && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <div className="skill-actions">
                                 <button onClick={() => handleUpdateSkill(actualIndex)} className="btn-save">
                                     <Save className="h-4 w-4" />
@@ -638,7 +566,17 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
                                     ? 'border-primary text-primary'
                                     : 'border-transparent text-muted-foreground hover:text-foreground'
                             )}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => {
+                                if (tab === 'tasks') {
+                                    handleNavigation('/taskboard');
+                                    onClose();
+                                } else if (tab === 'projects') {
+                                    handleNavigation('/projects');
+                                    onClose();
+                                } else {
+                                    setActiveTab(tab);
+                                }
+                            }}
                         >
                             {tab === 'overview' && <LayoutDashboard className="h-4 w-4" />}
                             {tab === 'tasks' && <CheckSquare className="h-4 w-4" />}
@@ -652,8 +590,6 @@ export function Profile({ isOpen, onClose }: ProfileProps) {
                 {/* Scrollable Content */}
                 <div className="profile-content flex-1 overflow-y-auto p-8">
                     {activeTab === 'overview' && renderOverview()}
-                    {activeTab === 'tasks' && renderTasks()}
-                    {activeTab === 'projects' && renderProjects()}
                     {activeTab === 'skills' && renderSkills()}
                 </div>
             </div>
