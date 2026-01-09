@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import {
-    CheckSquare, Calendar, Clock, Plus, Grid3X3, List, Search, Users, AlertCircle, CheckCircle, PlayCircle, Pause, Bell, ListTodo
+    CheckSquare, Calendar, Clock, Plus, Grid3X3, List, Search, Users, AlertCircle, CheckCircle, PlayCircle, Pause, Bell, ListTodo,
 } from 'lucide-react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { taskApi } from '@/services/api';
 import './MyTask.scss';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { TaskDetailModal } from './TaskDetailModal';
 import { AITask } from './AITask';
 
@@ -79,6 +79,263 @@ export const TaskCard: React.FC<{ task: Task; onTaskClick: (task: Task) => void 
     );
 };
 
+interface TaskListViewProps {
+    tasks: Task[];
+    onTaskClick: (task: Task) => void;
+}
+
+const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
+    const navigate = useNavigate();
+    const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
+    const [activeCommentId, setActiveCommentId] = useState<number | null>(null);
+    const [commentText, setCommentText] = useState('');
+    const queryClient = useQueryClient();
+
+    // Reusing mutation logic from TaskDetailModal.tsx
+    const addCommentMutation = useMutation({
+        mutationFn: ({ taskId, content }: { taskId: number; content: string }) =>
+            taskApi.addComment(taskId, { content }),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['task-comments', variables.taskId] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            setCommentText('');
+            setActiveCommentId(null);
+        },
+    });
+
+    const handleCommentSubmit = (taskId: number) => {
+        if (commentText.trim()) {
+            addCommentMutation.mutate({ taskId, content: commentText.trim() });
+        } else {
+            setActiveCommentId(null);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedTasks.size === tasks.length) {
+            setSelectedTasks(new Set());
+        } else {
+            setSelectedTasks(new Set(tasks.map(t => t.id)));
+        }
+    };
+
+    const toggleSelectTask = (taskId: number, e: React.ChangeEvent) => {
+        e.stopPropagation();
+        const newSelection = new Set(selectedTasks);
+        if (newSelection.has(taskId)) {
+            newSelection.delete(taskId);
+        } else {
+            newSelection.add(taskId);
+        }
+        setSelectedTasks(newSelection);
+    };
+    const priorityOptions = [
+        { value: 'high', label: 'High', color: 'text-red-600', dotColor: 'bg-red-500', icon: '🔴' },
+        { value: 'medium', label: 'Medium', color: 'text-orange-600', dotColor: 'bg-orange-200', icon: '🟡' },
+        { value: 'low', label: 'Low', color: 'text-green-600', dotColor: 'bg-green-500', icon: '🟢' },
+    ];
+
+    const [activePriorityId, setActivePriorityId] = useState<number | null>(null);
+
+    const handlePriorityChange = async (taskId: number, newPriority: string) => {
+        try {
+            await taskApi.update(taskId, { priority: newPriority } as any);
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            setActivePriorityId(null);
+        } catch (error) {
+            console.error('Failed to update priority:', error);
+        }
+    };
+
+    const handleDateChange = async (taskId: number, field: 'start_date' | 'end_date', value: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        e.stopPropagation();
+        try {
+            await taskApi.update(taskId, { [field]: `${value}T12:00:00Z` });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        } catch (error) {
+            console.error('Failed to update date:', error);
+        }
+    };
+
+    return (
+        <div className="jira-list-container bg-white border border-[#dfe1e6] rounded-md overflow-x-auto shadow-sm">
+            <table className="jira-list-table w-full border-collapse">
+                <thead>
+                    <tr className="bg-[#fafbfc]">
+                        <th className="jira-th jira-th-checkbox border-r border-[#dfe1e6]">
+                            <input type="checkbox" checked={selectedTasks.size === tasks.length && tasks.length > 0} onChange={toggleSelectAll} className="jira-checkbox" />
+                        </th>
+                        <th className="jira-th jira-th-type border-r border-[#dfe1e6]">Type</th>
+                        <th className="jira-th jira-th-summary border-r border-[#dfe1e6]">Summary</th>
+                        <th className="jira-th jira-th-status border-r border-[#dfe1e6]">Status</th>
+                        <th className="jira-th jira-th-assignee border-r border-[#dfe1e6]">Assignee</th>
+                        <th className="jira-th jira-th-date border-r border-[#dfe1e6]">Due date</th>
+                        <th className="jira-th jira-th-duration border-r border-[#dfe1e6]">Duration Tim</th>
+                        <th className="jira-th jira-th-priority border-r border-[#dfe1e6]">Priority</th>
+                        <th className="jira-th jira-th-comments border-r border-[#dfe1e6]">Comments</th>
+                        <th className="jira-th jira-th-labels border-r border-[#dfe1e6]">Labels</th>
+                        <th className="jira-th jira-th-created border-r border-[#dfe1e6]">Created</th>
+                        <th className="jira-th jira-th-updated">Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {tasks.map((task) => {
+                        const isSelected = selectedTasks.has(task.id);
+                        const statusConfig = getStatusConfig(task.status);
+
+                        return (
+                            <tr key={task.id} className={`jira-table-row group ${isSelected ? 'jira-row-selected' : ''}`} onClick={() => onTaskClick(task)}>
+                                <td className="jira-td jira-td-checkbox border-r border-[#f4f5f7]" onClick={e => e.stopPropagation()}>
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" checked={isSelected} onChange={(e) => toggleSelectTask(task.id, e)} className="jira-checkbox" />
+                                    </div>
+                                </td>
+                                <td className="jira-td jira-td-type border-r border-[#f4f5f7]">
+                                    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                                        <CheckSquare className="w-4 h-4 text-blue-600" />
+                                        <button
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-none bg-transparent p-0 flex items-center justify-center"
+                                            title="Create subtask"
+                                        >
+                                            <Plus className="w-4 h-4 text-gray-400 hover:text-blue-600" />
+                                        </button>
+                                    </div>
+                                </td>
+                                <td className="jira-td jira-td-summary border-r border-[#f4f5f7]">
+                                    <span className="jira-summary truncate block max-w-[300px]">{task.heading}</span>
+                                </td>
+                                <td className="jira-td jira-td-status border-r border-[#f4f5f7]">
+                                    <span className={`jira-status-badge ${statusConfig.bg} ${statusConfig.text}`}>
+                                        {statusConfig.label}
+                                    </span>
+                                </td>
+                                <td className="jira-td jira-td-assignee border-r border-[#f4f5f7]">
+                                    <div className="flex -space-x-1.5">
+                                        {task.assigned_to_user_details.slice(0, 3).map((u) => (
+                                            <div key={u.id} className="jira-avatar ring-1 ring-white" title={`${u.first_name} ${u.last_name}`}>
+                                                {u.first_name[0]}{u.last_name[0]}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </td>
+                                <td className="jira-td jira-td-date border-r border-[#f4f5f7]" onClick={e => e.stopPropagation()}>
+                                    <div className="jira-date-display border rounded px-1.5 py-1 bg-white hover:border-blue-400">
+                                        <input
+                                            type="date"
+                                            defaultValue={task.end_date?.split('T')[0] || ''}
+                                            onBlur={(e) => handleDateChange(task.id, 'end_date', e.target.value, e as any)}
+                                            className="jira-date-input"
+                                        />
+                                    </div>
+                                </td>
+                                <td className="jira-td jira-td-duration border-r border-[#f4f5f7]" onClick={e => e.stopPropagation()}>
+                                    <input
+                                        type="text"
+                                        defaultValue={(task as any).duration || ''}
+                                        placeholder="—"
+                                        onBlur={async (e) => {
+                                            const val = e.target.value;
+                                            try {
+                                                await taskApi.update(task.id, { duration: val } as any);
+                                                queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                                            } catch (err) {
+                                                console.error('Failed to update duration:', err);
+                                            }
+                                        }}
+                                        className="w-full bg-transparent border-none text-[12px] focus:ring-1 focus:ring-blue-400 rounded px-1 py-0.5 placeholder-gray-300"
+                                    />
+                                </td>
+                                <td className="jira-td jira-td-priority border-r border-[#f4f5f7] relative" onClick={e => e.stopPropagation()}>
+                                    <div
+                                        className="flex items-center gap-1.5 text-gray-600 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+                                        onClick={() => setActivePriorityId(activePriorityId === task.id ? null : task.id)}
+                                    >
+                                        <div className={`h-1 w-3 rounded-full ${priorityOptions.find(opt => opt.value === task.priority)?.dotColor || 'bg-gray-400'}`} />
+                                        <span className="capitalize text-[12px]">{task.priority}</span>
+                                    </div>
+
+                                    {activePriorityId === task.id && (
+                                        <div className="absolute z-50 mt-1 left-0 w-32 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+                                            {priorityOptions.map((option) => (
+                                                <div
+                                                    key={option.value}
+                                                    className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-[12px] flex items-center gap-2"
+                                                    onClick={() => handlePriorityChange(task.id, option.value)}
+                                                >
+                                                    <span>{option.icon}</span>
+                                                    <span className={task.priority === option.value ? "font-bold text-blue-600" : ""}>
+                                                        {option.label}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="jira-td jira-td-comments border-r border-[#f4f5f7]" onClick={e => e.stopPropagation()}>
+                                    {activeCommentId === task.id ? (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                value={commentText}
+                                                onChange={(e) => setCommentText(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleCommentSubmit(task.id);
+                                                    if (e.key === 'Escape') setActiveCommentId(null);
+                                                }}
+                                                onBlur={() => !commentText && setActiveCommentId(null)}
+                                                placeholder="Press Enter to save..."
+                                                className="w-full px-2 py-1 text-[12px] border border-blue-500 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="jira-comment-btn flex items-center gap-1.5 cursor-pointer opacity-0 group-hover:opacity-100 hover:text-blue-600 transition-all"
+                                            onClick={() => setActiveCommentId(task.id)}
+                                        >
+                                            <ListTodo className="w-3.5 h-3.5 text-gray-500" />
+                                            <span className="text-[11px] text-gray-600">Add comment</span>
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="jira-td jira-td-labels border-r border-[#f4f5f7]" onClick={e => e.stopPropagation()}>
+                                    <input type="text" placeholder="" className="bg-transparent border-none text-[12px] focus:ring-0 w-full p-0" />
+                                </td>
+                                <td className="jira-td jira-td-created border-r border-[#f4f5f7]" onClick={e => e.stopPropagation()}>
+                                    <div className="jira-date-display border rounded px-1.5 py-1 bg-white hover:border-blue-400 flex items-center gap-1">
+                                        <span className="text-[11px] text-[#172b4d] font-medium py-0.5">
+                                            {formatDate(task.start_date)}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="jira-td jira-td-updated" onClick={e => e.stopPropagation()}>
+                                    <div className="jira-date-display border rounded px-1.5 py-1 bg-white hover:border-blue-400 flex items-center gap-1">
+                                        <input
+                                            type="date"
+                                            defaultValue={task.end_date?.split('T')[0] || ''}
+                                            onBlur={(e) => handleDateChange(task.id, 'end_date', e.target.value, e as any)}
+                                            className="jira-date-input"
+                                        />
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+            <div
+                className="p-3 border-t border-[#dfe1e6] bg-white group cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => navigate('/taskboard/create')} //
+            >
+                <div className="flex items-center gap-2 text-gray-500 text-[13px] font-medium pl-1">
+                    <Plus className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                    <span className="group-hover:text-blue-600 transition-colors">Create</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const MyTask: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -133,13 +390,7 @@ export const MyTask: React.FC = () => {
     };
 
     const handleAITaskGenerate = useCallback(async (projectId: number, description: string) => {
-        // TODO: Implement AI task generation logic here
-        // This is where you'll call your AI API endpoint
         console.log('Generating AI task for project:', projectId, 'with description:', description);
-        // After successful generation, you might want to:
-        // 1. Call the AI API
-        // 2. Invalidate queries to refresh the task list
-        // queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }, [queryClient]);
 
     return (
@@ -205,9 +456,13 @@ export const MyTask: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
-                            {filteredTasks.map((t: Task) => <TaskCard key={t.id} task={t} onTaskClick={handleTaskClick} />)}
-                        </div>
+                        {viewMode === 'grid' ? (
+                            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {filteredTasks.map((t: Task) => <TaskCard key={t.id} task={t} onTaskClick={handleTaskClick} />)}
+                            </div>
+                        ) : (
+                            <TaskListView tasks={filteredTasks} onTaskClick={handleTaskClick} />
+                        )}
                     </>
                 )
             ) : <Outlet />}

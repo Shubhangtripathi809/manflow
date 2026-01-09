@@ -1,6 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse, 
-  GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload } from '@/types';
+import type {
+  AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
+  GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
+  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload
+} from '@/types';
 
 const API_URL =
   import.meta.env.VITE_API_URL || 'http://3.233.241.87:8000/api/v1';
@@ -153,6 +156,7 @@ export const projectsApi = {
     description?: string;
     task_type: string;
     settings?: Record<string, unknown>;
+    assigned_to?: number[]
   }) => {
     const response = await api.post('/projects/', data);
     return response.data;
@@ -430,9 +434,9 @@ export const taskApi = {
   },
 
   // Post a new comment to a task
- addComment: async (taskId: number, data: CreateTaskCommentPayload) => {
+  addComment: async (taskId: number, data: CreateTaskCommentPayload) => {
     const response = await api.post<TaskComment>(`/tasksite/${taskId}/comments/`, data);
-    return response.data; 
+    return response.data;
   },
 
   // Create AI-based task suggestion
@@ -549,8 +553,114 @@ export const toolApi = {
   },
 };
 
+// API Testing Platform API
+export const apiTestingApi = {
+  // Collections
+  listCollections: async (params?: { project_id?: number }) => {
+    const response = await api.get<PaginatedResponse<APICollection>>('/api-testing/collections/', { params });
+    return response.data;
+  },
 
+  getCollection: async (id: string) => {
+    const response = await api.get<APICollection>(`/api-testing/collections/${id}/`);
+    return response.data;
+  },
 
+  createCollection: async (data: CreateCollectionPayload) => {
+    const response = await api.post<APICollection>('/api-testing/collections/', data);
+    return response.data;
+  },
 
+  updateCollection: async (id: string, data: Partial<CreateCollectionPayload>) => {
+    const response = await api.patch<APICollection>(`/api-testing/collections/${id}/`, data);
+    return response.data;
+  },
+
+  deleteCollection: async (id: string) => {
+    await api.delete(`/api-testing/collections/${id}/`);
+  },
+
+  runCollection: async (id: string, data?: RunCollectionPayload) => {
+    const response = await api.post<ExecutionRun>(`/api-testing/collections/${id}/run/`, data || {});
+    return response.data;
+  },
+
+  getCollectionHistory: async (id: string) => {
+    const response = await api.get<ExecutionRun[]>(`/api-testing/collections/${id}/history/`);
+    return response.data;
+  },
+
+  // Endpoints
+  listEndpoints: async (params?: { collection?: string }) => {
+    const response = await api.get<PaginatedResponse<APIEndpoint>>('/api-testing/endpoints/', { params });
+    return response.data;
+  },
+
+  getEndpoint: async (id: string) => {
+    const response = await api.get<APIEndpoint>(`/api-testing/endpoints/${id}/`);
+    return response.data;
+  },
+
+  createEndpoint: async (data: CreateEndpointPayload) => {
+    const response = await api.post<APIEndpoint>('/api-testing/endpoints/', data);
+    return response.data;
+  },
+
+  updateEndpoint: async (id: string, data: Partial<CreateEndpointPayload>) => {
+    const response = await api.patch<APIEndpoint>(`/api-testing/endpoints/${id}/`, data);
+    return response.data;
+  },
+
+  deleteEndpoint: async (id: string) => {
+    await api.delete(`/api-testing/endpoints/${id}/`);
+  },
+
+  runEndpoint: async (id: string, data?: { credential_id?: string; environment_overrides?: Record<string, string> }) => {
+    const response = await api.post<ExecutionResult>(`/api-testing/endpoints/${id}/run/`, data || {});
+    return response.data;
+  },
+
+  // Credentials
+  listCredentials: async (params?: { collection?: string }) => {
+    const response = await api.get<PaginatedResponse<AuthCredential>>('/api-testing/credentials/', { params });
+    return response.data;
+  },
+
+  getCredential: async (id: string) => {
+    const response = await api.get<AuthCredential>(`/api-testing/credentials/${id}/`);
+    return response.data;
+  },
+
+  createCredential: async (data: CreateCredentialPayload) => {
+    const response = await api.post<AuthCredential>('/api-testing/credentials/', data);
+    return response.data;
+  },
+
+  updateCredential: async (id: string, data: Partial<CreateCredentialPayload>) => {
+    const response = await api.patch<AuthCredential>(`/api-testing/credentials/${id}/`, data);
+    return response.data;
+  },
+
+  deleteCredential: async (id: string) => {
+    await api.delete(`/api-testing/credentials/${id}/`);
+  },
+
+  // Execution Runs
+  listRuns: async (params?: { collection?: string; status?: string }) => {
+    const response = await api.get<PaginatedResponse<ExecutionRun>>('/api-testing/runs/', { params });
+    return response.data;
+  },
+
+  getRun: async (id: string) => {
+    const response = await api.get<ExecutionRun>(`/api-testing/runs/${id}/`);
+    return response.data;
+  },
+
+  // Dashboard
+  getDashboard: async () => {
+    const response = await api.get<APITestingDashboard>('/api-testing/dashboard/');
+    return response.data;
+  },
+};
 
 export default api;

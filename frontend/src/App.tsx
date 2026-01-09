@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
 import { TaskDetails} from '@/pages/TaskType/TaskDetails';
+import { APITesting } from '@/pages/TaskType/APITesting';
 import { Profile } from '@/components/layout/Profile';
 import {
   Dashboard,
@@ -118,6 +119,7 @@ function AppRoutes() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
         <Route path="/projects/:id" element={<ProjectDetailWrapper />} />
+        <Route path="/projects/:id/api-testing" element={<APITesting />} />
         <Route path="/projects/:projectId/documents/new" element={<DocumentCreate />} />
         <Route path="/projects/:id/settings" element={<ProjectSettings />} />
 

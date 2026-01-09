@@ -14,10 +14,11 @@ import { MediaPreviewModal, MediaThumbnail } from './ContentCreation';
 import { pdfjs, Document as PDFDocument, Page as PDFPage } from 'react-pdf';
 import { FixedSizeList } from 'react-window';
 import './TaskDetails.scss';
+import { APITesting } from './APITesting';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-type TabType = 'tasks' | 'add_documents' | 'gt';
+type TabType = 'tasks' | 'add_documents' | 'gt' | 'api_testing';
 type StatusFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'revision_needed';
 type GTFileType = 'gt' | 'running_gt';
 
@@ -712,10 +713,10 @@ export function TaskDetails() {
                     </div>
                 )}
 
-                {/* Update: Only show tabs if comparison view is NOT open */}
+                {/* Only show tabs if comparison view is NOT open */}
                 {!comparisonView.isOpen && (
                     <div className="content-creation__tabs">
-                        {(['tasks', 'add_documents', 'gt'] as TabType[]).map((tab) => (
+                        {(['tasks', 'add_documents', 'gt', 'api_testing'] as TabType[]).map((tab) => (
                             <button
                                 key={tab}
                                 className={`content-creation__tab ${activeTab === tab ? 'content-creation__tab--active' : ''}`}
@@ -968,6 +969,11 @@ export function TaskDetails() {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* API Testing Tab Content */}
+                    {activeTab === 'api_testing' && (
+                        <APITesting />
                     )}
                 </div>
             </div>

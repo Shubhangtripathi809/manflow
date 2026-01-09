@@ -360,7 +360,7 @@ export function Dashboard() {
                 )}
               </div>
 
-              {/* Dynamic Status Label */}
+              {/* Status Label */}
               <span>
                 {statusOptions.find((s) => s.value === selectedTaskStatus)?.label}
               </span>
@@ -386,14 +386,11 @@ export function Dashboard() {
                   return (
                     <div
                       key={task.id}
-                      onClick={() => navigate(`/taskboard/${task.status.toLowerCase()}`)} // ✅ UPDATED
+                      onClick={() => navigate(`/taskboard/${task.status.toLowerCase()}`)}
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-gray-100"
                     >
                       {/* Left Section: Task Info */}
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                          <CheckCircle className="h-4 w-4 text-primary" />
-                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{task.heading}</div>
                           <div className="text-sm text-muted-foreground truncate">
@@ -439,9 +436,11 @@ export function Dashboard() {
         {/* Recent Documents */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Recent Documents
+            <CardTitle className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              <span>Recent Documents</span>
             </CardTitle>
             <Link to="/documents">
               <Button variant="ghost" size="sm">
@@ -451,40 +450,53 @@ export function Dashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {recentDocuments.length > 0 ? (
-              <div className="space-y-3">
-                {recentDocuments.map((doc: Document) => (
-                  <Link
-                    key={doc.id}
-                    to={`/documents/${doc.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <FileText className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-medium">{doc.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {doc.project_name || `Project ${doc.project}`}
-                        </div>
-                      </div>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(doc.status)}`}>
-                      {doc.status.replace('_', ' ')}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">No documents yet</p>
+            {recentDocuments.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-2">No documents yet</p>
                 <Link to="/projects">
                   <Button variant="outline" size="sm" className="mt-2">
                     Create Document
                   </Button>
                 </Link>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {recentDocuments.map((doc: Document) => {
+                  const statusColorClass = getStatusColor(doc.status);
+
+                  return (
+                    <Link
+                      key={doc.id}
+                      to={`/documents/${doc.id}`}
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-gray-100"
+                    >
+                      {/* Left Section: Document Info */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                          <FileText className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{doc.name}</div>
+                          <div className="text-sm text-muted-foreground truncate">
+                            {doc.project_name || `Project ${doc.project}`}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Section: Metadata */}
+                      <div className="flex items-center gap-4 ml-4 flex-shrink-0">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground hidden lg:flex">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatRelativeTime(doc.updated_at)}</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColorClass}`}>
+                          {doc.status.replace('_', ' ').toUpperCase()}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>

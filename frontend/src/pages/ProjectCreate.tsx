@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, X } from 'lucide-react';
@@ -91,6 +91,16 @@ const TASK_TYPES = [
   { value: 'ideas', label: 'Ideas' },
 ];
 
+const PROJECT_ROLES = [
+  'Manager',
+  'Frontend Developer',
+  'Backend Developer',
+  'Testing Engineer',
+  'DevOps Engineer',
+  'Social Media'
+];
+
+
 export function ProjectCreate() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -99,7 +109,8 @@ export function ProjectCreate() {
     description: '',
     task_type: 'key_value',
   });
-  const [assignedTo, setAssignedTo] = useState<number[]>([]);
+  const [assignedTo, setAssignedTo] = useState<{ userId: number; role: string }[]>([]);
+  const [activeRolePicker, setActiveRolePicker] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [taskTypeDropdownOpen, setTaskTypeDropdownOpen] = useState(false);
@@ -116,10 +127,14 @@ export function ProjectCreate() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData & { assigned_to: number[] }) =>
-      projectsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    mutationFn: (data: typeof formData & { assigned_to: number[] }) => {
+      return projectsApi.create(data);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ['projects'],
+        exact: false
+      });
       navigate('/projects');
     },
     onError: (err: any) => {
@@ -136,7 +151,8 @@ export function ProjectCreate() {
       return;
     }
 
-    createMutation.mutate({ ...formData, assigned_to: assignedTo });
+    const userIds = assignedTo.map(assignment => assignment.userId);
+    createMutation.mutate({ ...formData, assigned_to: userIds });
   };
 
   const handleChange = (
@@ -150,8 +166,31 @@ export function ProjectCreate() {
 
   //handler for the MultiSelect component
   const handleAssignedToChange = (values: number[]) => {
-    setAssignedTo(values);
+    setAssignedTo(
+      values.map(userId => ({
+        userId,
+        role: '',
+      }))
+    );
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // If the click is not inside the assigned-to container, close it
+      if (!target.closest('.assigned-to-container')) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -197,6 +236,7 @@ export function ProjectCreate() {
               />
             </div>
 
+            {/* Description Section */}
             <div className="space-y-2">
               <label htmlFor="description" className="text-sm font-medium">
                 Description
@@ -210,6 +250,95 @@ export function ProjectCreate() {
                 rows={4}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
+            </div>
+
+            {/* Assigned To - Repositioned and wrapped with container class */}
+            <div className="relative space-y-2 assigned-to-container">
+              <label className="text-sm font-medium">
+                Assigned To <span className="text-destructive">*</span>
+              </label>
+
+              {/* Selection Trigger/Display Box */}
+              <div
+                className="w-full p-3 rounded-lg border border-input bg-background cursor-pointer flex flex-wrap gap-2 min-h-[50px] text-sm"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+              >
+                {assignedTo.length === 0 && (
+                  <span className="text-muted-foreground">Select users...</span>
+                )}
+                {assignedTo.map((assignment) => {
+                  const user = usersData?.find((u) => u.value === assignment.userId);
+                  if (!user) return null;
+                  return (
+                    <Badge key={assignment.userId} variant="secondary" className="px-2 py-1 flex items-center gap-1">
+                      {user.label} <span className="text-[10px] opacity-60">({assignment.role})</span>
+                      <button
+                        type="button"
+                        className="ml-1 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignedTo(assignedTo.filter((a) => a.userId !== assignment.userId));
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+
+              {/* Main User List Dropdown */}
+              {dropdownOpen && (
+                <div className="absolute z-20 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                  {usersData
+                    ?.filter((user) => !assignedTo.some((a) => a.userId === user.value))
+                    .map((user) => (
+                      <div key={user.value} className="relative border-b last:border-0 p-2 hover:bg-accent/30">
+                        <div className="flex items-center justify-between px-2">
+                          <span className="text-sm font-medium">{user.label}</span>
+
+                          {/* Role Selector Trigger */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="text-xs px-3 py-1.5 border rounded-md bg-background hover:bg-accent transition-colors flex items-center gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevents main dropdown from closing
+                                setActiveRolePicker(activeRolePicker === user.value ? null : user.value);
+                              }}
+                            >
+                              {activeRolePicker === user.value ? 'Cancel' : 'Select Role'}
+                              <svg className={`h-3 w-3 transition-transform ${activeRolePicker === user.value ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+
+                            {/* Inline Role Dropdown */}
+                            {activeRolePicker === user.value && (
+                              <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-background border rounded-md shadow-xl py-1">
+                                {PROJECT_ROLES.map((role) => (
+                                  <button
+                                    key={role}
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-primary-foreground transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAssignedTo([...assignedTo, { userId: user.value, role }]);
+                                      setActiveRolePicker(null);
+                                      setDropdownOpen(false);
+                                    }}
+                                  >
+                                    {role}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -253,74 +382,6 @@ export function ProjectCreate() {
                         {formData.task_type === type.value && <span className="text-primary font-bold">✓</span>}
                       </div>
                     ))}
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Select the type of extraction or classification task
-                </p>
-              </div>
-
-              {/* Assigned To */}
-              <div className="relative space-y-2">
-                <label className="text-sm font-medium">
-                  Assigned To <span className="text-destructive">*</span>
-                </label>
-
-                <div
-                  className="w-full p-3 rounded-lg border border-input bg-background cursor-pointer flex flex-wrap gap-2 min-h-[50px] text-sm"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                >
-                  {assignedTo.length === 0 && (
-                    <span className="text-muted-foreground">Select users...</span>
-                  )}
-
-                  {assignedTo.map((userId) => {
-                    const user = usersData?.find((u) => u.value === userId);
-                    if (!user) return null;
-
-                    return (
-                      <Badge
-                        key={userId}
-                        variant="secondary"
-                        className="px-2 py-1 flex items-center gap-1"
-                      >
-                        {user.label}
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAssignedTo(assignedTo.filter((id) => id !== userId));
-                          }}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    );
-                  })}
-                </div>
-
-                {dropdownOpen && (
-                  <div className="absolute z-20 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                    {usersData
-                      ?.filter((user) => !assignedTo.includes(user.value))
-                      .map((user) => (
-                        <div
-                          key={user.value}
-                          className="px-4 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground flex justify-between"
-                          onClick={() => {
-                            setAssignedTo([...assignedTo, user.value]);
-                            setDropdownOpen(false);
-                          }}
-                        >
-                          <span>{user.label}</span>
-                        </div>
-                      ))}
-                    {usersData?.filter((user) => !assignedTo.includes(user.value)).length === 0 && (
-                      <div className="px-4 py-2 text-muted-foreground text-sm italic">
-                        All users assigned
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
