@@ -11,6 +11,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 
 // Interface and Utility inherited from original MyTask.tsx
 interface Task {
+    project_details: any;
     project: any;
     id: number;
     heading: string;
@@ -280,7 +281,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                 <div className={`${isMaximized ? 'max-w-4xl mx-auto w-full px-6' : 'px-8'} py-5 border-b bg-white flex items-center justify-between sticky top-0 z-20 w-full`}>
                     <div className="flex items-center gap-4">
                         <div className="p-2 bg-purple-50 rounded-lg"><Edit3 className="w-5 h-5 text-purple-600" /></div>
-                        <h2 className="text-xl font-bold text-gray-900">{task.heading}</h2>
+                        <h2 className="text-xl font-bold text-gray-900">
+                            {task.project_details?.name || task.project_name || 'No Project'}
+                        </h2>
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={toggleMaximize} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
@@ -297,20 +300,61 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                         {/* 1. Timeline Div */}
                         <div className="timeline bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Timeline</label>
-                                    <div className="flex items-center gap-3 text-sm font-semibold text-gray-700">
-                                        <span className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-green-500" /> {formatDate(task.start_date)}</span>
-                                        <span className="text-gray-300">→</span>
-                                        <span className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-red-500" /> {formatDate(task.end_date)}</span>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex-1">
+                                    <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-gray-700">
+                                        {/* Start Date */}
+                                        <span className="flex items-center group cursor-pointer relative">
+                                            <div className="flex flex-col">
+                                                <span className="text-[14px] text-gray-400 uppercase leading-none mb-1">Start Date</span>
+                                                <input
+                                                    type="date"
+                                                    defaultValue={task.start_date?.split('T')[0]}
+                                                    onChange={(e) => {
+                                                        setHasUnsavedChanges(true);
+                                                    }}
+                                                    className="bg-transparent border-none p-0 text-sm font-bold focus:ring-0 cursor-pointer text-gray-700"
+                                                />
+                                            </div>
+                                        </span>
+
+                                        {/* End Date */}
+                                        <span className="flex items-center group cursor-pointer relative">
+                                            <div className="flex flex-col">
+                                                <span className="text-[14px] text-gray-400 uppercase leading-none mb-1">End Date</span>
+                                                <input
+                                                    type="date"
+                                                    defaultValue={task.end_date?.split('T')[0]}
+                                                    onChange={(e) => {
+                                                        setSelectedStatus(task.status);
+                                                        setHasUnsavedChanges(true);
+                                                    }}
+                                                    className="bg-transparent border-none p-0 text-sm font-bold focus:ring-0 cursor-pointer text-gray-700"
+                                                />
+                                            </div>
+                                        </span>
+
+                                        {/* Duration Time */}
+                                        <span className="flex items-center group">
+                                            <div className="flex items-center justify-center w-5 h-5 bg-blue-50 text-blue-600 rounded-full mr-2 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                                                <Clock className="w-3 h-3" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[14px] text-gray-400 uppercase leading-none mb-1">Duration</span>
+                                                <span className="text-sm font-bold text-gray-700">
+                                                    {(task as any).duration || '3 hours'}
+                                                </span>
+                                            </div>
+                                        </span>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Task Status</label>
+
+                                {/* Status logic*/}
+                                <div className="flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-4">
+                                    <label className="text-[12px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Task Status</label>
                                     <button
                                         onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                                        className={`inline-flex items-center px-4 py-2 rounded-xl border text-xs font-bold ${getStatusConfig(selectedStatus).bg} ${getStatusConfig(selectedStatus).text}`}
+                                        className={`inline-flex items-center px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:shadow-sm ${getStatusConfig(selectedStatus).bg} ${getStatusConfig(selectedStatus).text}`}
                                     >
                                         {React.createElement(getStatusConfig(selectedStatus).icon, { className: "w-3.5 h-3.5 mr-2" })}
                                         {getStatusConfig(selectedStatus).label}
@@ -532,8 +576,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 onClick={handleSaveStatus}
                                 disabled={isSaving || !hasUnsavedChanges}
                                 className={`flex items-center px-8 py-3 text-sm font-bold rounded-xl transition-all shadow-md ${isSaving || !hasUnsavedChanges
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        : 'bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-green-200'
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-green-200'
                                     }`}
                             >
                                 {isSaving ? (

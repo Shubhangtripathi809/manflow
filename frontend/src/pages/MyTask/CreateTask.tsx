@@ -698,34 +698,56 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* Start Date */}
-                                    <div>
-                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                                            <Calendar className="w-4 h-4" />
-                                            Start date <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                            className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                                            required
-                                        />
-                                    </div>
+                                    {/* Combined Date & Duration Section */}
+                                    <div className="col-span-1 md:col-span-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100 shadow-sm">
+                                            {/* Start Date */}
+                                            <div className="">
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                                    <Calendar className="w-4 h-4" />
+                                                    Start date <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={startDate}
+                                                    onChange={(e) => setStartDate(e.target.value)}
+                                                    className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    required
+                                                />
+                                            </div>
 
-                                    {/* End Date */}
-                                    <div>
-                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                                            <Calendar className="w-4 h-4" />
-                                            Duration date <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                            className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                                            required
-                                        />
+                                            {/* End Date */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                                    <Calendar className="w-4 h-4" />
+                                                    Duration date <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={endDate}
+                                                    onChange={(e) => setEndDate(e.target.value)}
+                                                    className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    required
+                                                />
+                                            </div>
+
+                                            {/* Duration Time */}
+                                            <div className="space-y-2">
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                                    <span className="flex items-center justify-center w-4 h-4 bg-blue-100 text-blue-600 rounded-full text-[10px]">⏱</span>
+                                                    Duration Time
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={labels}
+                                                        onChange={(e) => setLabels(e.target.value)}
+                                                        placeholder="e.g. 2 hours"
+                                                        className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

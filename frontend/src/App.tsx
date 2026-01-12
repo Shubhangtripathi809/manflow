@@ -137,6 +137,7 @@ function AppRoutes() {
           <Route path="completed" element={null} />
           <Route path="pending" element={null} />
           <Route path="in_progress" element={null} />
+          <Route path="backlog" element={null} />
           <Route path="deployed" element={null} />
           <Route path="deferred" element={null} />
           <Route

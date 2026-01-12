@@ -170,7 +170,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
                         <th className="jira-th jira-th-status border-r border-[#dfe1e6]">Status</th>
                         <th className="jira-th jira-th-assignee border-r border-[#dfe1e6]">Assignee</th>
                         <th className="jira-th jira-th-date border-r border-[#dfe1e6]">Due date</th>
-                        <th className="jira-th jira-th-duration border-r border-[#dfe1e6]">Duration Tim</th>
+                        <th className="jira-th jira-th-duration border-r border-[#dfe1e6]">Duration Time</th>
                         <th className="jira-th jira-th-priority border-r border-[#dfe1e6]">Priority</th>
                         <th className="jira-th jira-th-comments border-r border-[#dfe1e6]">Comments</th>
                         <th className="jira-th jira-th-labels border-r border-[#dfe1e6]">Labels</th>
