@@ -152,7 +152,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         const fetchDynamicData = async () => {
             setIsDataLoading(true);
             try {
-                const userData = await usersApi.listAll();
+                const userResponse = await usersApi.list();
+                const userData = userResponse.results || userResponse;
                 const mappedUsers: UserOption[] = userData.map((user: any) => ({
                     value: String(user.id),
                     label: user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username,

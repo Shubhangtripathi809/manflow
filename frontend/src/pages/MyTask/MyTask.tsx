@@ -28,6 +28,7 @@ interface Task {
         email: string;
         role: string;
     }>;
+    assigned_by: number;
     status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
     attachments?: Array<{
         id: number;
@@ -356,9 +357,27 @@ export const MyTask: React.FC = () => {
     });
 
     const tasks = React.useMemo(() => {
-        if (!tasksData) return [];
-        return Array.isArray(tasksData) ? tasksData : tasksData.tasks || tasksData.results || [];
-    }, [tasksData]);
+        if (!tasksData || !user) return [];
+        const allTasks = Array.isArray(tasksData) ? tasksData : tasksData.tasks || tasksData.results || [];
+
+        // Admin: See all tasks
+        if (user.role === 'admin') {
+            return allTasks;
+        }
+
+        // Manager: See tasks they created OR tasks assigned to them
+        if (user.role === 'manager') {
+            return allTasks.filter((task: Task) =>
+                task.assigned_by === user.id ||
+                task.assigned_to.includes(user.id)
+            );
+        }
+
+        // Viewer/Annotator: See only tasks assigned to them
+        return allTasks.filter((task: Task) =>
+            task.assigned_to.includes(user.id)
+        );
+    }, [tasksData, user]);
 
     const handleTaskClick = useCallback((task: Task) => setSelectedTask(task), []);
     const handleCloseTaskDetail = useCallback(() => setSelectedTask(null), []);

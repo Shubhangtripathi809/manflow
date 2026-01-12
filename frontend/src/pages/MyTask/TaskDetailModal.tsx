@@ -11,6 +11,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 
 // Interface and Utility inherited from original MyTask.tsx
 interface Task {
+    assigned_by: number | undefined;
     project_details: any;
     project: any;
     id: number;
@@ -95,7 +96,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             onTaskUpdated(data);
             setIsEditingStatus(false);
-            window.location.href = "/taskboard";
+            onClose();
         },
         onError: (error) => {
             console.error('Failed to update task status:', error);
@@ -130,7 +131,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const users = await usersApi.listAll();
+                const userResponse = await usersApi.list();
+                const users = userResponse.results || userResponse;
                 setAvailableUsers(users);
             } catch (error) {
                 console.error('Failed to fetch users:', error);
@@ -166,7 +168,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
     const deleteMutation = useMutation({
         mutationFn: (taskId: number) => onDelete(taskId),
-        onSuccess: () => setShowDeleteConfirm(false),
+        onSuccess: () => {
+            setShowDeleteConfirm(false);
+            onClose();
+        },
     });
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -289,7 +294,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                         <button onClick={toggleMaximize} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                             {isMaximized ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                         </button>
-                        <button onClick={() => setShowDeleteConfirm(true)} className="p-2 text-gray-400 hover:text-red-600 rounded-lg"><Trash2 className="w-5 h-5" /></button>
+                        {(user?.role === 'admin' || task.assigned_by === user?.id) && (
+                            <button onClick={() => setShowDeleteConfirm(true)} className="p-2 text-gray-400 hover:text-red-600 rounded-lg">
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        )}
                         <button onClick={onClose} className="p-2 text-gray-400 hover:text-black rounded-lg"><X className="w-5 h-5" /></button>
                     </div>
                 </div>
