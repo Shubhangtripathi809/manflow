@@ -28,6 +28,7 @@ export interface UserMinimal {
 
 // Project types
 export interface Project {
+  is_favourite: boolean;
   id: number;
   name: string;
   description: string;
@@ -706,4 +707,13 @@ export interface RunCollectionPayload {
   credential_id?: string;
   environment_overrides?: Record<string, string>;
   notes?: string;
+}
+
+// Calendar Event types
+export interface CalendarEvent {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string;
+  type: 'task' | 'event' | 'meeting';
 }

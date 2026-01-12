@@ -10,7 +10,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { TaskDetailModal } from './TaskDetailModal';
 import { AITask } from './AITask';
 
-interface Task {
+export interface Task {
     id: number;
     heading: string;
     description: string;
@@ -18,6 +18,10 @@ interface Task {
     end_date: string;
     priority: string;
     project: number | null;
+    project_details?: {
+        id: number;
+        name: string;
+    };
     project_name: string | null;
     assigned_to: number[];
     assigned_to_user_details: Array<{
@@ -29,12 +33,36 @@ interface Task {
         role: string;
     }>;
     assigned_by: number;
+    assigned_by_user_details?: {
+        id: number;
+        username: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+        role: string;
+    };
     status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
     attachments?: Array<{
         id: number;
         file_url: string;
         file_name: string;
         uploaded_at: string;
+    }>;
+    created_at?: string;
+    updated_at?: string;
+    comments?: Array<{
+        id: number;
+        task: number;
+        user: number;
+        user_details: {
+            id: number;
+            username: string;
+            first_name: string;
+            last_name: string;
+            email: string;
+        };
+        content: string;
+        created_at: string;
     }>;
 }
 
@@ -48,16 +76,23 @@ const formatDate = (dateString: string) => {
     }
 };
 
-const getStatusConfig = (status: Task['status']) => {
+export const getStatusConfig = (status: Task['status']) => {
     const normalizedStatus = status.toUpperCase();
     switch (normalizedStatus) {
-        case 'PENDING': return { bg: 'bg-yellow-50', text: 'text-yellow-800', badge: 'bg-yellow-500', cardClass: 'card-pending', label: 'PENDING', icon: Clock };
-        case 'BACKLOG': return { bg: 'bg-orange-50', text: 'text-orange-800', badge: 'bg-orange-500', cardClass: 'card-backlog', label: 'BACKLOG', icon: ListTodo };
-        case 'IN_PROGRESS': return { bg: 'bg-blue-50', text: 'text-blue-800', badge: 'bg-blue-500', cardClass: 'card-in-progress', label: 'IN PROGRESS', icon: PlayCircle };
-        case 'COMPLETED': return { bg: 'bg-green-50', text: 'text-green-800', badge: 'bg-green-500', cardClass: 'card-completed', label: 'COMPLETED', icon: CheckCircle };
-        case 'DEPLOYED': return { bg: 'bg-purple-50', text: 'text-purple-800', badge: 'bg-purple-500', cardClass: 'card-deployed', label: 'DEPLOYED', icon: CheckSquare };
-        case 'DEFERRED': return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', cardClass: 'card-deferred', label: 'DEFERRED', icon: Pause };
-        default: return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', cardClass: 'card-gray', label: normalizedStatus, icon: AlertCircle };
+        case 'PENDING':
+            return { bg: 'bg-yellow-50', text: 'text-yellow-800', badge: 'bg-yellow-500', cardClass: 'card-pending', label: 'PENDING', icon: Clock, color: '#f59e0b' };
+        case 'BACKLOG':
+            return { bg: 'bg-orange-50', text: 'text-orange-800', badge: 'bg-orange-500', cardClass: 'card-backlog', label: 'BACKLOG', icon: ListTodo, color: '#f97316' };
+        case 'IN_PROGRESS':
+            return { bg: 'bg-blue-50', text: 'text-blue-800', badge: 'bg-blue-500', cardClass: 'card-in-progress', label: 'IN PROGRESS', icon: PlayCircle, color: '#3b82f6' };
+        case 'COMPLETED':
+            return { bg: 'bg-green-50', text: 'text-green-800', badge: 'bg-green-500', cardClass: 'card-completed', label: 'COMPLETED', icon: CheckCircle, color: '#22c55e' };
+        case 'DEPLOYED':
+            return { bg: 'bg-purple-50', text: 'text-purple-800', badge: 'bg-purple-500', cardClass: 'card-deployed', label: 'DEPLOYED', icon: CheckSquare, color: '#8b5cf6' };
+        case 'DEFERRED':
+            return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', cardClass: 'card-deferred', label: 'DEFERRED', icon: Pause, color: '#6b7280' };
+        default:
+            return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', cardClass: 'card-gray', label: normalizedStatus, icon: AlertCircle, color: '#9ca3af' };
     }
 };
 

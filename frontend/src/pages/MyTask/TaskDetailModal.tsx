@@ -7,37 +7,9 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { taskApi, usersApi, documentsApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { Task,  getStatusConfig } from './MyTask';
 
 
-// Interface and Utility inherited from original MyTask.tsx
-interface Task {
-    assigned_by: number | undefined;
-    project_details: any;
-    project: any;
-    id: number;
-    heading: string;
-    description: string;
-    start_date: string;
-    end_date: string;
-    priority: string;
-    project_name: string | null;
-    assigned_to: number[];
-    assigned_to_user_details: Array<{
-        id: number;
-        username: string;
-        first_name: string;
-        last_name: string;
-        email: string;
-        role: string;
-    }>;
-    status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
-    attachments?: Array<{
-        id: number;
-        file_url: string;
-        file_name: string;
-        uploaded_at: string;
-    }>;
-}
 
 const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -49,18 +21,6 @@ const formatDate = (dateString: string) => {
     }
 };
 
-const getStatusConfig = (status: Task['status']) => {
-    const normalizedStatus = status.toUpperCase();
-    switch (normalizedStatus) {
-        case 'PENDING': return { bg: 'bg-yellow-50', text: 'text-yellow-800', badge: 'bg-yellow-500', label: 'PENDING', icon: Clock };
-        case 'BACKLOG': return { bg: 'bg-orange-50', text: 'text-orange-800', badge: 'bg-orange-500', label: 'BACKLOG', icon: ListTodo };
-        case 'IN_PROGRESS': return { bg: 'bg-blue-50', text: 'text-blue-800', badge: 'bg-blue-500', label: 'IN PROGRESS', icon: PlayCircle };
-        case 'COMPLETED': return { bg: 'bg-green-50', text: 'text-green-800', badge: 'bg-green-500', label: 'COMPLETED', icon: CheckCircle };
-        case 'DEPLOYED': return { bg: 'bg-purple-50', text: 'text-purple-800', badge: 'bg-purple-500', label: 'DEPLOYED', icon: CheckSquare };
-        case 'DEFERRED': return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', label: 'DEFERRED', icon: Pause };
-        default: return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', label: normalizedStatus, icon: Clock };
-    }
-};
 
 interface TaskDetailModalProps {
     task: Task;

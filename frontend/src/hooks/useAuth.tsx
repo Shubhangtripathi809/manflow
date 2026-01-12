@@ -31,16 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = await authApi.getMe();
           setUser(userData);
         } catch (error) {
-          console.error("[Auth] Failed to fetch user details. Clearing tokens.", error);
-          clearTokens();
-          setUser(null);
         }
-      } else {
       }
-
       setIsLoading(false);
     };
-
     initAuth();
   }, []);
 

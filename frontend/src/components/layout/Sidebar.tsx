@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Braces,
   ListTodo,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +31,7 @@ const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'Documents', href: '/documents', icon: FileText },
+  { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
   { name: 'Tools', href: '/tools', icon: Cog },
 ];

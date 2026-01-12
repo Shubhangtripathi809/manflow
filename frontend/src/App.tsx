@@ -24,6 +24,7 @@ import {
   TeamPerformance,
   PdfVsHtmlViewer,
   PdfJson,
+  Calendar,
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -79,7 +80,7 @@ function ProjectDetailWrapper() {
     return <ContentCreation />;
   }
 
-  // 2. Extraction & OCR - Use TaskDetails for these types
+  // 2. Extraction & OCR -
   const taskDetailsTypes = ['client', 'internal', 'Content Creation',  'ideas'];
   if (taskDetailsTypes.includes(project.task_type)) {
     return <TaskDetails />;
@@ -125,6 +126,7 @@ function AppRoutes() {
 
         <Route path="/documents" element={<Documents />} />
         <Route path="/documents/:id" element={<DocumentDetail />} />
+        <Route path="/calendar" element={<Calendar />} />
 
         <Route path="/test-runs" element={<div>Test Runs (Phase 2)</div>} />
         <Route path="/test-runs/:id" element={<div>Test Run Detail (Phase 2)</div>} />

@@ -145,7 +145,7 @@ export const projectsApi = {
     return response.data;
   },
 
-  update: async (id: number, data: Partial<{ name: string; description: string }>) => {
+  update: async (id: number, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
     const response = await api.patch(`/projects/${id}/`, data);
     return response.data;
   },
