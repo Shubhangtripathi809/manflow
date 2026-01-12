@@ -62,6 +62,7 @@ class APICollectionListSerializer(serializers.ModelSerializer):
     created_by = UserMinimalSerializer(read_only=True)
     api_count = serializers.SerializerMethodField()
     last_run = serializers.SerializerMethodField()
+    project_id = serializers.IntegerField(required=False, allow_null=True)
     
     class Meta:
         model = APICollection
@@ -104,6 +105,8 @@ class APICollectionDetailSerializer(serializers.ModelSerializer):
     endpoints = serializers.SerializerMethodField()
     credentials = serializers.SerializerMethodField()
     stats = serializers.SerializerMethodField()
+    project_id = serializers.IntegerField(required=False, allow_null=True)
+
     
     class Meta:
         model = APICollection
@@ -143,7 +146,7 @@ class APICollectionCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating API collections.
     """
-    
+    project_id = serializers.IntegerField(required=False, allow_null=True)
     class Meta:
         model = APICollection
         fields = [
@@ -180,7 +183,7 @@ class APICollectionUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for updating API collections.
     """
-    
+    project_id = serializers.IntegerField(required=False, allow_null=True)
     class Meta:
         model = APICollection
         fields = [

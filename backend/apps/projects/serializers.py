@@ -42,6 +42,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     """
     Serializer for Project model.
     """
+    is_favourite = serializers.SerializerMethodField()
     created_by = UserMinimalSerializer(read_only=True)
     labels = LabelSerializer(many=True, read_only=True)
     members = ProjectMembershipSerializer(
@@ -56,7 +57,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = Project
         fields = [
             "id", "name", "description", "task_type",
-            "project_settings", "default_labels", "is_active",
+            "project_settings", "default_labels", "is_active","is_favourite",
             "created_by", "created_at", "updated_at",
             "labels","members","member_count", "document_count",
         ]
@@ -67,6 +68,26 @@ class ProjectSerializer(serializers.ModelSerializer):
     
     def get_document_count(self, obj):
         return obj.documents.count() if hasattr(obj, "documents") else 0
+    
+    def get_is_favourite(self, obj):
+        request = self.context.get('request')
+        # Check if request AND request.user exist before accessing them
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            return obj.favorited_by.filter(id=request.user.id).exists()
+        return False
+    def update(self, instance, validated_data):
+        # Check if 'is_favourite' was passed in the request body
+        request = self.context.get('request')
+        if request and "is_favourite" in request.data:
+            is_fav = request.data.get("is_favourite")
+            user = request.user
+            
+            if is_fav:
+                instance.favorited_by.add(user)
+            else:
+                instance.favorited_by.remove(user)
+        
+        return super().update(instance, validated_data)
 
 
 class ProjectDetailSerializer(ProjectSerializer):

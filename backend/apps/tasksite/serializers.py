@@ -112,6 +112,7 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = [
             'id', 'heading', 'description', 'start_date', 'end_date',
+            'duration_time',
             'priority',
             'project',          # <--- Send ID (9) here when creating
             'project_details',  # <--- Receive details (Name: Marketing...) here when viewing

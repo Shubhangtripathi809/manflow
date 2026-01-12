@@ -8,14 +8,14 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import serializers
-
+from apps.users.auth import StaticTokenAuthentication
 # Ensure this import matches your project structure
 from apps.users.models import User
 from .models import Task, TaskComment
 from .serializers import TaskSerializer, TaskStatusUpdateSerializer, UserManagementSerializer, TaskCommentSerializer
 
 class AllUsersListView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [StaticTokenAuthentication, JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -33,7 +33,7 @@ class AllUsersListView(APIView):
         }, status=status.HTTP_200_OK)
 
 class TaskListCreateView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [StaticTokenAuthentication,JWTAuthentication]
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
     def get(self, request):
@@ -75,7 +75,7 @@ class TaskListCreateView(APIView):
 
 
 class TaskRetrieveUpdateView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [StaticTokenAuthentication, JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, task_id):
@@ -169,7 +169,7 @@ class UserPerformanceView(APIView):
     GET: Retrieve detailed performance metrics for a specific user.
     Only accessible by Admins and Managers.
     """
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [StaticTokenAuthentication, JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
@@ -211,7 +211,7 @@ class UserPerformanceView(APIView):
         }, status=status.HTTP_200_OK)
 class TaskCommentListCreateView(ListCreateAPIView):
     serializer_class = TaskCommentSerializer
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [StaticTokenAuthentication, JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

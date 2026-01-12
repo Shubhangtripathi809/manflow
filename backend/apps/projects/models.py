@@ -29,7 +29,11 @@ class Project(UserStampedModel):
         choices=TaskType.choices,
         default=TaskType.Client,
     )
-    
+    favorited_by = models.ManyToManyField(
+        django_settings.AUTH_USER_MODEL,
+        related_name="favorite_projects",
+        blank=True
+    )    
     # Project settings (JSON)
     project_settings = models.JSONField(default=dict, blank=True)
     # Example settings:

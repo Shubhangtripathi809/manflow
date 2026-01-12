@@ -29,6 +29,7 @@ class Task(models.Model):
     description = models.TextField(blank=True, null=True)
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
+    duration_time = models.DurationField(null=True, blank=True)
     
     priority = models.CharField(
         max_length=20, 

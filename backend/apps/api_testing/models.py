@@ -66,7 +66,7 @@ class APICollection(TimeStampedModel):
         default='',
         help_text="Detailed description of the collection's purpose"
     )
-    project_id = models.UUIDField(
+    project_id = models.IntegerField(
         null=True,
         blank=True,
         db_index=True,

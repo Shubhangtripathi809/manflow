@@ -170,7 +170,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
     def perform_update(self, serializer):
-        old_data = ProjectSerializer(self.get_object()).data
+        old_data = ProjectSerializer(self.get_object(), context={'request': self.request}).data 
         project = serializer.save(updated_by=self.request.user)
         log_action(project, "update", old_value=old_data, new_value=serializer.data)
     
