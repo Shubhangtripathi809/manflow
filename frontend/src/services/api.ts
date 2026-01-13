@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
   AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
   GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
-  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload
+  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
@@ -122,7 +122,6 @@ export const authApi = {
   },
 
   updateSkills: async (skills: Skill[]) => {
-    // Sends the array of skill objects as verified in Postman
     const response = await api.patch('/auth/me/', { skills });
     return response.data;
   },
@@ -141,13 +140,7 @@ export const projectsApi = {
     return response.data;
   },
 
-  create: async (data: {
-    name: string;
-    description?: string;
-    task_type: string;
-    settings?: Record<string, unknown>;
-    assigned_to?: number[]
-  }) => {
+  create: async (data: ProjectCreatePayload) => {
     const response = await api.post('/projects/', data);
     return response.data;
   },

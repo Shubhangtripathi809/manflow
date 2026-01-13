@@ -212,11 +212,15 @@ export function Projects() {
                                               @{userData.username}
                                             </p>
                                           </div>
-                                          {member.role === 'owner' && (
-                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                              Owner
+                                          <div className="flex flex-col items-end gap-1">
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize bg-primary/5">
+                                              {member.role.replace('_', ' ')}
                                             </Badge>
-                                          )}
+                                            {member.role === 'owner' && (
+                                              <span className="text-[8px] font-bold text-primary uppercase tracking-tighter">
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
                                       );
                                     })}

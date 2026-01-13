@@ -1,3 +1,4 @@
+// User Types 
 export interface User {
   id: number;
   username: string;
@@ -11,12 +12,7 @@ export interface User {
   skills?: Skill[];
 }
 
-export interface Skill {
-  name: string;
-  proficiency: 'Learning' | 'Beginner' | 'Intermediate' | 'Advance';
-  category: string;
-}
-
+// Minimal user info for nested references
 export interface UserMinimal {
   id: number;
   username: string;
@@ -24,9 +20,14 @@ export interface UserMinimal {
   avatar?: string;
 }
 
+// In profile page skills section
+export interface Skill {
+  name: string;
+  proficiency: 'Learning' | 'Beginner' | 'Intermediate' | 'Advance';
+  category: string;
+}
 
-
-// Project types
+// Project page  types 
 export interface Project {
   is_favourite: boolean;
   id: number;
@@ -45,6 +46,7 @@ export interface Project {
   members?: ProjectMember[];
 }
 
+// In Project page  render member list on card
 export interface ProjectMember {
   id: number;
   user: UserMinimal;
@@ -58,6 +60,7 @@ export interface ProjectMinimal {
   name: string;
 }
 
+// In project listing page with pagination
 export interface PaginatedProjectsResponse {
   count: number;
   next: string | null;
@@ -65,11 +68,23 @@ export interface PaginatedProjectsResponse {
   results: ProjectMinimal[];
 }
 
+// Create New Project dropdown for task type
 export type TaskType =
   | 'client'
   | 'internal'
   | 'content-creation'
-  | 'ideas';
+  | 'ideas'
+
+  // Create New Project payload
+export interface ProjectCreatePayload {
+  name: string;
+  description?: string;
+  task_type: string;
+  assigned_members: { user_id: number; role: string }[];
+  project_settings?: Record<string, any>;
+}
+
+// In project settings page
 
 export interface ProjectSettings {
   metrics?: string[];
@@ -106,6 +121,8 @@ export interface TaskAttachment {
   uploaded_at: string;
 }
 
+
+// In task detail page
 export interface TaskResponse {
   message: string;
   task: {
@@ -154,6 +171,7 @@ export interface TaskComment {
   created_at: string;
 }
 
+// TaskdetailModal Comment Payload
 export interface CreateTaskCommentPayload {
   content: string;
 }
