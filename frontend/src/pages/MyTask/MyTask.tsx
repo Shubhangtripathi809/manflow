@@ -14,6 +14,7 @@ export interface Task {
     id: number;
     heading: string;
     description: string;
+    duration?: string;
     start_date: string;
     end_date: string;
     priority: string;

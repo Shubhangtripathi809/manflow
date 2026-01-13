@@ -64,6 +64,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [success, setSuccess] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [labels, setLabels] = useState('');
+    const [duration, setDuration] = useState('');
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +90,27 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             reader.readAsDataURL(file);
         }
     };
+const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    const isDeleting = (e.nativeEvent as any).inputType === 'deleteContentBackward';
+    if (isDeleting) {
+        setDuration(val);
+        return;
+    }
+    val = val.replace(/[^0-9:]/g, '');
+
+    // Auto-format logic for additions:
+    // 1. If user types 2 digits (e.g., "24"), append a colon: "24:"
+    if (/^\d{2}$/.test(val)) {
+        val = val + ':';
+    } 
+    // 2. If user types a digit after the colon (e.g., "24:1"), append a zero: "24:10"
+    else if (/^\d{2}:\d$/.test(val)) {
+        val = val + '0';
+    }
+
+    setDuration(val);
+};
 
     const insertTable = () => {
         const table = `
@@ -278,6 +300,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             formData.append('description', description);
             formData.append('start_date', `${startDate}T09:00:00Z`);
             formData.append('end_date', `${endDate}T18:00:00Z`);
+            formData.append('duration_time', duration);
             formData.append('status', status);
             formData.append('priority', priority);
             formData.append('project', String(projectId));
@@ -741,9 +764,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                                 <div className="relative">
                                                     <input
                                                         type="text"
-                                                        value={labels}
-                                                        onChange={(e) => setLabels(e.target.value)}
-                                                        placeholder="e.g. 2 hours"
+                                                        value={duration}
+                                                        onChange={handleDurationChange}
+                                                        placeholder="HH:MM:SS"
                                                         className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                                                     />
                                                 </div>

@@ -7,7 +7,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { taskApi, usersApi, documentsApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Task,  getStatusConfig } from './MyTask';
+import { Task, getStatusConfig } from './MyTask';
 
 
 
@@ -311,7 +311,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                             <div className="flex flex-col">
                                                 <span className="text-[14px] text-gray-400 uppercase leading-none mb-1">Duration</span>
                                                 <span className="text-sm font-bold text-gray-700">
-                                                    {(task as any).duration || '3 hours'}
+                                                    {(task as any).duration_time || 'N/A'}
                                                 </span>
                                             </div>
                                         </span>
