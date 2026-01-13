@@ -377,6 +377,30 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
   );
 };
 
+const DeleteConfirmationModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onConfirm: () => void; 
+  username: string;
+  isPending: boolean;
+}> = ({ isOpen, onClose, onConfirm, username, isPending }) => (
+  <CustomModal isOpen={isOpen} onClose={onClose} title="Delete User">
+    <div className="py-4">
+      <p className="text-sm text-gray-600">
+        Are you sure you want to delete <span className="font-semibold text-gray-900">{username}</span>?
+      </p>
+    </div>
+    <div className="flex justify-end gap-3 pt-4 border-t">
+      <Button variant="outline" onClick={onClose} disabled={isPending}>
+        No
+      </Button>
+      <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+        {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+        Yes, Delete
+      </Button>
+    </div>
+  </CustomModal>
+);
 
 // --- Main Component ---
 
@@ -384,6 +408,7 @@ export function UserManagement() {
   const queryClient = useQueryClient();
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [roleChangeUser, setRoleChangeUser] = useState<AppUser | null>(null);
+  const [userToDelete, setUserToDelete] = useState<AppUser | null>(null);
 
   // Fetch list of users
   const { data: usersData, isLoading, refetch } = useQuery<PaginatedResponse<AppUser>, Error>({
@@ -395,19 +420,16 @@ export function UserManagement() {
     mutationFn: (userId: number) => usersApi.delete(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      setUserToDelete(null);
     },
     onError: (error) => {
       console.error('Failed to delete user:', error);
-      // IMPORTANT: Use a custom modal instead of window.confirm/alert
       alert('Failed to delete user. Check console for details.');
     },
   });
 
   const handleDelete = (user: AppUser) => {
-    // IMPORTANT: Use a custom modal instead of window.confirm/alert
-    if (window.confirm(`Are you sure you want to delete user ${user.username}? This cannot be undone.`)) {
-      deleteUserMutation.mutate(user.id);
-    }
+    setUserToDelete(user);
   };
 
   const users: AppUser[] = usersData?.results || [];
@@ -420,10 +442,6 @@ export function UserManagement() {
           <h1 className="text-3xl font-bold">User Management</h1>
         </div>
         <div className="flex gap-2">
-           <Button variant="outline" onClick={() => refetch()}>
-            <RotateCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
           <Button onClick={() => setIsAddUserModalOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add New User
@@ -514,6 +532,15 @@ export function UserManagement() {
           isOpen={!!roleChangeUser}
           onClose={() => setRoleChangeUser(null)}
           queryClient={queryClient}
+        />
+      )}
+      {userToDelete && (
+        <DeleteConfirmationModal
+          isOpen={!!userToDelete}
+          onClose={() => setUserToDelete(null)}
+          onConfirm={() => deleteUserMutation.mutate(userToDelete.id)}
+          username={userToDelete.username}
+          isPending={deleteUserMutation.isPending}
         />
       )}
     </div>

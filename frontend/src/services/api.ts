@@ -5,7 +5,7 @@ import type {
   APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload
 } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.9:8000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.9:8001/';
 
 
@@ -58,7 +58,8 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle both 401 (Unauthorized) and 403 (Forbidden) for token refresh
+    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
 
       const tokens = getTokens();
@@ -68,12 +69,18 @@ api.interceptors.response.use(
             `${API_URL}/auth/refresh/`,
             { refresh: tokens.refresh }
           );
-          setTokens(response.data);
-          originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
+
+          const newTokens = response.data;
+          setTokens(newTokens);
+          api.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access}`;
+          originalRequest.headers.Authorization = `Bearer ${newTokens.access}`;
+
           return api(originalRequest);
-        } catch {
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
           clearTokens();
-          window.location.href = '/login';
+          window.location.href = '/login?session=expired';
+          return Promise.reject(refreshError);
         }
       }
     }
@@ -464,7 +471,7 @@ export const usersApi = {
   },
 
   delete: async (id: number) => {
-    await api.delete(`/users/${id}/`);
+    await api.delete(`/auth/delete-user/${id}/`);
   },
 };
 
