@@ -94,6 +94,27 @@ class ChangeUserRoleView(APIView):
             }, status=status.HTTP_200_OK)
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class UserDeleteView(generics.DestroyAPIView):
+    """
+    Admin-only view to delete a user.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAdminUser] # Ensures only Staff/Superusers access this
+    lookup_field = 'id'
+
+    def delete(self, request, *args, **kwargs):
+        user_to_delete = self.get_object()
+        
+        # Security check: Prevent self-deletion
+        if request.user.id == user_to_delete.id:
+            return Response(
+                {"detail": "You cannot delete your own admin account."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        return super().delete(request, *args, **kwargs)
+    
 class ForgotPasswordView(APIView):
     """Step 1: Send OTP to Email"""
     permission_classes = [permissions.AllowAny]
