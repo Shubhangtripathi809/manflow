@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import React from 'react';
 import {
@@ -27,6 +27,7 @@ import { projectsApi, documentsApi, taskApi, } from '@/services/api';
 import { formatRelativeTime, getStatusColor } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project, Document } from '@/types';
+import { getStatusConfig } from '../pages/MyTask/MyTask';
 
 // Type Definitions
 type TaskStatus = 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred';
@@ -58,6 +59,9 @@ export function Dashboard() {
   // State Management
   const [selectedTaskStatus, setSelectedTaskStatus] = React.useState<TaskStatus>('in_progress');
   const [showStatusFilter, setShowStatusFilter] = React.useState(false);
+  const [updatingTaskId, setUpdatingTaskId] = React.useState<number | null>(null);
+  const [updatingDocId, setUpdatingDocId] = React.useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Data Fetching
   const { data: projectsData, isLoading: projectsLoading } = useQuery({
@@ -121,6 +125,54 @@ export function Dashboard() {
     return filtered;
   }, [myAssignedTasks, selectedTaskStatus]);
 
+  const handleStatusUpdate = async (taskId: number, newStatus: TaskStatus, e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    setUpdatingTaskId(taskId);
+    try {
+      await taskApi.update(taskId, { status: newStatus });
+
+      // Update cache immediately for instant UI feedback
+      queryClient.setQueryData(['dashboard-tasks'], (old: any) => {
+        if (!old) return old;
+        const update = (list: any[]) => list.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+        if (Array.isArray(old.tasks)) return { ...old, tasks: update(old.tasks) };
+        if (Array.isArray(old.results)) return { ...old, results: update(old.results) };
+        if (Array.isArray(old)) return update(old);
+        return old;
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['dashboard-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (error) {
+      console.error("Failed to update status:", error);
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
+
+  const handleDocStatusUpdate = async (docId: string, newStatus: string, e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    setUpdatingDocId(docId);
+    try {
+      await documentsApi.update(docId, { status: newStatus } as any);
+
+      // Instant cache update for documents
+      queryClient.setQueryData(['documents'], (old: any) => {
+        if (!old) return old;
+        const update = (list: any[]) => list.map(d => d.id === docId ? { ...d, status: newStatus } : d);
+        if (Array.isArray(old.results)) return { ...old, results: update(old.results) };
+        if (Array.isArray(old)) return update(old);
+        return old;
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+    } catch (error) {
+      console.error("Failed to update document status:", error);
+    } finally {
+      setUpdatingDocId(null);
+    }
+  };
+
   // Status Options Configuration
   const statusOptions: Array<{ value: TaskStatus; label: string; color: string }> = [
     { value: 'pending', label: 'Pending', color: 'text-yellow-600' },
@@ -150,69 +202,6 @@ export function Dashboard() {
   const recentDocuments = Array.isArray(documents) ? documents.slice(0, 5) : [];
 
   const isLoading = projectsLoading || docsLoading;
-
-  const getStatusConfig = (status: string) => {
-    const normalizedStatus = status.toUpperCase();
-
-    switch (normalizedStatus) {
-      case 'PENDING':
-        return {
-          bg: 'bg-yellow-100 dark:bg-yellow-900/20',
-          text: 'text-yellow-800 dark:text-yellow-300',
-          badge: 'bg-yellow-500',
-          label: 'PENDING',
-          icon: Clock
-        };
-      case 'BACKLOG':
-        return {
-          bg: 'bg-orange-100 dark:bg-orange-900/20',
-          text: 'text-orange-800 dark:text-orange-300',
-          badge: 'bg-orange-500',
-          label: 'BACKLOG',
-          icon: AlertCircle
-        };
-      case 'IN_PROGRESS':
-        return {
-          bg: 'bg-blue-100 dark:bg-blue-900/20',
-          text: 'text-blue-800 dark:text-blue-300',
-          badge: 'bg-blue-500',
-          label: 'IN PROGRESS',
-          icon: Clock
-        };
-      case 'COMPLETED':
-        return {
-          bg: 'bg-green-100 dark:bg-green-900/20',
-          text: 'text-green-800 dark:text-green-300',
-          badge: 'bg-green-500',
-          label: 'COMPLETED',
-          icon: CheckCircle
-        };
-      case 'DEPLOYED':
-        return {
-          bg: 'bg-purple-100 dark:bg-purple-900/20',
-          text: 'text-purple-800 dark:text-purple-300',
-          badge: 'bg-purple-500',
-          label: 'DEPLOYED',
-          icon: CheckCircle
-        };
-      case 'DEFERRED':
-        return {
-          bg: 'bg-gray-100 dark:bg-gray-800',
-          text: 'text-gray-800 dark:text-gray-300',
-          badge: 'bg-gray-500',
-          label: 'DEFERRED',
-          icon: AlertCircle
-        };
-      default:
-        return {
-          bg: 'bg-gray-100 dark:bg-gray-800',
-          text: 'text-gray-800 dark:text-gray-300',
-          badge: 'bg-gray-500',
-          label: normalizedStatus,
-          icon: AlertCircle
-        };
-    }
-  };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -387,7 +376,7 @@ export function Dashboard() {
             ) : (
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {filteredTasks.map((task) => {
-                  const statusConfig = getStatusConfig(task.status);
+                  const statusConfig = getStatusConfig(task.status as any);
                   return (
                     <div
                       key={task.id}
@@ -426,9 +415,25 @@ export function Dashboard() {
                         </div>
 
                         {/* Status Badge */}
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.text}`}>
-                          {statusConfig.label}
-                        </span>
+                        <div className="relative group/status" onClick={(e) => e.stopPropagation()}>
+                          <select
+                            disabled={updatingTaskId === task.id}
+                            value={task.status}
+                            onChange={(e) => handleStatusUpdate(task.id, e.target.value as TaskStatus, e as any)}
+                            className={`appearance-none px-2 py-1 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusConfig.bg} ${statusConfig.text} ${updatingTaskId === task.id ? 'opacity-50' : ''}`}
+                          >
+                            {statusOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value} className="bg-white text-gray-900">
+                                {opt.label.toUpperCase()}
+                              </option>
+                            ))}
+                          </select>
+                          {updatingTaskId === task.id && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/10 rounded-full">
+                              <div className="h-2 w-2 animate-ping bg-current rounded-full" />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -495,9 +500,20 @@ export function Dashboard() {
                           <Clock className="h-3 w-3" />
                           <span>{formatRelativeTime(doc.updated_at)}</span>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColorClass}`}>
-                          {doc.status.replace('_', ' ').toUpperCase()}
-                        </span>
+                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                          <select
+                            disabled={updatingDocId === doc.id}
+                            value={doc.status}
+                            onChange={(e) => handleDocStatusUpdate(doc.id, e.target.value, e)}
+                            className={`appearance-none px-2 py-1 rounded-full text-xs font-medium cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusColorClass} ${updatingDocId === doc.id ? 'opacity-50' : ''}`}
+                          >
+                            {['draft', 'in_review', 'approved', 'archived'].map((status) => (
+                              <option key={status} value={status} className="bg-white text-gray-900">
+                                {status.replace('_', ' ').toUpperCase()}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </Link>
                   );

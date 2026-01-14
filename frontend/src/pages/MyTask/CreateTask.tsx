@@ -744,7 +744,7 @@ const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                                             <div>
                                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                                     <Calendar className="w-4 h-4" />
-                                                    Duration date <span className="text-red-500">*</span>
+                                                    Due Date <span className="text-red-500">*</span>
                                                 </label>
                                                 <input
                                                     type="date"
@@ -759,7 +759,7 @@ const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                                             <div className="space-y-2">
                                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                                     <span className="flex items-center justify-center w-4 h-4 bg-blue-100 text-blue-600 rounded-full text-[10px]">⏱</span>
-                                                    Duration Time
+                                                    Duration
                                                 </label>
                                                 <div className="relative">
                                                     <input
