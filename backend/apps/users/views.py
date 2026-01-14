@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404
 from .serializers import UserRoleUpdateSerializer
 from .serializers import UserCreateSerializer, UserSerializer, VerifyOTPSerializer, ForgotPasswordSerializer, SetNewPasswordSerializer, AuthenticatedResetPasswordSerializer
 import random
+import uuid
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
@@ -163,7 +164,7 @@ class ForgotPasswordView(APIView):
         return Response({"detail": "If this email is registered, an OTP has been sent."}, status=status.HTTP_200_OK)
 
 class VerifyOTPView(APIView):
-    """Step 2: Check if OTP is valid"""
+    """Step 2: Verify OTP and return a temporary reset token"""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -182,12 +183,19 @@ class VerifyOTPView(APIView):
         if not otp_record or otp_record.is_expired():
             return Response({"detail": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # OTP is valid: mark as verified and generate a unique temporary token
         otp_record.is_verified = True
+        reset_token = str(uuid.uuid4())
+        otp_record.token = reset_token  # Ensure you've added this field to your model
         otp_record.save()
-        return Response({"detail": "OTP verified. Proceed to reset password."}, status=status.HTTP_200_OK)
+
+        return Response({
+            "detail": "OTP verified. Use the reset_token to set a new password.",
+            "reset_token": reset_token
+        }, status=status.HTTP_200_OK)
 
 class SetNewPasswordView(APIView):
-    """Step 3: Update password using verified OTP"""
+    """Step 3: Update password using verified reset_token"""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -195,23 +203,24 @@ class SetNewPasswordView(APIView):
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
-        otp = serializer.validated_data['otp']
-        hashed_otp = PasswordResetOTP.hash_otp(otp)
+        reset_token = serializer.validated_data['reset_token'] # Match serializer field
 
+        # Query using the token instead of the otp
         otp_record = PasswordResetOTP.objects.filter(
             user__email=email, 
-            otp_hash=hashed_otp,
+            token=reset_token, # This field must exist in your model
             is_verified=True
         ).first()
 
         if not otp_record or otp_record.is_expired():
-            return Response({"detail": "Session expired or OTP not verified."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid or expired reset token."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Update the user's password
         user = otp_record.user
         user.set_password(serializer.validated_data['password'])
         user.save()
         
-        # Burn the OTP record
+        # Burn the record so it can't be used again
         otp_record.delete()
         
         return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)

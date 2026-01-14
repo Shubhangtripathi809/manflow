@@ -132,11 +132,12 @@ class VerifyOTPSerializer(serializers.Serializer):
 
 class SetNewPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    otp = serializers.CharField(max_length=4)
-    password = serializers.CharField(write_only=True, min_length=8, validators=[validate_password])
+    reset_token = serializers.CharField() # Use reset_token instead of otp
+    password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
 
     def validate(self, data):
+        # Match passwords
         if data["password"] != data["password_confirm"]:
             raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
         return data

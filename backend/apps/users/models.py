@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
+import uuid
 class User(AbstractUser):
     """
     Custom User model with role-based access control.
@@ -80,10 +80,14 @@ class PasswordResetOTP(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_verified = models.BooleanField(default=False)
+    token = models.CharField(max_length=100, unique=True, null=True, blank=True)
 
     def is_expired(self):
         return timezone.now() > self.expires_at
-
+    def generate_reset_token(self):
+        self.token = str(uuid.uuid4())
+        self.save()
+        return self.token
     @staticmethod
     def hash_otp(otp):
         return hashlib.sha256(str(otp).encode()).hexdigest()
