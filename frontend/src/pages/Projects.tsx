@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus, FolderKanban, FileText, Users, UsersIcon } from 'lucide-react';
 import {
@@ -23,8 +23,23 @@ const TASK_TYPES = [
 ];
 
 export function Projects() {
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>('');
   const [openMembersCard, setOpenMembersCard] = useState<number | null>(null);
+
+  const toggleFavorite = async (e: React.MouseEvent, project: Project) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      await projectsApi.update(project.id, {
+        is_favourite: !project.is_favourite
+      });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['projects', filter],
@@ -84,6 +99,31 @@ export function Projects() {
                         </Badge>
                       </div>
                     </div>
+
+                    {/* Favourite Star Icon */}
+                    <button
+                      type="button"
+                      onClick={(e) => toggleFavorite(e, project)}
+                      className="p-2 hover:bg-accent rounded-full transition-colors group/star"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill={project.is_favourite ? "#eab308" : "none"}
+                        stroke={project.is_favourite ? "#eab308" : "currentColor"}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`transition-all ${project.is_favourite
+                          ? "scale-110"
+                          : "text-muted-foreground group-hover/star:text-yellow-500"
+                          }`}
+                      >
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -172,11 +212,15 @@ export function Projects() {
                                               @{userData.username}
                                             </p>
                                           </div>
-                                          {member.role === 'owner' && (
-                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                              Owner
+                                          <div className="flex flex-col items-end gap-1">
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize bg-primary/5">
+                                              {member.role.replace('_', ' ')}
                                             </Badge>
-                                          )}
+                                            {member.role === 'owner' && (
+                                              <span className="text-[8px] font-bold text-primary uppercase tracking-tighter">
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
                                       );
                                     })}

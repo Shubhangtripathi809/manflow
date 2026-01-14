@@ -2,14 +2,16 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
   AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
   GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
-  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload
+  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload
 } from '@/types';
 
 const API_URL =
-  import.meta.env.VITE_API_URL || 'http://3.233.241.87:8000/api/v1';
+  import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+//import.meta.env.VITE_API_URL || 'http://3.233.241.87:8000/api/v1';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://3.233.241.87:8000';
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+//import.meta.env.VITE_API_BASE_URL || 'http://3.233.241.87:8000';
   
 export const api = axios.create({
   baseURL: API_URL,
@@ -70,7 +72,8 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle both 401 (Unauthorized) and 403 (Forbidden) for token refresh
+    if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
       originalRequest._retry = true;
 
       const tokens = getTokens();
@@ -80,12 +83,18 @@ api.interceptors.response.use(
             `${API_URL}/auth/refresh/`,
             { refresh: tokens.refresh }
           );
-          setTokens(response.data);
-          originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
+
+          const newTokens = response.data;
+          setTokens(newTokens);
+          api.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access}`;
+          originalRequest.headers.Authorization = `Bearer ${newTokens.access}`;
+
           return api(originalRequest);
-        } catch {
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
           clearTokens();
-          window.location.href = '/login';
+          window.location.href = '/login?session=expired';
+          return Promise.reject(refreshError);
         }
       }
     }
@@ -132,7 +141,6 @@ export const authApi = {
   },
 
   updateSkills: async (skills: Skill[]) => {
-    // Sends the array of skill objects as verified in Postman
     const response = await api.patch('/auth/me/', { skills });
     return response.data;
   },
@@ -151,18 +159,12 @@ export const projectsApi = {
     return response.data;
   },
 
-  create: async (data: {
-    name: string;
-    description?: string;
-    task_type: string;
-    settings?: Record<string, unknown>;
-    assigned_to?: number[]
-  }) => {
+  create: async (data: ProjectCreatePayload) => {
     const response = await api.post('/projects/', data);
     return response.data;
   },
 
-  update: async (id: number, data: Partial<{ name: string; description: string }>) => {
+  update: async (id: number, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
     const response = await api.patch(`/projects/${id}/`, data);
     return response.data;
   },
@@ -481,7 +483,7 @@ export const usersApi = {
   },
 
   delete: async (id: number) => {
-    await api.delete(`/users/${id}/`);
+    await api.delete(`/auth/delete-user/${id}/`);
   },
 };
 

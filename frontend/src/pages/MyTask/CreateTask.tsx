@@ -64,6 +64,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [success, setSuccess] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [labels, setLabels] = useState('');
+    const [duration, setDuration] = useState('');
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +90,27 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             reader.readAsDataURL(file);
         }
     };
+const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    const isDeleting = (e.nativeEvent as any).inputType === 'deleteContentBackward';
+    if (isDeleting) {
+        setDuration(val);
+        return;
+    }
+    val = val.replace(/[^0-9:]/g, '');
+
+    // Auto-format logic for additions:
+    // 1. If user types 2 digits (e.g., "24"), append a colon: "24:"
+    if (/^\d{2}$/.test(val)) {
+        val = val + ':';
+    } 
+    // 2. If user types a digit after the colon (e.g., "24:1"), append a zero: "24:10"
+    else if (/^\d{2}:\d$/.test(val)) {
+        val = val + '0';
+    }
+
+    setDuration(val);
+};
 
     const insertTable = () => {
         const table = `
@@ -152,7 +174,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         const fetchDynamicData = async () => {
             setIsDataLoading(true);
             try {
-                const userData = await usersApi.listAll();
+                const userResponse = await usersApi.list();
+                const userData = userResponse.results || userResponse;
                 const mappedUsers: UserOption[] = userData.map((user: any) => ({
                     value: String(user.id),
                     label: user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username,
@@ -277,6 +300,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             formData.append('description', description);
             formData.append('start_date', `${startDate}T09:00:00Z`);
             formData.append('end_date', `${endDate}T18:00:00Z`);
+            formData.append('duration_time', duration);
             formData.append('status', status);
             formData.append('priority', priority);
             formData.append('project', String(projectId));
@@ -698,34 +722,56 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* Start Date */}
-                                    <div>
-                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                                            <Calendar className="w-4 h-4" />
-                                            Start date <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                            className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                                            required
-                                        />
-                                    </div>
+                                    {/* Combined Date & Duration Section */}
+                                    <div className="col-span-1 md:col-span-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100 shadow-sm">
+                                            {/* Start Date */}
+                                            <div className="">
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                                    <Calendar className="w-4 h-4" />
+                                                    Start date <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={startDate}
+                                                    onChange={(e) => setStartDate(e.target.value)}
+                                                    className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    required
+                                                />
+                                            </div>
 
-                                    {/* End Date */}
-                                    <div>
-                                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                                            <Calendar className="w-4 h-4" />
-                                            Duration date <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                            className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                                            required
-                                        />
+                                            {/* End Date */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                                    <Calendar className="w-4 h-4" />
+                                                    Due Date <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={endDate}
+                                                    onChange={(e) => setEndDate(e.target.value)}
+                                                    className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    required
+                                                />
+                                            </div>
+
+                                            {/* Duration Time */}
+                                            <div className="space-y-2">
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                                    <span className="flex items-center justify-center w-4 h-4 bg-blue-100 text-blue-600 rounded-full text-[10px]">⏱</span>
+                                                    Duration
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={duration}
+                                                        onChange={handleDurationChange}
+                                                        placeholder="HH:MM:SS"
+                                                        className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -12,7 +12,7 @@ import {
   Badge,
 } from '@/components/common';
 import { projectsApi, usersApi } from '@/services/api';
-import type { User as AppUser } from '@/types';
+import type { User as AppUser, ProjectCreatePayload } from '@/types';
 
 interface MultiSelectProps {
   label: string;
@@ -92,12 +92,12 @@ const TASK_TYPES = [
 ];
 
 const PROJECT_ROLES = [
-  'Manager',
-  'Frontend Developer',
-  'Backend Developer',
-  'Testing Engineer',
-  'DevOps Engineer',
-  'Social Media'
+  { label: 'Manager', value: 'manager' },
+  { label: 'Frontend Developer', value: 'frontend' },
+  { label: 'Backend Developer', value: 'backend' },
+  { label: 'Testing Engineer', value: 'tester' },
+  { label: 'DevOps Engineer', value: 'devops' },
+  { label: 'Social Media', value: 'social_media' }
 ];
 
 
@@ -127,14 +127,11 @@ export function ProjectCreate() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof formData & { assigned_to: number[] }) => {
+    mutationFn: (data: ProjectCreatePayload) => {
       return projectsApi.create(data);
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: ['projects'],
-        exact: false
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'], exact: false });
       navigate('/projects');
     },
     onError: (err: any) => {
@@ -150,9 +147,16 @@ export function ProjectCreate() {
       setError('Project name is required');
       return;
     }
+    const assigned_members = assignedTo.map(assignment => ({
+      user_id: assignment.userId,
+      role: assignment.role || 'member'
+    }));
 
-    const userIds = assignedTo.map(assignment => assignment.userId);
-    createMutation.mutate({ ...formData, assigned_to: userIds });
+    createMutation.mutate({
+      ...formData,
+      assigned_members,
+      project_settings: { priority: "high" } 
+    });
   };
 
   const handleChange = (
@@ -177,7 +181,6 @@ export function ProjectCreate() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      // If the click is not inside the assigned-to container, close it
       if (!target.closest('.assigned-to-container')) {
         setDropdownOpen(false);
       }
@@ -252,13 +255,13 @@ export function ProjectCreate() {
               />
             </div>
 
-            {/* Assigned To - Repositioned and wrapped with container class */}
+            {/* Assigned To */}
             <div className="relative space-y-2 assigned-to-container">
               <label className="text-sm font-medium">
                 Assigned To <span className="text-destructive">*</span>
               </label>
 
-              {/* Selection Trigger/Display Box */}
+              {/* Selection Display Box */}
               <div
                 className="w-full p-3 rounded-lg border border-input bg-background cursor-pointer flex flex-wrap gap-2 min-h-[50px] text-sm"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -303,7 +306,7 @@ export function ProjectCreate() {
                               type="button"
                               className="text-xs px-3 py-1.5 border rounded-md bg-background hover:bg-accent transition-colors flex items-center gap-2"
                               onClick={(e) => {
-                                e.stopPropagation(); // Prevents main dropdown from closing
+                                e.stopPropagation();
                                 setActiveRolePicker(activeRolePicker === user.value ? null : user.value);
                               }}
                             >
@@ -316,19 +319,19 @@ export function ProjectCreate() {
                             {/* Inline Role Dropdown */}
                             {activeRolePicker === user.value && (
                               <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-background border rounded-md shadow-xl py-1">
-                                {PROJECT_ROLES.map((role) => (
+                                {PROJECT_ROLES.map((roleObj) => (
                                   <button
-                                    key={role}
+                                    key={roleObj.value}
                                     type="button"
                                     className="w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-primary-foreground transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setAssignedTo([...assignedTo, { userId: user.value, role }]);
+                                      setAssignedTo([...assignedTo, { userId: user.value, role: roleObj.value }]);
                                       setActiveRolePicker(null);
                                       setDropdownOpen(false);
                                     }}
                                   >
-                                    {role}
+                                    {roleObj.label}
                                   </button>
                                 ))}
                               </div>

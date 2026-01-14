@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   FileText,
@@ -36,10 +36,67 @@ const FILE_TYPE_OPTIONS = [
   { value: 'text', label: 'Text' },
 ];
 
+
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+}
+
+function ConfirmationModal({ isOpen, onClose, onConfirm, title }: ConfirmationModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Background Blur*/}
+      <div
+        className="absolute inset-0 bg-background/60 backdrop-blur-md transition-opacity"
+        onClick={onClose}
+      />
+      {/* Modal Card */}
+      <Card className="relative w-full max-w-[400px] shadow-2xl border-destructive/20 animate-in fade-in zoom-in duration-300">
+        <CardContent className="p-8">
+          <div className="flex flex-col items-center text-center space-y-4">
+            {/* Warning Icon*/}
+            <div className="p-3 bg-destructive/10 rounded-full">
+              <Trash2 className="h-6 w-6 text-destructive" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold tracking-tight">Confirm Deletion</h3>
+              <p className="text-sm text-muted-foreground px-2">
+                {title}
+              </p>
+            </div>
+            <div className="flex w-full gap-4 pt-4">
+              <Button
+                variant="destructive"
+                className="flex-1 font-semibold shadow-sm hover:shadow-destructive/20"
+                onClick={onConfirm}
+              >
+                Yes
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 font-semibold hover:bg-accent"
+                onClick={onClose}
+              >
+                No
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 export function Documents() {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const projectFilter = searchParams.get('project') || '';
   const statusFilter = searchParams.get('status') || '';
@@ -266,7 +323,7 @@ export function Documents() {
                           </div>
                         </div>
                       </td>
-                      {/* Insert Trash button cell before the Project cell */}
+                      {/* Trash button for delete the documents*/}
                       <td className="py-3 px-1">
                         <Button
                           variant="ghost"
@@ -274,9 +331,7 @@ export function Documents() {
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm('Are you sure you want to delete this document?')) {
-                              documentsApi.delete(doc.id);
-                            }
+                            setDeleteConfirm({ id: doc.id, name: doc.name });
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -330,6 +385,22 @@ export function Documents() {
           )}
         </CardContent>
       </Card>
+      <ConfirmationModal
+        isOpen={!!deleteConfirm}
+        title={`Are you sure you want to delete "${deleteConfirm?.name}"? `}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={async () => {
+          if (deleteConfirm) {
+            try {
+              await documentsApi.delete(deleteConfirm.id);
+              setDeleteConfirm(null);
+              queryClient.invalidateQueries({ queryKey: ['documents'] });
+            } catch (error) {
+              console.error("Delete failed:", error);
+            }
+          }
+        }}
+      />
     </div>
   );
 }

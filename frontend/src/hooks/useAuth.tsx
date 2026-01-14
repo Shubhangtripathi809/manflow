@@ -30,17 +30,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const userData = await authApi.getMe();
           setUser(userData);
-        } catch (error) {
-          console.error("[Auth] Failed to fetch user details. Clearing tokens.", error);
-          clearTokens();
+        } catch (error:any) {
+          console.error("Initial auth failed:", error);
+          if (error.response?.status !== 401 && error.response?.status !== 403) {
+            setUser(null);
+          }
           setUser(null);
         }
-      } else {
       }
-
       setIsLoading(false);
     };
-
     initAuth();
   }, []);
 
@@ -66,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
-  // Check if user role is in the provided list
+  // Check if user role is in the allowed roles
   const isAllowed = (roles: User['role'][]) => {
     const userRole = user?.role;
     const result = !!userRole && roles.includes(userRole);
