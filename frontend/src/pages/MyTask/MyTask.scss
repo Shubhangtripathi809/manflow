@@ -196,3 +196,36 @@
         font-weight: 600;
     }
 }
+
+.jira-subtask-row {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.jira-status-badge {
+    &.cursor-pointer {
+        user-select: none;
+        
+        &:hover {
+            filter: brightness(0.95);
+        }
+        
+        &:active {
+            transform: scale(0.98);
+        }
+    }
+}
+
+.jira-td-status {
+    overflow: visible !important;
+}
