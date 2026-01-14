@@ -12,10 +12,11 @@ class Task(models.Model):
         ('pending', 'Pending'),
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
-        ('reviewed', 'Reviewed'),
+        ('review', 'Review'),
         ('deployed', 'Deployed'),
         ('deferred', 'Deferred'),
         ('backlog', 'Backlog')
+       
     )
 
     PRIORITY_CHOICES = (

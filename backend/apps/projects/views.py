@@ -326,16 +326,14 @@ class LabelViewSet(viewsets.ModelViewSet):
     serializer_class = LabelSerializer
     
     def get_queryset(self):
-        user = self.request.user
-        if user.is_admin:
-            return Project.objects.all()  # Note: logic kept as provided in original snippet
+        # 1. Get the project ID from the URL (the 'project_pk' kwarg)
+        project_id = self.kwargs.get("project_pk")
         
-        # Regular users only see projects where they are Members OR the Creator
-        return Project.objects.filter(
-            Q(members=user) | Q(created_by=user)
-        ).distinct()
+        # 2. Return ONLY labels belonging to this specific project
+        return Label.objects.filter(project_id=project_id)
     
     def perform_create(self, serializer):
+        # 3. Automatically link the new label to the project from the URL
         project_id = self.kwargs.get("project_pk")
         serializer.save(
             project_id=project_id,
