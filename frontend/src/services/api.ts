@@ -126,7 +126,27 @@ export const authApi = {
     return response.data;
   },
 
+  forgotPassword: async (email: string) => {
+    const response = await api.post('/auth/forgot-password/', { email });
+    return response.data;
+  },
+
+  verifyOTP: async (email: string, otp: string,) => {
+    const response = await api.post('/auth/verify-otp/', { email, otp });
+    return response.data;
+  },
+
+  setNewPassword: async (data: { 
+    email: string; 
+    reset_token: string; 
+    password: string; 
+    password_confirm: string; 
+  }) => {
+    const response = await api.post('/auth/set-new-password/', data);
+    return response.data;
+  },
 };
+
 
 // Projects API
 export const projectsApi = {
