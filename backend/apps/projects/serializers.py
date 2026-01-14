@@ -42,6 +42,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     """
     Serializer for Project model.
     """
+    is_favourite = serializers.SerializerMethodField()
     created_by = UserMinimalSerializer(read_only=True)
     labels = LabelSerializer(many=True, read_only=True)
     members = ProjectMembershipSerializer(
@@ -56,7 +57,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = Project
         fields = [
             "id", "name", "description", "task_type",
-            "project_settings", "default_labels", "is_active",
+            "project_settings", "default_labels", "is_active","is_favourite",
             "created_by", "created_at", "updated_at",
             "labels","members","member_count", "document_count",
         ]
@@ -67,6 +68,26 @@ class ProjectSerializer(serializers.ModelSerializer):
     
     def get_document_count(self, obj):
         return obj.documents.count() if hasattr(obj, "documents") else 0
+    
+    def get_is_favourite(self, obj):
+        request = self.context.get('request')
+        # Check if request AND request.user exist before accessing them
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            return obj.favorited_by.filter(id=request.user.id).exists()
+        return False
+    def update(self, instance, validated_data):
+        # Check if 'is_favourite' was passed in the request body
+        request = self.context.get('request')
+        if request and "is_favourite" in request.data:
+            is_fav = request.data.get("is_favourite")
+            user = request.user
+            
+            if is_fav:
+                instance.favorited_by.add(user)
+            else:
+                instance.favorited_by.remove(user)
+        
+        return super().update(instance, validated_data)
 
 
 class ProjectDetailSerializer(ProjectSerializer):
@@ -82,40 +103,51 @@ class ProjectDetailSerializer(ProjectSerializer):
     def get_members(self, obj):
         memberships = ProjectMembership.objects.filter(project=obj).select_related("user")
         return ProjectMembershipSerializer(memberships, many=True).data
-
+    
+class MemberAssignmentSerializer(serializers.Serializer):
+    """Helper serializer for inputting user + role pairs"""
+    user_id = serializers.IntegerField()
+    role = serializers.ChoiceField(choices=ProjectMembership.Role.choices)
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for creating projects.
-    """
-    default_assignee_ids = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(),
-        many=True,
-        required=False,
-        write_only=True,
-    )
+    # This field handles the INPUT from Postman
+    assigned_members = MemberAssignmentSerializer(many=True, required=False, write_only=True)
     
+    # This field shows the RESULT in the response
+    members = ProjectMembershipSerializer(
+        source="projectmembership_set", 
+        many=True, 
+        read_only=True
+    )
+
     class Meta:
         model = Project
         fields = [
-            "name", "description", "task_type",
-            "project_settings", "default_labels", "default_assignee_ids",
+            "id", "name", "description", "task_type",
+            "project_settings", "default_labels", "assigned_members", "members"
         ]
-    
+        read_only_fields = ["id", "members"]
+
     def create(self, validated_data):
-        default_assignees = validated_data.pop("default_assignee_ids", [])
+        assigned_members_data = validated_data.pop("assigned_members", [])
         project = Project.objects.create(**validated_data)
         
-        if default_assignees:
-            project.default_assignees.set(default_assignees)
-        
-        # Add creator as owner
+        # Add the Creator as OWNER
         user = self.context["request"].user
-        ProjectMembership.objects.create(
+        ProjectMembership.objects.get_or_create(
             project=project,
             user=user,
-            role=ProjectMembership.Role.OWNER,
+            defaults={"role": ProjectMembership.Role.OWNER}
         )
+        
+        # Add the dynamic roles from your Postman body
+        for member_data in assigned_members_data:
+            if member_data['user_id'] != user.id:
+                ProjectMembership.objects.create(
+                    project=project,
+                    user_id=member_data['user_id'],
+                    role=member_data['role']
+                )
         
         return project
 

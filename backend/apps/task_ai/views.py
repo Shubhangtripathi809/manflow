@@ -8,9 +8,10 @@ from apps.projects.models import Project
 from .services import TaskAIService
 import json
 from datetime import date
+from apps.users.auth import StaticTokenAuthentication
 
 class SuggestTaskAIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [StaticTokenAuthentication, JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):

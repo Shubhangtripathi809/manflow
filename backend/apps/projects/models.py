@@ -29,7 +29,11 @@ class Project(UserStampedModel):
         choices=TaskType.choices,
         default=TaskType.Client,
     )
-    
+    favorited_by = models.ManyToManyField(
+        django_settings.AUTH_USER_MODEL,
+        related_name="favorite_projects",
+        blank=True
+    )    
     # Project settings (JSON)
     project_settings = models.JSONField(default=dict, blank=True)
     # Example settings:
@@ -78,12 +82,26 @@ class ProjectMembership(models.Model):
     class Role(models.TextChoices):
         OWNER = "owner", "Owner"
         ADMIN = "admin", "Admin"
-        MEMBER = "member", "Member"
+        MANAGER = "manager", "Manager"
+        FRONTEND = "frontend", "Frontend Developer"
+        BACKEND = "backend", "Backend Developer"
+        TESTER = "tester", "Testing Engineer"
+        DEVOPS = "devops", "DevOps Engineer"
+        SOCIAL_MEDIA = "social_media", "Social Media"
         VIEWER = "viewer", "Viewer"
+        # If you still want a general 'Member' role, add it back:
+        MEMBER = "member", "Member" 
     
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     user = models.ForeignKey(django_settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.MEMBER)
+    
+    # Ensure the default here exists in the Role class above
+    role = models.CharField(
+        max_length=20, 
+        choices=Role.choices, 
+        default=Role.VIEWER  # Changed from MEMBER to VIEWER or another valid choice
+    )
+    
     joined_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

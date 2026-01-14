@@ -70,29 +70,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
         ).distinct()
     
     def perform_create(self, serializer):
-        # 1. Save the project first
-        project = serializer.save(created_by=self.request.user)
-        
-        # 2. Automatically add the Creator as an OWNER
-        ProjectMembership.objects.get_or_create(
-            project=project,
-            user=self.request.user,
-            defaults={"role": ProjectMembership.Role.OWNER}
-        )
-        
-        # 3. Handle "Assigned To" users from the frontend
-        assigned_user_ids = self.request.data.get('assigned_to', []) 
-        
-        if assigned_user_ids:
-            for user_id in assigned_user_ids:
-                if str(user_id) != str(self.request.user.id):
-                    ProjectMembership.objects.get_or_create(
-                        project=project,
-                        user_id=user_id,
-                        defaults={"role": ProjectMembership.Role.MEMBER}
-                    )
-
+        # The serializer.save() now handles role assignment internally
+        project = serializer.save()
         log_action(project, "create", new_value=serializer.data)
+        
     def get_download_url(self, request, pk=None):
         """
         Generates a URL based on Document ID using the 'source_file' field.
@@ -170,7 +151,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
     def perform_update(self, serializer):
-        old_data = ProjectSerializer(self.get_object()).data
+        old_data = ProjectSerializer(self.get_object(), context={'request': self.request}).data 
         project = serializer.save(updated_by=self.request.user)
         log_action(project, "update", old_value=old_data, new_value=serializer.data)
     

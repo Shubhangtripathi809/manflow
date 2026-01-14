@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key-change-in-production")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,192.168.1.18").split(",")
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,192.168.1.4").split(",")
 
 # Application definition
 DJANGO_APPS = [
@@ -105,6 +105,10 @@ else:
 # Custom User Model
 AUTH_USER_MODEL = "users.User"
 
+AUTHENTICATION_BACKENDS = [
+    'apps.users.backends.EmailOrUsernameModelBackend', # Path to your custom backend
+    'django.contrib.auth.backends.ModelBackend',       # Default backend fallback
+]
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -133,14 +137,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.4:5173"
+    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.22:5173"
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL", default=True, cast=bool)  # For development
-
+STATIC_API_TOKEN = config("STATIC_API_TOKEN", default=None)
 # Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.users.auth.StaticTokenAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -182,6 +187,16 @@ load_dotenv(env_path)
 # AWS S3 Settings
 USE_S3 = config("USE_S3", default=True, cast=bool)
 
+# Amazon SES Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = f'email-smtp.{os.getenv("SES_REGION")}.amazonaws.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+# Fetching credentials from .env
+EMAIL_HOST_USER = os.getenv('SES_SMTP_USER')
+EMAIL_HOST_PASSWORD = os.getenv('SES_SMTP_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 # --- CHANGE STARTS HERE ---
 # define these OUTSIDE the 'if' block so 'views.py' can always find them.
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
