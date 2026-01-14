@@ -181,7 +181,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
         }
     };
 
-    // Jirs lit Close dropdowns when clicking outside in status
+    // Jirs list Close dropdowns when clicking outside in status
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as HTMLElement;
@@ -440,7 +440,7 @@ export const MyTask: React.FC = () => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [showAITaskModal, setShowAITaskModal] = useState(false);
@@ -567,8 +567,9 @@ export const MyTask: React.FC = () => {
                                     <input type="text" placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300" />
                                 </div>
                                 <div className="flex rounded-lg border overflow-hidden">
-                                    <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white'}`}><Grid3X3 className="w-5 h-5" /></button>
                                     <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white'}`}><List className="w-5 h-5" /></button>
+                                    <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white'}`}><Grid3X3 className="w-5 h-5" /></button>
+                                    
                                 </div>
                             </div>
                         </div>
