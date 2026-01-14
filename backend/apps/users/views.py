@@ -2,7 +2,7 @@
 Views for Users app.
 """
 from django.contrib.auth import get_user_model
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -28,6 +28,13 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = UserCreateSerializer
     permission_classes = [permissions.AllowAny]
 
+class IsAdminRole(permissions.BasePermission):
+    """
+    Allows access only to users with the 'admin' role.
+    """
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'admin')
+
 class UserCreateView(generics.CreateAPIView):
     """
     Admin-only view to create new users/employees.
@@ -36,7 +43,7 @@ class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
     # Change permission from AllowAny to IsAdminUser
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminRole]
 
 class MeView(APIView):
     """
@@ -54,7 +61,12 @@ class MeView(APIView):
         serializer.save()
         return Response(serializer.data)
 
-
+class IsAdminRole(permissions.BasePermission):
+    """
+    Allows access only to users with the 'admin' role.
+    """
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'admin')
 class UserListView(generics.ListAPIView):
     """
     List all users (for assignments, etc.)

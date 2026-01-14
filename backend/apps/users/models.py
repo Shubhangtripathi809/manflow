@@ -45,11 +45,21 @@ class User(AbstractUser):
     
     def __str__(self):
         return self.username
-
+    
     def save(self, *args, **kwargs):
-        # If the user is a superuser, force the role to be ADMIN
+        # 1. If superuser, force role to ADMIN
         if self.is_superuser:
             self.role = self.Role.ADMIN
+        
+        # 2. FIX: If role is ADMIN, grant is_staff so they pass IsAdminUser permissions
+        if self.role == self.Role.ADMIN:
+            self.is_staff = True
+        else:
+            # Optional: remove staff status if role is demoted from Admin
+            # Be careful if you want Managers to have Django Admin panel access
+            if not self.is_superuser: 
+                self.is_staff = False
+                
         super().save(*args, **kwargs)
     
     @property
