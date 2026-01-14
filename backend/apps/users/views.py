@@ -226,7 +226,10 @@ class SetNewPasswordView(APIView):
         return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
 
 class AuthenticatedResetPasswordView(APIView):
-    """Reset password for logged-in users"""
+    """
+    Reset password for logged-in users.
+    No OTP required. Requires username, old password, and new password.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -234,9 +237,27 @@ class AuthenticatedResetPasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         
         user = request.user
-        if not user.check_password(serializer.validated_data['old_password']):
-            return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+        validated_data = serializer.validated_data
 
-        user.set_password(serializer.validated_data['new_password'])
+        # 1. Security Check: Verify the username matches the authenticated user
+        if user.username != validated_data['username']:
+            return Response(
+                {"detail": "Username does not match the authenticated session."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 2. Verify old password
+        if not user.check_password(validated_data['old_password']):
+            return Response(
+                {"old_password": ["Incorrect old password."]}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Update to the new hashed password
+        user.set_password(validated_data['new_password'])
         user.save()
-        return Response({"detail": "Password updated successfully."}, status=status.HTTP_200_OK)
+
+        return Response(
+            {"detail": "Password has been updated successfully."}, 
+            status=status.HTTP_200_OK
+        )

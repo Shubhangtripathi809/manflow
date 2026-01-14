@@ -105,6 +105,10 @@ else:
 # Custom User Model
 AUTH_USER_MODEL = "users.User"
 
+AUTHENTICATION_BACKENDS = [
+    'apps.users.backends.EmailOrUsernameModelBackend', # Path to your custom backend
+    'django.contrib.auth.backends.ModelBackend',       # Default backend fallback
+]
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

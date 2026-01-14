@@ -143,13 +143,18 @@ class SetNewPasswordSerializer(serializers.Serializer):
         return data
 
 class AuthenticatedResetPasswordSerializer(serializers.Serializer):
+    username = serializers.CharField()
     old_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True, min_length=8, validators=[validate_password])
+    new_password = serializers.CharField(write_only=True, min_length=8)
     confirm_new_password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        if data["new_password"] == data["old_password"]:
-            raise serializers.ValidationError({"new_password": "New password cannot be the same as the old one."})
+        # 1. Ensure new password and confirm password match
         if data["new_password"] != data["confirm_new_password"]:
-            raise serializers.ValidationError({"confirm_new_password": "Passwords do not match."})
+            raise serializers.ValidationError({"confirm_new_password": "New passwords do not match."})
+        
+        # 2. Ensure new password is not the same as the old password
+        if data["new_password"] == data["old_password"]:
+            raise serializers.ValidationError({"new_password": "New password cannot be the same as the old password."})
+            
         return data
