@@ -74,7 +74,7 @@ export type TaskType =
   | 'internal'
   | 'content-creation'
   | 'ideas'
-
+   
   // Create New Project payload
 export interface ProjectCreatePayload {
   name: string;

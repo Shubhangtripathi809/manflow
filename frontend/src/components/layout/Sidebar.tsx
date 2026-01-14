@@ -1,5 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -22,32 +23,48 @@ import {
   Braces,
   ListTodo,
   Calendar,
+  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { Profile } from './Profile'
-
-const baseNavigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Projects', href: '/projects', icon: FolderKanban },
-  { name: 'Documents', href: '/documents', icon: FileText },
-  { name: 'Calendar', href: '/calendar', icon: Calendar },
-  { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
-  { name: 'Tools', href: '/tools', icon: Cog },
-];
+import { projectsApi } from '@/services/api';
+import type { Project } from '@/types';
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
 
+const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
+  const { user } = useAuth();
+  const favProjects = useMemo(() => {
+    return projects.filter(p =>
+      p.is_favourite &&
+      p.members?.some(member => member.user.id === user?.id)
+    );
+  }, [projects, user?.id]);
 
-const taskNavigation = [
-  { id: 'ALL', name: 'All Tasks', href: '/taskboard', icon: CheckSquare },
-  { id: 'COMPLETED', name: 'Completed Tasks', href: '/taskboard/completed', icon: CheckCircle },
-  { id: 'PENDING', name: 'Pending Tasks', href: '/taskboard/pending', icon: Clock },
-  { id: 'BACKLOG', name: 'Backlog Tasks', href: '/taskboard/backlog', icon: ListTodo },
-  { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
-  { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
-  { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
-];
+  if (favProjects.length === 0) return null;
+
+  return (
+    <div className="ml-4 mt-1 space-y-1 border-l pl-2">
+      {favProjects.map((project) => (
+        <NavLink
+          key={project.id}
+          to={`/projects/${project.id}`}
+          className={({ isActive }) =>
+            cn(
+              'flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              isActive
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            )
+          }
+        >
+          <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 flex-shrink-0" />
+          <span className="truncate">{project.name}</span>
+        </NavLink>
+      ))}
+    </div>
+  );
+};
 
 const TaskAccordion = () => {
   const { user } = useAuth();
@@ -59,73 +76,51 @@ const TaskAccordion = () => {
   const isCreationAllowed = !!(user?.role && CREATION_ALLOWED_ROLES.includes(user.role));
   const [isOpen, setIsOpen] = useState(isTaskRoute);
 
-  // Effect to auto-open the accordion
-  useMemo(() => {
-    if (isTaskRoute) {
-      setIsOpen(true);
-    }
-  }, [isTaskRoute]);
-
+  useMemo(() => { if (isTaskRoute) setIsOpen(true); }, [isTaskRoute]);
   const AccordionIcon = isOpen ? ChevronUp : ChevronDown;
-
-  // Handle header click with navigation
-  const handleHeaderClick = () => {
-    if (!isTaskRoute) {
-      navigate('/taskboard');
-    } else {
-      setIsOpen(!isOpen);
-    }
-  };
 
   return (
     <div className="space-y-1">
-      {/* My Tasks Header */}
       <div
         className={cn(
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-          isTaskRoute
-            ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          isTaskRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
         )}
-        onClick={handleHeaderClick}
+        onClick={() => (isTaskRoute ? setIsOpen(!isOpen) : navigate('/taskboard'))}
       >
         <CheckSquare className="h-5 w-5" />
         <span className="flex-1">My Tasks</span>
         <AccordionIcon className="h-4 w-4" />
       </div>
-
-      {/* Collapsible Menu */}
       {isOpen && (
         <div className="ml-4 border-l pl-2 space-y-1">
-          {taskNavigation.map((item) => (
+          {[
+            { id: 'ALL', name: 'All Tasks', href: '/taskboard', icon: CheckSquare },
+            { id: 'COMPLETED', name: 'Completed Tasks', href: '/taskboard/completed', icon: CheckCircle },
+            { id: 'PENDING', name: 'Pending Tasks', href: '/taskboard/pending', icon: Clock },
+            { id: 'BACKLOG', name: 'Backlog Tasks', href: '/taskboard/backlog', icon: ListTodo },
+            { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
+            { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
+            { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
+          ].map((item) => (
             <NavLink
               key={item.id}
               to={item.href}
               className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary/20 text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )
+                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
               }
             >
               <item.icon className="h-4 w-4" />
               {item.name}
             </NavLink>
           ))}
-
-          {/* Add New Task Link */}
           {isCreationAllowed && (
             <NavLink
               to="/taskboard/create"
               className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isCreateRoute || isActive
-                    ? 'bg-primary/20 text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )
+                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
               }
             >
               <Plus className="h-4 w-4" />
@@ -138,56 +133,35 @@ const TaskAccordion = () => {
   );
 };
 
-// UserManagementAccordion
-const userManagementNavigation = [
-  { id: 'USER_ROLES', name: 'User Roles', href: '/admin/user-roles', icon: Users },
-  { id: 'TEAM_PERFORMANCE', name: 'Team Performance', href: '/admin/team-performance', icon: TrendingUp },
-];
-
 const UserManagementAccordion = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const [isOpen, setIsOpen] = useState(isAdminRoute);
-
-  useMemo(() => {
-    if (isAdminRoute) {
-      setIsOpen(true);
-    }
-  }, [isAdminRoute]);
-
-  const AccordionIcon = isOpen ? ChevronUp : ChevronDown;
+  useMemo(() => { if (isAdminRoute) setIsOpen(true); }, [isAdminRoute]);
 
   return (
     <div className="space-y-1">
-      {/* User Management Header */}
       <div
-        className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-          isAdminRoute
-            ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-        )}
+        className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
+          isAdminRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}
         onClick={() => setIsOpen(!isOpen)}
       >
         <Crown className="h-5 w-5" />
         <span className="flex-1">Team Management</span>
-        <AccordionIcon className="h-4 w-4" />
+        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </div>
-
-      {/* Collapsible Menu  */}
       {isOpen && (
         <div className="ml-4 border-l pl-2 space-y-1">
-          {userManagementNavigation.map((item) => (
+          {[
+            { id: 'USER_ROLES', name: 'User Roles', href: '/admin/user-roles', icon: Users },
+            { id: 'TEAM_PERFORMANCE', name: 'Team Performance', href: '/admin/team-performance', icon: TrendingUp },
+          ].map((item) => (
             <NavLink
               key={item.id}
               to={item.href}
               className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary/20 text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )
+                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
               }
             >
               <item.icon className="h-4 w-4" />
@@ -200,47 +174,35 @@ const UserManagementAccordion = () => {
   );
 };
 
-const toolsNavigation = [
-  { id: 'PDF_HTML', name: 'PDF vs HTML', href: '/tools/pdf-vs-html', icon: FileText },
-  { id: 'JSON', name: 'JSON Viewer', href: '/tools/json-viewer', icon: Braces },
-];
-
 const ToolsAccordion = () => {
   const location = useLocation();
   const isToolsRoute = location.pathname.startsWith('/tools');
   const [isOpen, setIsOpen] = useState(isToolsRoute);
-
-  useMemo(() => {
-    if (isToolsRoute) setIsOpen(true);
-  }, [isToolsRoute]);
-
-  const AccordionIcon = isOpen ? ChevronUp : ChevronDown;
+  useMemo(() => { if (isToolsRoute) setIsOpen(true); }, [isToolsRoute]);
 
   return (
     <div className="space-y-1">
       <div
-        className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-          isToolsRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-        )}
+        className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
+          isToolsRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}
         onClick={() => setIsOpen(!isOpen)}
       >
         <Cog className="h-5 w-5" />
         <span className="flex-1">Tools</span>
-        <AccordionIcon className="h-4 w-4" />
+        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </div>
-
       {isOpen && (
         <div className="ml-4 border-l pl-2 space-y-1">
-          {toolsNavigation.map((item) => (
+          {[
+            { id: 'PDF_HTML', name: 'PDF vs HTML', href: '/tools/pdf-vs-html', icon: FileText },
+            { id: 'JSON', name: 'JSON Viewer', href: '/tools/json-viewer', icon: Braces },
+          ].map((item) => (
             <NavLink
               key={item.id}
               to={item.href}
               className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )
+                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
               }
             >
               <item.icon className="h-4 w-4" />
@@ -254,54 +216,93 @@ const ToolsAccordion = () => {
 };
 
 export function Sidebar() {
-  const { user, logout, isLoading, hasRole } = useAuth();
-  const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
+  const { user, logout, isLoading: authLoading } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
-  
+  const [isProjectsOpen, setIsProjectsOpen] = useState(location.pathname.startsWith('/projects'));
 
-  const myTaskItem = { name: 'My Tasks', href: '/taskboard', icon: CheckSquare };
-  const adminItem = { name: 'Team Management', href: '/admin/user-roles', icon: Crown };
+  useMemo(() => {
+    if (location.pathname.startsWith('/projects')) {
+      setIsProjectsOpen(true);
+    }
+  }, [location.pathname]);
 
-  console.log(`[Sidebar] State: isLoading=${isLoading}, userRole='${user?.role}', showAdminLink=${shouldShowAdminLink}`);
+  const { data: projectsData, isLoading: projectsLoading } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectsApi.list(),
+  });
 
-  let navigation = [
-    ...baseNavigation.slice(0, 2),
-    myTaskItem,
-    ...baseNavigation.slice(2),
+  const projects = useMemo(() => {
+    if (!projectsData) return [];
+    if (Array.isArray(projectsData)) return projectsData;
+    if ('results' in projectsData && Array.isArray(projectsData.results)) return projectsData.results;
+    return [];
+  }, [projectsData]) as Project[];
+
+  const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
+
+  // Define base navigation items
+  const baseNavigation = [
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Projects', href: '/projects', icon: FolderKanban },
+    { name: 'Documents', href: '/documents', icon: FileText },
+    { name: 'Calendar', href: '/calendar', icon: Calendar },
+    { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
+    { name: 'Tools', href: '/tools', icon: Cog },
   ];
 
-  // Team Management placeholder if user is allowed
-  if (shouldShowAdminLink) {
-    const toolIndex = navigation.findIndex(item => item.name === 'Tools');
-    if (toolIndex !== -1) {
-      navigation.splice(toolIndex + 1, 0, adminItem);
-    } else {
-      navigation.push(adminItem);
+  const navigation = useMemo(() => {
+    const nav = [...baseNavigation];
+    nav.splice(2, 0, { name: 'My Tasks', href: '/taskboard', icon: CheckSquare });
+    if (shouldShowAdminLink) {
+      const toolIndex = nav.findIndex(item => item.name === 'Tools');
+      nav.splice(toolIndex + 1, 0, { name: 'Team Management', href: '/admin/user-roles', icon: Crown });
     }
-  }
+    return nav;
+  }, [shouldShowAdminLink]);
 
+  const isLoading = authLoading || projectsLoading;
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card">
-      {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
         <span className="text-xl font-bold text-primary">ZanFlow</span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {isLoading ? (
           <div className="p-3 text-sm text-muted-foreground animate-pulse">Loading navigation...</div>
         ) : (
           navigation.map((item) => {
-            if (item.name === 'My Tasks') {
-              return <TaskAccordion key="my-tasks" />;
-            }
-            if (item.name === 'Team Management') {
-              return <UserManagementAccordion key="admin-tools" />;
-            }
-            if (item.name === 'Tools') {
-              return <ToolsAccordion key="tools-accordion" />;
+            if (item.name === 'My Tasks') return <TaskAccordion key="my-tasks" />;
+            if (item.name === 'Team Management') return <UserManagementAccordion key="admin-tools" />;
+            if (item.name === 'Tools') return <ToolsAccordion key="tools-accordion" />;
+            if (item.name === 'Projects') {
+              const isRouteActive = location.pathname.startsWith('/projects');
+
+              return (
+                <div key="projects-group" className="space-y-1">
+                  <div
+                    onClick={() => {
+                      if (!isRouteActive) {
+                        navigate(item.href);
+                        setIsProjectsOpen(true);
+                      } else {
+                        setIsProjectsOpen(!isProjectsOpen);
+                      }
+                    }}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
+                      isRouteActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span className="flex-1">{item.name}</span>
+                    {isProjectsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </div>
+                  {isProjectsOpen && <FavouriteProjectsAccordion projects={projects} />}
+                </div>
+              );
             }
 
             return (
@@ -309,12 +310,8 @@ export function Sidebar() {
                 key={item.name}
                 to={item.href}
                 className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  )
+                  cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
                 }
               >
                 <item.icon className="h-5 w-5" />
@@ -324,52 +321,24 @@ export function Sidebar() {
           })
         )}
       </nav>
+
       <div className="border-t p-4">
-        <div
-          className="flex items-center gap-3 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
-          onClick={() => navigate('/profile')}
-        >
-          {isLoading ? (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 animate-pulse" />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              {user?.username?.charAt(0).toUpperCase()}
-            </div>
-          )}
+        <div className="flex items-center gap-3 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors" onClick={() => navigate('/profile')}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            {user?.username?.charAt(0).toUpperCase()}
+          </div>
           <div className="flex-1 min-w-0">
-            {isLoading ? (
-              <div className="h-4 bg-gray-200 rounded w-24 mb-1 animate-pulse" />
-            ) : (
-              <p className="truncate text-sm font-medium">{user?.username}</p>
-            )}
-            {isLoading ? (
-              <div className="h-3 bg-gray-200 rounded w-16 animate-pulse" />
-            ) : (
-              <p className="truncate text-xs text-muted-foreground capitalize">
-                {user?.role}
-              </p>
-            )}
+            <p className="truncate text-sm font-medium">{user?.username}</p>
+            <p className="truncate text-xs text-muted-foreground capitalize">{user?.role}</p>
           </div>
         </div>
         <div className="mt-4 flex gap-2">
-          {!isLoading && (
-            <>
-              <NavLink
-                to="/settings"
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </NavLink>
-              <button
-                onClick={logout}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            </>
-          )}
+          <NavLink to="/settings" className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-accent">
+            <Settings className="h-4 w-4" /> Settings
+          </NavLink>
+          <button onClick={logout} className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-accent">
+            <LogOut className="h-4 w-4" /> Logout
+          </button>
         </div>
       </div>
     </div>

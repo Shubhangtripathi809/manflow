@@ -141,7 +141,12 @@ export function Dashboard() {
     approvedDocs: documents.filter((d: Document) => d.status === 'approved').length,
   };
 
-  const recentProjects = Array.isArray(projects) ? projects.slice(0, 5) : [];
+  const recentProjects = Array.isArray(projects)
+    ? projects.filter(p =>
+      p.is_favourite &&
+      p.members?.some(member => member.user.id === user?.id)
+    ).slice(0, 5)
+    : [];
   const recentDocuments = Array.isArray(documents) ? documents.slice(0, 5) : [];
 
   const isLoading = projectsLoading || docsLoading;
