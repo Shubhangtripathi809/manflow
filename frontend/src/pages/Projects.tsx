@@ -11,16 +11,8 @@ import {
   Badge,
 } from '@/components/common';
 import { projectsApi } from '@/services/api';
-import { formatRelativeTime } from '@/lib/utils';
+import { formatRelativeTime, getProjectTypeColor } from '@/lib/utils';
 import type { Project } from '@/types';
-
-const TASK_TYPES = [
-  { value: '', label: 'All Types' },
-  { value: 'client', label: 'Client' },
-  { value: 'internal', label: 'Internal' },
-  { value: 'content_creation', label: 'Content Creation' },
-  { value: 'ideas', label: 'Ideas' },
-];
 
 export function Projects() {
   const queryClient = useQueryClient();
@@ -89,14 +81,14 @@ export function Projects() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-primary/10 p-2">
-                        <FolderKanban className="h-5 w-5 text-primary" />
-                      </div>
+                      
+                        <div
+                          className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-lg ${getProjectTypeColor(project.task_type)}`}
+                        >
+                          {project.name?.slice(0, 1)?.toUpperCase()}
+                        </div>
                       <div>
                         <CardTitle className="text-lg">{project.name}</CardTitle>
-                        <Badge variant="secondary" className="mt-1">
-                          {project.task_type?.replace('_', ' ') || 'General'}
-                        </Badge>
                       </div>
                     </div>
 
@@ -126,18 +118,16 @@ export function Projects() {
                     </button>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  {project.description && (
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {project.description}
-                    </p>
-                  )}
-                  <div className="flex flex-col gap-3">
+                <CardContent className='pt-2 pb-3 px-3'>
+                  <div className="flex flex-col gap-3 mt-4">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
                         {project.document_count || 0} docs
                       </span>
+                      <p className="text-xs text-muted-foreground ">
+                        Updated {formatRelativeTime(project.updated_at)}
+                      </p>
                       <div className="relative">
                         <button
                           type="button"
@@ -259,9 +249,6 @@ export function Projects() {
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Updated {formatRelativeTime(project.updated_at)}
-                  </p>
                 </CardContent>
               </Card>
             </Link>
