@@ -15,76 +15,6 @@ import { projectsApi, usersApi } from '@/services/api';
 import type { User as AppUser, ProjectCreatePayload } from '@/types';
 import { cn, getProjectTypeColor } from '@/lib/utils';
 
-interface MultiSelectProps {
-  label: string;
-  options: { value: number; label: string }[];
-  selectedValues: number[];
-  onChange: (values: number[]) => void;
-  placeholder: string;
-}
-
-const MultiSelect: React.FC<MultiSelectProps> = ({
-  label,
-  options,
-  selectedValues,
-  onChange,
-  placeholder,
-}) => {
-  const selectedLabels = options
-    .filter((option) => selectedValues.includes(option.value))
-    .map((option) => option.label);
-
-  const availableOptions = options.filter(
-    (option) => !selectedValues.includes(option.value)
-  );
-
-  const handleSelect = (value: number) => {
-    onChange([...selectedValues, value]);
-  };
-
-  const handleDeselect = (value: number) => {
-    onChange(selectedValues.filter((v) => v !== value));
-  };
-
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium">{label}</label>
-      <div className="border border-input rounded-md p-2 min-h-[40px] flex flex-wrap gap-2 items-center">
-        {selectedLabels.length === 0 && (
-          <span className="text-muted-foreground text-sm">{placeholder}</span>
-        )}
-        {selectedValues.map((value) => {
-          const labelText = options.find((opt) => opt.value === value)?.label || 'Unknown';
-          return (
-            <Badge key={value} className="flex items-center gap-1">
-              {labelText}
-              <button type="button" onClick={() => handleDeselect(value)} className="ml-1 text-xs">
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          );
-        })}
-
-        <select
-          className="flex-1 min-w-[100px] h-full bg-transparent text-sm focus:outline-none"
-          value=""
-          onChange={(e) => handleSelect(Number(e.target.value))}
-          disabled={availableOptions.length === 0}
-        >
-          <option value="" disabled>
-            {availableOptions.length > 0 ? 'Select users...' : 'All users selected'}
-          </option>
-          {availableOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-};
-
 const TASK_TYPES = [
   { value: 'client', label: 'Client' },
   { value: 'internal', label: 'Internal' },
@@ -167,16 +97,6 @@ export function ProjectCreate() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
-  };
-
-  //handler for the MultiSelect component
-  const handleAssignedToChange = (values: number[]) => {
-    setAssignedTo(
-      values.map(userId => ({
-        userId,
-        role: '',
-      }))
-    );
   };
 
   useEffect(() => {

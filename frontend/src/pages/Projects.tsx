@@ -34,11 +34,13 @@ export function Projects() {
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ['projects', filter],
-    queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
-    refetchOnMount: true,
-    staleTime: 0,
-  });
+  queryKey: ['projects', filter],
+  queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
+  staleTime: 1000 * 60 * 10,       // cache for 10 mins
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+});
 
   const projects = (() => {
 

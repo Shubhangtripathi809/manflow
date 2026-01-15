@@ -159,7 +159,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     };
 
     const priorityOptions = [
-        { value: 'high', label: 'High', color: 'text-red-600', icon: '🔴' },
+        { value: 'critical', label: 'Critical', color: 'text-red-600', icon: '🔴' },
+        { value: 'high', label: 'High', color: 'text-red-600', icon: '🔵' },
         { value: 'medium', label: 'Medium', color: 'text-orange-600', icon: '🟡' },
         { value: 'low', label: 'Low', color: 'text-green-600', icon: '🟢' },
     ];
