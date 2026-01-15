@@ -123,29 +123,34 @@ export interface TaskAttachment {
 
 
 // In task detail page
+export interface Task {
+  id: number;
+  heading: string;
+  description: string;
+  duration?: string;
+  duration_time?: string;
+  start_date: string;
+  end_date: string;
+  priority: string;
+  project: string | null;
+  project_details?: ProjectMinimal;
+  project_name: string | null;
+  assigned_to: number[];
+  assigned_to_user_details: User[];
+  assigned_by: number;
+  assigned_by_user_details?: User;
+  status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
+  labels?: Label[];
+  attachments?: TaskAttachment[];
+  created_at?: string;
+  updated_at?: string;
+  comments?: TaskComment[];
+}
+
+// Update TaskResponse to use the interface
 export interface TaskResponse {
   message: string;
-  task: {
-    id: number;
-    heading: string;
-    description: string;
-    start_date: string | null;
-    end_date: string | null;
-    priority: string;
-    project: string;
-    project_details: {
-      id: string;
-      name: string;
-    };
-    assigned_to: number[];
-    assigned_to_user_details: User[];
-    assigned_by: number;
-    assigned_by_user_details: User;
-    status: string;
-    attachments: TaskAttachment[];
-    created_at: string;
-    updated_at: string;
-  };
+  task: Task;
 }
 
 // export interface PaginatedTasksResponse {

@@ -7,7 +7,8 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { taskApi, usersApi, documentsApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Task, getStatusConfig } from './MyTask';
+import { getStatusConfig } from './MyTask';
+import { Task } from '@/types';
 
 
 
@@ -30,11 +31,15 @@ interface TaskDetailModalProps {
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDelete, onTaskUpdated }) => {
+    const taskWithLabels = React.useMemo(() => ({
+        ...task,
+        labels: (task as any).label_details || task.labels || []
+    }), [task]);
     const { user } = useAuth();
     const [selectedStatus, setSelectedStatus] = useState<Task['status']>(task.status);
     const [isEditingStatus, setIsEditingStatus] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [assignedMembersOpen, setAssignedMembersOpen] = useState(false);
+    const [assignedMembersOpen, setAssignedMembersOpen] = useState(true);
     const [showAddDocuments, setShowAddDocuments] = useState(false);
     const [uploadingDocs, setUploadingDocs] = useState(false);
     const [showDocumentsDropdown, setShowDocumentsDropdown] = useState(false);
@@ -46,6 +51,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);
     const [showAddUsersDropdown, setShowAddUsersDropdown] = useState(false);
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [editableDescription, setEditableDescription] = useState(task.description);
 
     const toggleMaximize = () => setIsMaximized(!isMaximized);
     const queryClient = useQueryClient();
@@ -117,9 +124,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             const updates: any = {};
             if (selectedStatus !== task.status) updates.status = selectedStatus;
             if (newUsers.length > 0) updates.assigned_to = [...task.assigned_to, ...newUsers];
+            // Add description update check
+            if (editableDescription !== task.description) updates.description = editableDescription;
+
             if (Object.keys(updates).length === 0) return;
             updateTaskMutation.mutate(updates);
             setNewUsers([]);
+            setIsEditingDescription(false);
             setHasUnsavedChanges(false);
         } catch (error) {
             console.error('Error saving task:', error);
@@ -345,15 +356,41 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                         {/* 2. Description Div */}
                         <div className="description bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                            <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400 block mb-2">Description</label>
-                            <div className="text-sm text-gray-600 leading-relaxed task-description-content" dangerouslySetInnerHTML={{ __html: task.description }} />
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400">Description</label>
+                                {!isEditingDescription && (
+                                    <button
+                                        onClick={() => setIsEditingDescription(true)}
+                                        className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    >
+                                        <Edit3 className="w-3 h-3" />
+                                        Edit description
+                                    </button>
+                                )}
+                            </div>
+
+                            {isEditingDescription ? (
+                                <textarea
+                                    value={editableDescription}
+                                    onChange={(e) => {
+                                        setEditableDescription(e.target.value);
+                                        setHasUnsavedChanges(true);
+                                    }}
+                                    className="w-full min-h-[120px] p-3 text-sm text-gray-600 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y transition-all"
+                                    placeholder="Enter task description..."
+                                />
+                            ) : (
+                                <div
+                                    className="text-sm text-gray-600 leading-relaxed task-description-content"
+                                    dangerouslySetInnerHTML={{ __html: task.description }}
+                                />
+                            )}
                         </div>
 
                         {/* 3. Project Assignees*/}
                         <div className="project-assignees bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                             <div className="flex items-center justify-between mb-3 cursor-pointer" onClick={() => setAssignedMembersOpen(!assignedMembersOpen)}>
                                 <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400">Assignees</label>
-                                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${assignedMembersOpen ? 'rotate-180' : ''}`} />
                             </div>
 
                             {assignedMembersOpen && (

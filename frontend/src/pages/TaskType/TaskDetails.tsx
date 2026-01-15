@@ -660,7 +660,7 @@ export function TaskDetails() {
             });
 
             if (confirmResponse.id) {
-                await documentsApi.getDownloadUrl(id!,{ document_id: confirmResponse.id });
+                await documentsApi.getDownloadUrl(id!, { document_id: confirmResponse.id });
             }
 
             queryClient.invalidateQueries({ queryKey: ['gt-documents', { project: id }] });
@@ -1015,8 +1015,16 @@ export function TaskDetails() {
 
             {isCreateTaskModalOpen && (
                 <div className="content-creation__modal-overlay">
-                    <div className="content-creation__modal-container">
-                        <CreateTask onClose={() => setIsCreateTaskModalOpen(false)} onSuccess={fetchTasks} isModal={true} fixedProjectId={id} />
+                    <div className="content-creation__modal-container bg-gray-50 p-6">
+                        <CreateTask
+                            onClose={() => setIsCreateTaskModalOpen(false)}
+                            onSuccess={() => {
+                                setIsCreateTaskModalOpen(false);
+                                fetchTasks();
+                            }}
+                            isModal={true}
+                            fixedProjectId={id}
+                        />
                     </div>
                 </div>
             )}
