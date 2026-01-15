@@ -115,7 +115,7 @@ function CreateCollectionModal({
   onClose,
   onSuccess
 }: {
-  projectId: number;
+  projectId: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -968,12 +968,11 @@ function CollectionCard({
   );
 }
 
-// ============================================
+
 // Main APITesting Component
-// ============================================
 export function APITesting() {
   const { id } = useParams<{ id: string }>();
-  const projectId = Number(id);
+  const projectId = id!;
   const queryClient = useQueryClient();
 
   // State

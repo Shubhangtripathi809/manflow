@@ -145,7 +145,27 @@ export const authApi = {
     return response.data;
   },
 
+  forgotPassword: async (email: string) => {
+    const response = await api.post('/auth/forgot-password/', { email });
+    return response.data;
+  },
+
+  verifyOTP: async (email: string, otp: string,) => {
+    const response = await api.post('/auth/verify-otp/', { email, otp });
+    return response.data;
+  },
+
+  setNewPassword: async (data: { 
+    email: string; 
+    reset_token: string; 
+    password: string; 
+    password_confirm: string; 
+  }) => {
+    const response = await api.post('/auth/set-new-password/', data);
+    return response.data;
+  },
 };
+
 
 // Projects API
 export const projectsApi = {
@@ -154,7 +174,7 @@ export const projectsApi = {
     return response.data;
   },
 
-  get: async (id: number) => {
+  get: async (id: string) => {
     const response = await api.get(`/projects/${id}/`);
     return response.data;
   },
@@ -164,27 +184,27 @@ export const projectsApi = {
     return response.data;
   },
 
-  update: async (id: number, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
+  update: async (id: string, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
     const response = await api.patch(`/projects/${id}/`, data);
     return response.data;
   },
 
-  delete: async (id: number) => {
+  delete: async (id: string) => {
     await api.delete(`/projects/${id}/`);
   },
 
-  getStats: async (id: number) => {
+  getStats: async (id: string) => {
     const response = await api.get(`/projects/${id}/stats/`);
     return response.data;
   },
 
   // Add inside projectsApi object:
-  createLabel: async (projectId: number, data: { name: string; color: string }) => {
+  createLabel: async (projectId: string, data: { name: string; color: string }) => {
     const response = await api.post(`/projects/${projectId}/labels/`, data);
     return response.data;
   },
 
-  deleteLabel: async (projectId: number, labelId: number) => {
+  deleteLabel: async (projectId: string, labelId: number) => {
     const response = await api.delete(`/projects/${projectId}/labels/${labelId}/`);
     return response.data;
   },
@@ -193,7 +213,7 @@ export const projectsApi = {
 // Add Documents API in task type file
 export const documentsApi = {
   list: async (params?: {
-    project?: number;
+    project?: string;
     status?: string;
     file_type?: string;
     page?: number;
@@ -208,7 +228,7 @@ export const documentsApi = {
   },
 
 
-  getUploadUrl: async (projectId: number, data: GetUploadUrlPayload) => {
+  getUploadUrl: async (projectId: string, data: GetUploadUrlPayload) => {
     const response = await api.post<GetUploadUrlResponse>(
       `/projects/${projectId}/get-upload-url/`,
       data
@@ -235,7 +255,7 @@ export const documentsApi = {
 
   // This `create` now expects the final S3 file_key
   create: async (data: {
-    project: number;
+    project: string;
     name: string;
     description: string;
     file_key: string;
@@ -248,7 +268,7 @@ export const documentsApi = {
   },
 
   // 3rd API: Confirm Upload
-  confirmUpload: async (projectId: number, data: ConfirmUploadPayload) => {
+  confirmUpload: async (projectId: string, data: ConfirmUploadPayload) => {
     const response = await api.post<ConfirmUploadResponse>(
       `/projects/${projectId}/confirm-upload/`,
       data
@@ -257,7 +277,7 @@ export const documentsApi = {
   },
 
   // 4th API: Get Download URL
-  getDownloadUrl: async (projectId: number, data: GetDownloadUrlPayload) => {
+  getDownloadUrl: async (projectId: string, data: GetDownloadUrlPayload) => {
     const response = await api.post<GetDownloadUrlResponse>(
       `/projects/${projectId}/get-download-url/`,
       data
@@ -558,7 +578,7 @@ export const toolApi = {
 // API Testing Platform API
 export const apiTestingApi = {
   // Collections
-  listCollections: async (params?: { project_id?: number }) => {
+  listCollections: async (params?: { project_id?: string }) => {
     const response = await api.get<PaginatedResponse<APICollection>>('/api-testing/collections/', { params });
     return response.data;
   },

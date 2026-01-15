@@ -29,11 +29,13 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { projectsApi } from '@/services/api';
 import type { Project } from '@/types';
+import { getProjectTypeColor } from '@/lib/utils';
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
 
 const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
   const { user } = useAuth();
+  
   const favProjects = useMemo(() => {
     return projects.filter(p =>
       p.is_favourite &&
@@ -58,7 +60,14 @@ const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
             )
           }
         >
-          <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 flex-shrink-0" />
+          {/* New Circular Avatar */}
+          <div className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] text-white font-bold uppercase",
+            getProjectTypeColor(project.task_type)
+          )}>
+            {project.name.charAt(0)}
+          </div>
+          
           <span className="truncate">{project.name}</span>
         </NavLink>
       ))}

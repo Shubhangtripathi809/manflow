@@ -13,6 +13,7 @@ import {
 } from '@/components/common';
 import { projectsApi, usersApi } from '@/services/api';
 import type { User as AppUser, ProjectCreatePayload } from '@/types';
+import { cn, getProjectTypeColor } from '@/lib/utils';
 
 interface MultiSelectProps {
   label: string;
@@ -155,7 +156,7 @@ export function ProjectCreate() {
     createMutation.mutate({
       ...formData,
       assigned_members,
-      project_settings: { priority: "high" } 
+      project_settings: { priority: "high" }
     });
   };
 
@@ -381,7 +382,11 @@ export function ProjectCreate() {
                           setTaskTypeDropdownOpen(false);
                         }}
                       >
-                        <span>{type.label}</span>
+                        <div className="flex items-center gap-2">
+                          {/* Color Circle */}
+                          <div className={cn("h-3 w-3 rounded-full", getProjectTypeColor(type.value))} />
+                          <span>{type.label}</span>
+                        </div>
                         {formData.task_type === type.value && <span className="text-primary font-bold">✓</span>}
                       </div>
                     ))}
