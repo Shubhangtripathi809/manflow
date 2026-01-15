@@ -29,7 +29,7 @@ class DocumentFilter(filters.FilterSet):
     """
     Filter for documents.
     """
-    project = filters.NumberFilter(field_name="project_id")
+    project = filters.UUIDFilter(field_name="project_id")
     status = filters.ChoiceFilter(choices=Document.Status.choices)
     file_type = filters.ChoiceFilter(choices=Document.FileType.choices)
     created_after = filters.DateTimeFilter(field_name="created_at", lookup_expr="gte")

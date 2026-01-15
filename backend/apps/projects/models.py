@@ -3,7 +3,7 @@ Project management models for ZanFlow.
 """
 from django.conf import settings as django_settings
 from django.db import models
-
+import uuid
 from core.models import UserStampedModel
 
 
@@ -11,7 +11,11 @@ class Project(UserStampedModel):
     """
     Project containing documents, ground truth, and test runs.
     """
-    
+    id = models.UUIDField(
+        primary_key=True, 
+        default=uuid.uuid4, 
+        editable=False
+    )
     class TaskType(models.TextChoices):
         # KEY_VALUE_EXTRACTION = "key_value", "Key-Value Extraction"
         # TABLE_EXTRACTION = "table", "Table Extraction"
