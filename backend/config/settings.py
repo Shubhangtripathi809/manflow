@@ -45,6 +45,7 @@ LOCAL_APPS = [
     "apps.tasksite",
     "apps.task_ai",
     "apps.api_testing",
+    "apps.notification",
     
 ]
 

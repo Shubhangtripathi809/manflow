@@ -24,6 +24,7 @@ urlpatterns = [
         path("groundtruth/", include("apps.groundtruth.urls")),
         path('task-ai/', include('apps.task_ai.urls')),
         path('api-testing/', include('apps.api_testing.urls')),
+        path("notification/", include("apps.notification.urls")),
     ])),
     
     # API Documentation

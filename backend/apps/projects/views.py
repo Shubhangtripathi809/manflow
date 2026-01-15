@@ -23,6 +23,11 @@ from .serializers import (
     ProjectSerializer,
     ProjectStatsSerializer,
 )
+from apps.notification.services import (
+    notify_project_created,
+    notify_project_member_added,
+    notify_project_updated,
+)
 
 
 class ProjectFilter(filters.FilterSet):
@@ -73,7 +78,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # The serializer.save() now handles role assignment internally
         project = serializer.save()
         log_action(project, "create", new_value=serializer.data)
-        
+        # ====================================================================
+        # TRIGGER NOTIFICATION: Project Created
+        # ====================================================================
+        # Get the assigned members from the serializer context
+        assigned_members = list(project.members.all())
+        if assigned_members:
+            notify_project_created(
+                project=project,
+                actor=self.request.user,
+                assigned_members=assigned_members
+            )
+        # ====================================================================
+
     def get_download_url(self, request, pk=None):
         """
         Generates a URL based on Document ID using the 'source_file' field.
@@ -154,7 +171,23 @@ class ProjectViewSet(viewsets.ModelViewSet):
         old_data = ProjectSerializer(self.get_object(), context={'request': self.request}).data 
         project = serializer.save(updated_by=self.request.user)
         log_action(project, "update", old_value=old_data, new_value=serializer.data)
-    
+        # ====================================================================
+        # TRIGGER NOTIFICATION: Project Updated (Optional)
+        # ====================================================================
+        # Only notify on significant changes
+        changes = {}
+        if old_data.get('name') != project.name:
+            changes['name'] = {'old': old_data.get('name'), 'new': project.name}
+        if old_data.get('description') != project.description:
+            changes['description'] = 'Updated'
+        
+        if changes:
+            notify_project_updated(
+                project=project,
+                actor=self.request.user,
+                changes=changes
+            )
+        # ====================================================================
     def perform_destroy(self, instance):
         log_action(instance, "delete", old_value=ProjectSerializer(instance).data)
         instance.delete()
@@ -300,7 +333,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 {"detail": "User is already a member"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+        # ====================================================================
+        # TRIGGER NOTIFICATION: Member Added
+        # ====================================================================
+        notify_project_member_added(
+            project=project,
+            new_member=membership.user,
+            actor=request.user
+        )
+        # ====================================================================
         return Response(ProjectMembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
     
     def remove_member(self, request, pk=None, user_id=None):

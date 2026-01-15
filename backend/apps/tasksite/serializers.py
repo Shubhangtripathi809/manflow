@@ -6,14 +6,17 @@ from rest_framework import serializers
 from .models import Task, TaskAttachment, TaskComment
 from apps.users.models import User
 # Import your existing Project model here too
-from apps.projects.models import Project 
+from apps.projects.models import Project, Label
 
 class AssignedByUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role']
         read_only_fields = fields
-
+class LabelSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Label
+        fields = ['id', 'name', 'color']
 class UserManagementSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -97,12 +100,18 @@ class TaskSerializer(serializers.ModelSerializer):
     )
     # This shows the project name when you GET the task
     project_details = ProjectSimpleSerializer(source='project', read_only=True)
-
+    label_details = LabelSimpleSerializer(source='labels', many=True, read_only=True)
     attachments = TaskAttachmentSerializer(many=True, read_only=True)
     comments = TaskCommentSerializer(many=True, read_only=True)
     # WRITE ONLY: This allows uploading multiple files during creation
     uploaded_files = serializers.ListField(
         child=serializers.FileField(),
+        write_only=True,
+        required=False
+    )
+    labels = serializers.PrimaryKeyRelatedField(
+        queryset=Label.objects.all(),
+        many=True,
         write_only=True,
         required=False
     )
@@ -112,6 +121,8 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = [
             'id', 'heading', 'description', 'start_date', 'end_date',
+            'label_details',
+            'labels',
             'duration_time',
             'priority',
             'project',          # <--- Send ID (9) here when creating
