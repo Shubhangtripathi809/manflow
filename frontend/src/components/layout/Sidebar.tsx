@@ -9,7 +9,6 @@ import {
   Settings,
   LogOut,
   Users,
-  Cog,
   ChevronDown,
   ChevronUp,
   Plus,
@@ -20,10 +19,8 @@ import {
   Pause,
   Crown,
   TrendingUp,
-  Braces,
   ListTodo,
   Calendar,
-  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -183,47 +180,6 @@ const UserManagementAccordion = () => {
   );
 };
 
-const ToolsAccordion = () => {
-  const location = useLocation();
-  const isToolsRoute = location.pathname.startsWith('/tools');
-  const [isOpen, setIsOpen] = useState(isToolsRoute);
-  useMemo(() => { if (isToolsRoute) setIsOpen(true); }, [isToolsRoute]);
-
-  return (
-    <div className="space-y-1">
-      <div
-        className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-          isToolsRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Cog className="h-5 w-5" />
-        <span className="flex-1">Tools</span>
-        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </div>
-      {isOpen && (
-        <div className="ml-4 border-l pl-2 space-y-1">
-          {[
-            { id: 'PDF_HTML', name: 'PDF vs HTML', href: '/tools/pdf-vs-html', icon: FileText },
-            { id: 'JSON', name: 'JSON Viewer', href: '/tools/json-viewer', icon: Braces },
-          ].map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.href}
-              className={({ isActive }) =>
-                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 export function Sidebar() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const location = useLocation();
@@ -257,18 +213,22 @@ export function Sidebar() {
     { name: 'Documents', href: '/documents', icon: FileText },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
     { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
-    { name: 'Tools', href: '/tools', icon: Cog },
   ];
 
   const navigation = useMemo(() => {
-    const nav = [...baseNavigation];
-    nav.splice(2, 0, { name: 'My Tasks', href: '/taskboard', icon: CheckSquare });
-    if (shouldShowAdminLink) {
-      const toolIndex = nav.findIndex(item => item.name === 'Tools');
-      nav.splice(toolIndex + 1, 0, { name: 'Team Management', href: '/admin/user-roles', icon: Crown });
-    }
-    return nav;
-  }, [shouldShowAdminLink]);
+  const nav = [...baseNavigation];
+  nav.splice(2, 0, { name: 'My Tasks', href: '/taskboard', icon: CheckSquare });
+  if (shouldShowAdminLink) {
+    // Find Test Runs and insert after it
+    const testRunsIndex = nav.findIndex(item => item.name === 'Test Runs');
+    nav.splice(testRunsIndex + 1, 0, {
+      name: 'Team Management',
+      href: '/admin/user-roles',
+      icon: Crown,
+    });
+  }
+  return nav;
+}, [shouldShowAdminLink]);
 
   const isLoading = authLoading || projectsLoading;
 
@@ -285,7 +245,6 @@ export function Sidebar() {
           navigation.map((item) => {
             if (item.name === 'My Tasks') return <TaskAccordion key="my-tasks" />;
             if (item.name === 'Team Management') return <UserManagementAccordion key="admin-tools" />;
-            if (item.name === 'Tools') return <ToolsAccordion key="tools-accordion" />;
             if (item.name === 'Projects') {
               const isRouteActive = location.pathname.startsWith('/projects');
 

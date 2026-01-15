@@ -9,8 +9,6 @@ export { MyTask } from './MyTask/MyTask';
 export { CreateTask } from './MyTask/CreateTask'
 export { TeamPerformance } from './MyTask/TeamPerformance';
 export { TaskDetails } from './TaskType/TaskDetails'
-export { PdfVsHtmlViewer } from './Tools/PdfVsHTML/PdfVsHtmlViewer';
-export { PdfJson } from './Tools/JsonViewer/PdfJson';
 export { ContentCreation } from './TaskType/ContentCreation';
 export { Documents } from './Documents';
 export { ProjectSettings } from './ProjectSettings';
