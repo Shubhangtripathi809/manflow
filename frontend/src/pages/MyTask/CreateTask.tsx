@@ -11,11 +11,13 @@ import {
     Flag,
     Paperclip,
     Type,
+    Sparkles,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
 import { ProjectMinimal } from '@/types';
 import { AITaskSuggestionResponse } from '@/types';
+import { AITask } from './AITask';
 
 interface UserOption {
     value: string;
@@ -24,7 +26,7 @@ interface UserOption {
 }
 
 interface ProjectOption {
-    id: number;
+    id: string;
     name: string;
 }
 
@@ -32,7 +34,7 @@ interface CreateTaskProps {
     onClose?: () => void;
     onSuccess?: () => void;
     isModal?: boolean;
-    fixedProjectId?: number;
+    fixedProjectId?: string;
 }
 
 export const CreateTask: React.FC<CreateTaskProps> = ({
@@ -52,7 +54,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
-    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
+    const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
     const [allProjectOptions, setAllProjectOptions] = useState<ProjectOption[]>([]);
     const [status, setStatus] = useState('pending');
@@ -64,6 +66,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [success, setSuccess] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [labels, setLabels] = useState('');
+    const [showAIModal, setShowAIModal] = useState(false);
     const [duration, setDuration] = useState('');
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,27 +93,27 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             reader.readAsDataURL(file);
         }
     };
-const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value;
-    const isDeleting = (e.nativeEvent as any).inputType === 'deleteContentBackward';
-    if (isDeleting) {
+    const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value;
+        const isDeleting = (e.nativeEvent as any).inputType === 'deleteContentBackward';
+        if (isDeleting) {
+            setDuration(val);
+            return;
+        }
+        val = val.replace(/[^0-9:]/g, '');
+
+        // Auto-format logic for additions:
+        // 1. If user types 2 digits (e.g., "24"), append a colon: "24:"
+        if (/^\d{2}$/.test(val)) {
+            val = val + ':';
+        }
+        // 2. If user types a digit after the colon (e.g., "24:1"), append a zero: "24:10"
+        else if (/^\d{2}:\d$/.test(val)) {
+            val = val + '0';
+        }
+
         setDuration(val);
-        return;
-    }
-    val = val.replace(/[^0-9:]/g, '');
-
-    // Auto-format logic for additions:
-    // 1. If user types 2 digits (e.g., "24"), append a colon: "24:"
-    if (/^\d{2}$/.test(val)) {
-        val = val + ':';
-    } 
-    // 2. If user types a digit after the colon (e.g., "24:1"), append a zero: "24:10"
-    else if (/^\d{2}:\d$/.test(val)) {
-        val = val + '0';
-    }
-
-    setDuration(val);
-};
+    };
 
     const insertTable = () => {
         const table = `
@@ -918,6 +921,14 @@ const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                                 Cancel
                             </button>
                             <button
+                                type="button"
+                                onClick={() => setShowAIModal(true)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded hover:bg-purple-700 transition-colors flex items-center gap-2"
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                Generate Task By AI
+                            </button>
+                            <button
                                 type="submit"
                                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={loading}
@@ -928,6 +939,9 @@ const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                     </div>
                 </form>
             </div>
+            {showAIModal && (
+                <AITask onClose={() => setShowAIModal(false)} />
+            )}
         </div>
     );
 };

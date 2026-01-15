@@ -111,7 +111,7 @@ export function Documents() {
     queryKey: ['documents', projectFilter, statusFilter, fileTypeFilter],
     queryFn: () =>
       documentsApi.list({
-        project: projectFilter ? Number(projectFilter) : undefined,
+        project: projectFilter || undefined,
         status: statusFilter || undefined,
         file_type: fileTypeFilter || undefined,
       }),

@@ -30,7 +30,7 @@ export interface Skill {
 // Project page  types 
 export interface Project {
   is_favourite: boolean;
-  id: number;
+  id: string;
   name: string;
   description: string;
   task_type: TaskType;
@@ -56,7 +56,7 @@ export interface ProjectMember {
 }
 //  In create task load project name from project list API
 export interface ProjectMinimal {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -132,9 +132,9 @@ export interface TaskResponse {
     start_date: string | null;
     end_date: string | null;
     priority: string;
-    project: number;
+    project: string;
     project_details: {
-      id: number;
+      id: string;
       name: string;
     };
     assigned_to: number[];
@@ -179,7 +179,7 @@ export interface CreateTaskCommentPayload {
 // Document types
 export interface Document {
   id: string;
-  project: number;
+  project: string;
   project_name?: string;
   name: string;
   description: string;
@@ -196,6 +196,7 @@ export interface Document {
   created_at: string;
   updated_at: string;
   labels?: Label[];
+  version_count?: number;
 }
 
 export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'video' | 'other';
@@ -234,7 +235,7 @@ export interface DocumentComment {
 // Test types
 export interface TestRun {
   id: string;
-  project: number;
+  project: string;
   name: string;
   description: string;
   status: TestRunStatus;
@@ -281,7 +282,7 @@ export interface DiffData {
 // Issue types
 export interface Issue {
   id: string;
-  project: number;
+  project: string;
   title: string;
   description: string;
   status: IssueStatus;
@@ -536,7 +537,7 @@ export interface GetDownloadUrlResponse {
 
 // Create AI based Task Generation 
 export interface AITaskSuggestionPayload {
-  project_id: number;
+  project_id: string;
   description: string;
 }
 
@@ -546,7 +547,7 @@ export interface AITaskSuggestionResponse {
   start_date: string;
   end_date: string;
   assigned_to: number[];
-  project: number;
+  project: string;
   status: string;
   priority: string;
   ai_metadata: {
@@ -560,7 +561,7 @@ export interface APICollection {
   id: string;
   name: string;
   description?: string;
-  project_id?: number;
+  project_id?: string;
   api_count: number;
   execution_order: 'sequential' | 'parallel';
   environment_variables: Record<string, string>;
@@ -677,7 +678,7 @@ export interface APITestingDashboard {
 export interface CreateCollectionPayload {
   name: string;
   description?: string;
-  project_id?: number;
+  project_id?: string;
   execution_order?: 'sequential' | 'parallel';
   environment_variables?: Record<string, string>;
   tags?: string[];

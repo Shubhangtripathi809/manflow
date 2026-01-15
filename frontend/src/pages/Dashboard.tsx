@@ -251,7 +251,7 @@ export function Dashboard() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {/* 1. Tasks Card */}
-          <Card
+          {/* <Card
             className="cursor-pointer hover:border-primary transition-colors"
             onClick={() => navigate('/taskboard')}
           >
@@ -267,10 +267,10 @@ export function Dashboard() {
                 Go to Taskboard
               </span>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* 2. Projects Card */}
-          <Card
+          {/* <Card
             className="cursor-pointer hover:border-primary transition-colors"
             onClick={() => navigate('/projects')}
           >
@@ -286,10 +286,10 @@ export function Dashboard() {
                 View all projects
               </Link>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* 3. Total Documents Card */}
-          <Card
+          {/* <Card
             className="cursor-pointer hover:border-primary transition-colors"
             onClick={() => navigate('/documents')}
           >
@@ -305,7 +305,7 @@ export function Dashboard() {
                 View all documents
               </Link>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       )}
 

@@ -37,11 +37,9 @@ export function DocumentCreate() {
 
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
-    queryFn: () => projectsApi.get(Number(projectId)),
+    queryFn: () => projectsApi.get(projectId!),
     enabled: !!projectId,
   });
-
-  const projectIdNum = Number(projectId);
 
   // UPDATED MUTATION 
   const createMutation = useMutation({
@@ -54,7 +52,7 @@ export function DocumentCreate() {
       original_file_name: string;
     }) => {
       return documentsApi.create({
-        project: projectIdNum,
+        project: projectId!,
         name,
         description,
         file_key,
@@ -97,7 +95,7 @@ export function DocumentCreate() {
     try {
       // Step 1: Get Upload URL from backend API
       console.log('[DocumentCreate] Step 1: Requesting upload URL...');
-      const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
+      const uploadUrlResponse = await documentsApi.getUploadUrl(projectId!, {
         file_name: file.name,
         file_type: file.type || 'application/octet-stream',
       });
@@ -109,10 +107,10 @@ export function DocumentCreate() {
       console.log('[DocumentCreate] Step 2: Uploading file to S3...');
       await documentsApi.uploadFileToS3(s3Url, s3Fields, file);
       console.log('[DocumentCreate] Step 2 Success: File uploaded to S3.');
-     // Step 3: CONFIRM UPLOAD original_file_name
+      // Step 3: CONFIRM UPLOAD original_file_name
       const fileNameWithoutPath = file_key.split('/').pop() || file.name;
       console.log(`[DocumentCreate] Step 3: Confirming upload with file_key: ${file_key}, file_name: ${fileNameWithoutPath}`);
-      const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
+      const confirmResponse = await documentsApi.confirmUpload(projectId!, {
         file_key: file_key,
         file_name: file.name,
         file_type: formData.file_type,
@@ -145,21 +143,21 @@ export function DocumentCreate() {
     }));
   };
 
-const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const selectedFile = e.target.files?.[0];
-  if (selectedFile) {
-    setFile(selectedFile);
-    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
-    let detectedType = 'other';
-    if (ext === 'pdf') detectedType = 'pdf';
-    else if (['png', 'jpg', 'jpeg'].includes(ext!)) detectedType = 'image';
-    else if (['mp4', 'mov'].includes(ext!)) detectedType = 'video'; 
-    else if (ext === 'json') detectedType = 'json';
-    else if (ext === 'txt') detectedType = 'text';
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+      let detectedType = 'other';
+      if (ext === 'pdf') detectedType = 'pdf';
+      else if (['png', 'jpg', 'jpeg'].includes(ext!)) detectedType = 'image';
+      else if (['mp4', 'mov'].includes(ext!)) detectedType = 'video';
+      else if (ext === 'json') detectedType = 'json';
+      else if (ext === 'txt') detectedType = 'text';
 
-    setFormData((prev) => ({ ...prev, file_type: detectedType }));
-  }
-};
+      setFormData((prev) => ({ ...prev, file_type: detectedType }));
+    }
+  };
 
   const removeFile = () => {
     setFile(null);
