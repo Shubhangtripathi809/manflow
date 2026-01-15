@@ -33,7 +33,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
-function useDownloadUrl(projectId: number | undefined, documentId: string | undefined) {
+function useDownloadUrl(projectId: string | undefined, documentId: string | undefined) {
   return useQuery({
     queryKey: ['document-download-url', projectId, documentId],
     queryFn: async () => {

@@ -19,9 +19,9 @@ export interface Task {
     start_date: string;
     end_date: string;
     priority: string;
-    project: number | null;
+    project: string | null;
     project_details?: {
-        id: number;
+        id: string;
         name: string;
     };
     project_name: string | null;
@@ -505,7 +505,7 @@ export const MyTask: React.FC = () => {
         deferred: tasks.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
     };
 
-    const handleAITaskGenerate = useCallback(async (projectId: number, description: string) => {
+    const handleAITaskGenerate = useCallback(async (projectId: string, description: string) => {
         console.log('Generating AI task for project:', projectId, 'with description:', description);
     }, [queryClient]);
 

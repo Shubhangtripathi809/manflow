@@ -60,7 +60,7 @@ export function ProjectSettings() {
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
-    queryFn: () => projectsApi.get(Number(id)),
+    queryFn: () => projectsApi.get((id!)),
     enabled: !!id,
   });
 
@@ -78,7 +78,7 @@ export function ProjectSettings() {
   }
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<Project>) => projectsApi.update(Number(id), data),
+    mutationFn: (data: Partial<Project>) => projectsApi.update(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -87,7 +87,7 @@ export function ProjectSettings() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => projectsApi.delete(Number(id)),
+    mutationFn: () => projectsApi.delete(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       navigate('/projects');
@@ -96,7 +96,7 @@ export function ProjectSettings() {
 
   const createLabelMutation = useMutation({
     mutationFn: (data: { name: string; color: string }) =>
-      projectsApi.createLabel(Number(id), data),
+      projectsApi.createLabel(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       setNewLabel({ name: '', color: '#3b82f6' });
@@ -104,7 +104,7 @@ export function ProjectSettings() {
   });
 
   const deleteLabelMutation = useMutation({
-    mutationFn: (labelId: number) => projectsApi.deleteLabel(Number(id), labelId),
+    mutationFn: (labelId: number) => projectsApi.deleteLabel(id!, labelId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
     },
@@ -175,33 +175,30 @@ export function ProjectSettings() {
       <div className="flex gap-2 border-b">
         <button
           onClick={() => setActiveTab('general')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'general'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'general'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Settings className="h-4 w-4 inline mr-2" />
           General
         </button>
         <button
           onClick={() => setActiveTab('labels')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'labels'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'labels'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Tags className="h-4 w-4 inline mr-2" />
           Labels ({labels.length})
         </button>
         <button
           onClick={() => setActiveTab('danger')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'danger'
-              ? 'border-red-500 text-red-500'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'danger'
+            ? 'border-red-500 text-red-500'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <AlertTriangle className="h-4 w-4 inline mr-2" />
           Danger Zone
@@ -275,7 +272,7 @@ export function ProjectSettings() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    if (project) { 
+                    if (project) {
                       setFormData({
                         name: project.name,
                         description: project.description || '',
@@ -401,10 +398,10 @@ export function ProjectSettings() {
             <div className="p-4 border border-red-200 rounded-lg bg-red-50">
               <h4 className="font-medium text-red-800 mb-2">Delete Project</h4>
               <p className="text-sm text-red-600 mb-4">
-                This will permanently delete the project, all documents, ground truth versions, 
+                This will permanently delete the project, all documents, ground truth versions,
                 and associated data. This action cannot be undone.
               </p>
-              
+
               {!showDeleteConfirm ? (
                 <Button
                   variant="outline"

@@ -69,7 +69,7 @@ function ProjectDetailWrapper() {
   const { id } = useParams<{ id: string }>();
   const { data: project } = useQuery({
     queryKey: ['project', id],
-    queryFn: () => projectsApi.get(Number(id)),
+    queryFn: () => projectsApi.get(id!),
     enabled: !!id,
   });
 

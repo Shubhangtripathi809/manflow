@@ -29,13 +29,13 @@ export function ProjectDetail() {
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['project', id],
-    queryFn: () => projectsApi.get(Number(id)),
+    queryFn: () => projectsApi.get(id!),
     enabled: !!id,
   });
 
   const { data: documentsData, isLoading: docsLoading } = useQuery({
     queryKey: ['documents', { project: id }],
-    queryFn: () => documentsApi.list({ project: Number(id) }),
+    queryFn: () => documentsApi.list({ project: id }),
     enabled: !!id,
   });
 

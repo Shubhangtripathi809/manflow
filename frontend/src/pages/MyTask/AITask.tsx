@@ -5,18 +5,18 @@ import { projectsApi, taskApi } from '@/services/api';
 import { ProjectMinimal, AITaskSuggestionPayload } from '@/types';
 
 interface ProjectOption {
-    id: number;
+    id: string;
     name: string;
 }
 
 interface AITaskProps {
     onClose: () => void;
-    onGenerate?: (projectId: number, description: string) => void;
+    onGenerate?: (projectId: string, description: string) => void;
 }
 
 export const AITask: React.FC<AITaskProps> = ({ onClose, onGenerate }) => {
     const navigate = useNavigate();
-    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
+    const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
     const [allProjectOptions, setAllProjectOptions] = useState<ProjectOption[]>([]);
     const [description, setDescription] = useState('');
