@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/common';
 import { getCredentials } from '@/services/authStorage';
+import { authApi } from '@/services/api';
 
 
 
@@ -14,7 +15,48 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [step, setStep] = useState(1);
-  const [isVerified, setIsVerified] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleSendOTP = async () => {
+    try {
+      await authApi.forgotPassword(forgotEmail);
+      alert("OTP sent successfully to your email");
+    } catch (err) {
+      alert("Failed to send OTP. Please check your email.");
+    }
+  }
+
+  const handleVerifyOTP = async () => {
+    try {
+      const data = await authApi.verifyOTP(forgotEmail, otp);
+      setResetToken(data.reset_token);
+      alert("OTP verified successfully!"); // Pop-up 2
+      setStep(2);
+      setStep(2);
+    } catch (err) {
+      console.error("Error verifying OTP:", err);
+    }
+  }
+
+  const handleSetNewPassword = async () => {
+  try {
+    await authApi.setNewPassword({
+      email: forgotEmail,
+      reset_token: resetToken,
+      password: newPassword,
+      password_confirm: confirmPassword
+    });
+    alert("Password has been reset successfully!"); // Pop-up 3
+    setShowForgotPassword(false);
+    setStep(1);
+  } catch (err) {
+    alert("Failed to reset password. Ensure passwords match.");
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,37 +90,33 @@ export function Login() {
               </div>
             )}
             <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium">
-                Username
-              </label>
               <Input
                 id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Email or Username"
                 required
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium">Password</label>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </button>
-              </div>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder="Password"
                 required
               />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign in'}
@@ -108,27 +146,20 @@ export function Login() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Your Email</label>
                     <div className="flex gap-2">
-                      <Input placeholder="user@example.com" type="email" />
-                      <Button variant="outline" type="button">Send OTP</Button>
+                      <Input placeholder="user@example.com" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
+                      <Button variant="outline" type="button" onClick={handleSendOTP} disabled={!forgotEmail}>Send OTP</Button>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Enter OTP</label>
                     <div className="flex gap-2 items-center">
-                      <Input placeholder="4-digit code" maxLength={4} className="text-center tracking-widest" />
-                      {isVerified ? (
-                        <div className="px-3 text-green-500">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                        </div>
-                      ) : (
-                        <Button variant="outline" type="button" onClick={() => setIsVerified(true)}>Verify</Button>
-                      )}
+                      <Input placeholder="4-digit code" maxLength={4} className="text-center tracking-widest" value={otp} onChange={(e) => setOtp(e.target.value)} />
                     </div>
                   </div>
                   <Button
                     className="w-full mt-4"
-                    disabled={!isVerified}
-                    onClick={() => setStep(2)}
+                    disabled={otp.length < 4}
+                    onClick={handleVerifyOTP}
                   >
                     Continue
                   </Button>
@@ -138,21 +169,18 @@ export function Login() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Password</label>
-                    <Input type="password" placeholder="New password" />
+                    <Input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Confirm Password</label>
-                    <Input type="password" placeholder="Confirm new password" />
+                    <Input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                   </div>
                   <Button
                     className="w-full mt-4"
-                    onClick={() => {
-                      setShowForgotPassword(false);
-                      setStep(1);
-                      setIsVerified(false);
-                    }}
+                    onClick={() => {handleSetNewPassword();}}
+                    disabled={!newPassword || newPassword !== confirmPassword}
                   >
-                    Continue
+                    Submit
                   </Button>
                 </div>
               )}

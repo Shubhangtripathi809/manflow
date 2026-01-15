@@ -165,7 +165,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     ];
 
     const statusOptions = [
-        { value: 'pending', label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
+        { value: 'review', label: 'Review', color: 'bg-yellow-100 text-yellow-800' },
         { value: 'backlog', label: 'Backlog', color: 'bg-gray-100 text-gray-800' },
         { value: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
         { value: 'completed', label: 'Completed', color: 'bg-green-100 text-green-800' },
