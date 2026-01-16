@@ -5,7 +5,7 @@ from apps.users.models import User
 # --- IMPORT YOUR EXISTING PROJECT MODEL ---
 # CAUTION: Check this path. It might be 'apps.projects.models' or similar
 # based on where your "Marketing Campaign 2025" model is defined.
-from apps.projects.models import Project 
+from apps.projects.models import Project, Label
 
 class Task(models.Model):
     STATUS_CHOICES = (
@@ -26,6 +26,7 @@ class Task(models.Model):
         ('critical', 'Critical'),
     )
 
+
     heading = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     start_date = models.DateTimeField(null=True, blank=True)
@@ -36,6 +37,11 @@ class Task(models.Model):
         max_length=20, 
         choices=PRIORITY_CHOICES, 
         default='medium'
+    )
+    labels = models.ManyToManyField(
+        Label, 
+        blank=True, 
+        related_name='tasks'
     )
 
     # --- UPDATED: LINK TO EXISTING PROJECT ---
@@ -68,6 +74,18 @@ class Task(models.Model):
 
     def __str__(self):
         return self.heading
+    
+class TaskLink(models.Model):
+    task = models.ForeignKey(
+        Task, 
+        related_name='links',  # Access links via task.links.all()
+        on_delete=models.CASCADE
+    )
+    url = models.URLField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.url
     
 class TaskAttachment(models.Model):
     task = models.ForeignKey(

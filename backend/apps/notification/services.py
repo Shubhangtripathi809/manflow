@@ -1,0 +1,477 @@
+"""
+Notification Services for ZanFlow.
+Centralized notification creation logic.
+All notification creation should go through these service functions.
+"""
+from typing import List, Optional, Union, Dict, Any
+from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
+from django.db.models import Model
+
+from apps.users.models import User
+from .models import Notification, NotificationPreference
+
+
+def get_or_create_preferences(user: User) -> NotificationPreference:
+    """Get or create notification preferences for a user."""
+    preferences, _ = NotificationPreference.objects.get_or_create(user=user)
+    return preferences
+
+
+def should_notify(user: User, notification_type: str) -> bool:
+    """
+    Check if user should receive a notification based on their preferences.
+    """
+    preferences = get_or_create_preferences(user)
+    
+    # Map notification types to preference fields
+    type_to_preference = {
+        'task_created': 'task_notifications',
+        'task_assigned': 'task_notifications',
+        'task_status_updated': 'task_notifications',
+        'task_completed': 'task_notifications',
+        'task_comment': 'task_notifications',
+        'project_created': 'project_notifications',
+        'project_assigned': 'project_notifications',
+        'project_member_added': 'project_notifications',
+        'project_updated': 'project_notifications',
+        'mention': 'mention_notifications',
+        'system': 'system_notifications',
+        'reminder': 'system_notifications',
+    }
+    
+    preference_field = type_to_preference.get(notification_type, 'system_notifications')
+    return getattr(preferences, preference_field, True)
+
+
+def create_notification(
+    recipient: User,
+    title: str,
+    message: str,
+    notification_type: str = Notification.NotificationType.SYSTEM,
+    actor: Optional[User] = None,
+    priority: str = Notification.Priority.MEDIUM,
+    related_object: Optional[Model] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> Optional[Notification]:
+    """
+    Create a single notification for a user.
+    
+    Args:
+        recipient: User who will receive the notification
+        title: Short title for the notification
+        message: Detailed message
+        notification_type: Type of notification (from Notification.NotificationType)
+        actor: User who triggered the notification (optional)
+        priority: Priority level (from Notification.Priority)
+        related_object: Django model instance related to notification (optional)
+        metadata: Additional data as dictionary (optional)
+    
+    Returns:
+        Notification instance or None if user has disabled notifications
+    
+    Example:
+        notification = create_notification(
+            recipient=user,
+            title="New Task Assigned",
+            message="You have been assigned to 'Design Logo'",
+            notification_type=Notification.NotificationType.TASK_ASSIGNED,
+            actor=manager,
+            related_object=task,
+            metadata={"project_name": "Marketing Campaign"}
+        )
+    """
+    # Skip if recipient has disabled this notification type
+    if not should_notify(recipient, notification_type):
+        return None
+    
+    # Don't notify the actor about their own actions
+    if actor and actor.id == recipient.id:
+        return None
+    
+    notification_data = {
+        'recipient': recipient,
+        'title': title,
+        'message': message,
+        'notification_type': notification_type,
+        'actor': actor,
+        'priority': priority,
+        'metadata': metadata or {},
+    }
+    
+    # Add generic relation if related_object is provided
+    if related_object:
+        notification_data['content_type'] = ContentType.objects.get_for_model(related_object)
+        notification_data['object_id'] = str(related_object.pk)
+    
+    return Notification.objects.create(**notification_data)
+
+
+def notify(
+    recipients: Union[User, List[User]],
+    title: str,
+    message: str,
+    notification_type: str = Notification.NotificationType.SYSTEM,
+    actor: Optional[User] = None,
+    priority: str = Notification.Priority.MEDIUM,
+    related_object: Optional[Model] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    exclude_actor: bool = True
+) -> List[Notification]:
+    """
+    Send notifications to one or multiple users.
+    
+    Args:
+        recipients: Single User or list of Users
+        title: Short title for the notification
+        message: Detailed message
+        notification_type: Type of notification
+        actor: User who triggered the notification
+        priority: Priority level
+        related_object: Related Django model instance
+        metadata: Additional data
+        exclude_actor: Whether to exclude actor from recipients (default: True)
+    
+    Returns:
+        List of created Notification instances
+    
+    Example:
+        # Notify multiple users
+        notifications = notify(
+            recipients=[user1, user2, manager],
+            title="Task Status Updated",
+            message="Task 'Design Logo' has been marked as completed",
+            notification_type=Notification.NotificationType.TASK_STATUS_UPDATED,
+            actor=developer,
+            related_object=task
+        )
+    """
+    # Normalize to list
+    if isinstance(recipients, User):
+        recipients = [recipients]
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_recipients = []
+    for user in recipients:
+        if user.id not in seen:
+            seen.add(user.id)
+            unique_recipients.append(user)
+    
+    created_notifications = []
+    
+    with transaction.atomic():
+        for recipient in unique_recipients:
+            # Skip actor if exclude_actor is True
+            if exclude_actor and actor and recipient.id == actor.id:
+                continue
+            
+            notification = create_notification(
+                recipient=recipient,
+                title=title,
+                message=message,
+                notification_type=notification_type,
+                actor=actor,
+                priority=priority,
+                related_object=related_object,
+                metadata=metadata
+            )
+            
+            if notification:
+                created_notifications.append(notification)
+    
+    return created_notifications
+
+
+def bulk_create_notifications(
+    notifications_data: List[Dict[str, Any]]
+) -> List[Notification]:
+    """
+    Create multiple notifications efficiently using bulk_create.
+    
+    Args:
+        notifications_data: List of dictionaries with notification data
+    
+    Returns:
+        List of created Notification instances
+    """
+    notifications = []
+    
+    for data in notifications_data:
+        related_object = data.pop('related_object', None)
+        
+        notification = Notification(
+            recipient=data['recipient'],
+            title=data['title'],
+            message=data['message'],
+            notification_type=data.get('notification_type', Notification.NotificationType.SYSTEM),
+            actor=data.get('actor'),
+            priority=data.get('priority', Notification.Priority.MEDIUM),
+            metadata=data.get('metadata', {}),
+        )
+        
+        if related_object:
+            notification.content_type = ContentType.objects.get_for_model(related_object)
+            notification.object_id = str(related_object.pk)
+        
+        notifications.append(notification)
+    
+    return Notification.objects.bulk_create(notifications)
+
+
+# ============================================================================
+# TASK-SPECIFIC NOTIFICATION FUNCTIONS
+# ============================================================================
+
+def notify_task_created(task, actor: User) -> List[Notification]:
+    """
+    Send notifications when a task is created.
+    Notifies all assigned users.
+    """
+    assigned_users = list(task.assigned_to.all())
+    
+    if not assigned_users:
+        return []
+    
+    project_name = task.project.name if task.project else "No Project"
+    
+    return notify(
+        recipients=assigned_users,
+        title="New Task Assigned",
+        message=f"You have been assigned to task '{task.heading}' in project '{project_name}'",
+        notification_type=Notification.NotificationType.TASK_ASSIGNED,
+        actor=actor,
+        priority=_get_priority_from_task(task),
+        related_object=task,
+        metadata={
+            'task_id': task.id,
+            'task_heading': task.heading,
+            'project_name': project_name,
+            'priority': task.priority,
+        }
+    )
+
+
+def notify_task_status_updated(
+    task,
+    actor: User,
+    old_status: str,
+    new_status: str
+) -> List[Notification]:
+    """
+    Send notifications when a task status is updated.
+    Notifies: Admin, Manager, and relevant team members (assigned users + creator).
+    """
+    # Build recipient list
+    recipients = []
+    
+    # Add all admins
+    admins = User.objects.filter(is_superuser=True)
+    recipients.extend(list(admins))
+    
+    # Add all managers
+    managers = User.objects.filter(role='manager')
+    recipients.extend(list(managers))
+    
+    # Add assigned users
+    assigned_users = list(task.assigned_to.all())
+    recipients.extend(assigned_users)
+    
+    # Add task creator
+    if task.assigned_by:
+        recipients.append(task.assigned_by)
+    
+    if not recipients:
+        return []
+    
+    project_name = task.project.name if task.project else "No Project"
+    status_display = dict(task.STATUS_CHOICES).get(new_status, new_status)
+    
+    # Determine notification type based on new status
+    if new_status == 'completed':
+        notification_type = Notification.NotificationType.TASK_COMPLETED
+        title = "Task Completed"
+        message = f"Task '{task.heading}' has been marked as completed"
+    else:
+        notification_type = Notification.NotificationType.TASK_STATUS_UPDATED
+        title = "Task Status Updated"
+        message = f"Task '{task.heading}' status changed from '{old_status}' to '{status_display}'"
+    
+    return notify(
+        recipients=recipients,
+        title=title,
+        message=message,
+        notification_type=notification_type,
+        actor=actor,
+        priority=_get_priority_from_task(task),
+        related_object=task,
+        metadata={
+            'task_id': task.id,
+            'task_heading': task.heading,
+            'project_name': project_name,
+            'old_status': old_status,
+            'new_status': new_status,
+        }
+    )
+
+
+def notify_task_comment(task, comment, actor: User) -> List[Notification]:
+    """
+    Send notifications when a comment is added to a task.
+    Notifies assigned users and task creator.
+    """
+    recipients = []
+    
+    # Add assigned users
+    assigned_users = list(task.assigned_to.all())
+    recipients.extend(assigned_users)
+    
+    # Add task creator
+    if task.assigned_by:
+        recipients.append(task.assigned_by)
+    
+    if not recipients:
+        return []
+    
+    return notify(
+        recipients=recipients,
+        title="New Comment on Task",
+        message=f"{actor.username} commented on task '{task.heading}'",
+        notification_type=Notification.NotificationType.TASK_COMMENT,
+        actor=actor,
+        related_object=task,
+        metadata={
+            'task_id': task.id,
+            'task_heading': task.heading,
+            'comment_preview': comment.content[:100] if comment.content else '',
+        }
+    )
+
+
+# ============================================================================
+# PROJECT-SPECIFIC NOTIFICATION FUNCTIONS
+# ============================================================================
+
+def notify_project_created(project, actor: User, assigned_members: List[User] = None) -> List[Notification]:
+    """
+    Send notifications when a project is created.
+    Notifies assigned members.
+    """
+    if assigned_members is None:
+        assigned_members = list(project.members.all())
+    
+    if not assigned_members:
+        return []
+    
+    return notify(
+        recipients=assigned_members,
+        title="Added to New Project",
+        message=f"You have been added to project '{project.name}'",
+        notification_type=Notification.NotificationType.PROJECT_ASSIGNED,
+        actor=actor,
+        related_object=project,
+        metadata={
+            'project_id': str(project.id),
+            'project_name': project.name,
+        }
+    )
+
+
+def notify_project_member_added(project, new_member: User, actor: User) -> Optional[Notification]:
+    """
+    Send notification when a member is added to a project.
+    """
+    return create_notification(
+        recipient=new_member,
+        title="Added to Project",
+        message=f"You have been added to project '{project.name}'",
+        notification_type=Notification.NotificationType.PROJECT_MEMBER_ADDED,
+        actor=actor,
+        related_object=project,
+        metadata={
+            'project_id': str(project.id),
+            'project_name': project.name,
+        }
+    )
+
+
+def notify_project_updated(project, actor: User, changes: Dict[str, Any]) -> List[Notification]:
+    """
+    Send notifications when a project is updated.
+    Notifies all project members.
+    """
+    members = list(project.members.all())
+    
+    if not members:
+        return []
+    
+    return notify(
+        recipients=members,
+        title="Project Updated",
+        message=f"Project '{project.name}' has been updated",
+        notification_type=Notification.NotificationType.PROJECT_UPDATED,
+        actor=actor,
+        related_object=project,
+        metadata={
+            'project_id': str(project.id),
+            'project_name': project.name,
+            'changes': changes,
+        }
+    )
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def _get_priority_from_task(task) -> str:
+    """Map task priority to notification priority."""
+    priority_map = {
+        'low': Notification.Priority.LOW,
+        'medium': Notification.Priority.MEDIUM,
+        'high': Notification.Priority.HIGH,
+        'critical': Notification.Priority.URGENT,
+    }
+    return priority_map.get(task.priority, Notification.Priority.MEDIUM)
+
+
+def mark_all_as_read(user: User) -> int:
+    """
+    Mark all unread notifications for a user as read.
+    Returns the count of notifications marked as read.
+    """
+    from django.utils import timezone
+    
+    return Notification.objects.filter(
+        recipient=user,
+        is_read=False
+    ).update(
+        is_read=True,
+        read_at=timezone.now()
+    )
+
+
+def get_unread_count(user: User) -> int:
+    """Get count of unread notifications for a user."""
+    return Notification.objects.filter(
+        recipient=user,
+        is_read=False
+    ).count()
+
+
+def delete_old_notifications(days: int = 30) -> int:
+    """
+    Delete notifications older than specified days.
+    Useful for cleanup tasks/cron jobs.
+    Returns count of deleted notifications.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    cutoff_date = timezone.now() - timedelta(days=days)
+    deleted_count, _ = Notification.objects.filter(
+        created_at__lt=cutoff_date,
+        is_read=True
+    ).delete()
+    
+    return deleted_count

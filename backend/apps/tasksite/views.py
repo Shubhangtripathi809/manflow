@@ -13,7 +13,11 @@ from apps.users.auth import StaticTokenAuthentication
 from apps.users.models import User
 from .models import Task, TaskComment
 from .serializers import TaskSerializer, TaskStatusUpdateSerializer, UserManagementSerializer, TaskCommentSerializer
-
+from apps.notification.services import (
+    notify_task_created,
+    notify_task_status_updated,
+    notify_task_comment,
+)
 class AllUsersListView(APIView):
     authentication_classes = [StaticTokenAuthentication, JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -66,7 +70,13 @@ class TaskListCreateView(APIView):
         
         serializer = TaskSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(assigned_by=request.user)
+            task = serializer.save(assigned_by=request.user)
+            
+            # ================================================================
+            # TRIGGER NOTIFICATION: Task Created
+            # ================================================================
+            notify_task_created(task=task, actor=request.user)
+            # ================================================================
             return Response({
                 "message": "Task created successfully",
                 "task": serializer.data
@@ -103,7 +113,7 @@ class TaskRetrieveUpdateView(APIView):
 
     def patch(self, request, task_id):
         task = get_object_or_404(Task, id=task_id)
-
+        old_status = task.status
         if request.user.is_manager:
             serializer = TaskSerializer(task, data=request.data, partial=True)
         else:
@@ -125,6 +135,18 @@ class TaskRetrieveUpdateView(APIView):
 
         if serializer.is_valid():
             serializer.save()
+             # ================================================================
+            # TRIGGER NOTIFICATION: Status Updated (only if status changed)
+            # ================================================================
+            new_status = task.status
+            if old_status != new_status:
+                notify_task_status_updated(
+                    task=task,
+                    actor=request.user,
+                    old_status=old_status,
+                    new_status=new_status
+                )
+            # ================================================================
             return Response({
                 "message": "Task updated successfully",
                 "task": serializer.data
@@ -233,5 +255,11 @@ class TaskCommentListCreateView(ListCreateAPIView):
         is_assigned = task.assigned_to.filter(id=self.request.user.id).exists()
         if not (self.request.user.is_manager or self.request.user.is_superuser or is_assigned):
             raise serializers.ValidationError("You do not have permission to comment on this task.")
+        comment = serializer.save(user=self.request.user, task=task)
         
+        # ====================================================================
+        # TRIGGER NOTIFICATION: New Comment
+        # ====================================================================
+        notify_task_comment(task=task, comment=comment, actor=self.request.user)
+        # ====================================================================
         serializer.save(user=self.request.user, task=task)

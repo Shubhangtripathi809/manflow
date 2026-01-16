@@ -20,45 +20,45 @@ urlpatterns = [
     
     # POST /projects/{pk}/get-upload-url/
     path(
-        "<uuid:pk>/get-upload-url/", 
+        "<int:pk>/get-upload-url/", 
         views.ProjectViewSet.as_view({"post": "get_upload_url"}), 
         name="project-get-upload-url"
     ),
     path(
-        "<uuid:pk>/confirm-upload/", 
+        "<int:pk>/confirm-upload/", 
         views.ProjectViewSet.as_view({"post": "confirm_upload"}), 
         name="project-confirm-upload"
     ),
     path(
-        "<uuid:pk>/get-download-url/", 
+        "<int:pk>/get-download-url/", 
         views.ProjectViewSet.as_view({"post": "get_download_url"}), 
         name="project-get-download-url"
     ),
     
     # GET /projects/{pk}/stats/
     path(
-        "<uuid:pk>/stats/", 
+        "<int:pk>/stats/", 
         views.ProjectViewSet.as_view({"get": "stats"}), 
         name="project-stats"
     ),
     
     # GET /projects/{pk}/audit-log/
     path(
-        "<uuid:pk>/audit-log/", 
+        "<int:pk>/audit-log/", 
         views.ProjectViewSet.as_view({"get": "audit_log"}), 
         name="project-audit-log"
     ),
     
     # POST /projects/{pk}/add-member/
     path(
-        "<uuid:pk>/add-member/", 
+        "<int:pk>/add-member/", 
         views.ProjectViewSet.as_view({"post": "add_member"}), 
         name="project-add-member"
     ),
     
     # DELETE /projects/{pk}/members/{user_id}/
     path(
-        "<uuid:pk>/members/<int:user_id>/", 
+        "<int:pk>/members/<int:user_id>/", 
         views.ProjectViewSet.as_view({"delete": "remove_member"}), 
         name="project-remove-member"
     ),
