@@ -26,8 +26,10 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import './ContentCreation.scss';
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+// pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+//   'pdfjs-dist/build/pdf.worker.min.mjs',
+//   import.meta.url
+// ).toString();
 
 type TabType = 'tasks' | 'calendar' | 'media';
 type StatusFilter = 'all' | 'todo' | 'draft' | 'inProgress' | 'inReview' | 'completed' | 'revisionNeeded';
@@ -60,7 +62,7 @@ export function MediaPreviewModal({
     onClose
 }: {
     doc: any;
-    projectId: string;
+    projectId: number;
     onClose: () => void;
 }) {
     const [numPages, setNumPages] = useState<number | null>(null);
@@ -73,7 +75,7 @@ export function MediaPreviewModal({
     const { data: downloadUrl, isLoading } = useQuery({
         queryKey: ['document-download-url', projectId, doc.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: doc.id }).then(res => res.url),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 60 * 1000,
     });
 
     const fileExtension = (doc.original_file_name || doc.name).split('.').pop()?.toLowerCase() || '';
@@ -341,11 +343,11 @@ export function MediaPreviewModal({
     );
 }
 
-export function MediaThumbnail({ file, projectId }: { file: any; projectId: string }) {
+export function MediaThumbnail({ file, projectId }: { file: any; projectId: number }) {
     const { data: downloadUrl, isLoading } = useQuery({
         queryKey: ['document-download-url', projectId, file.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: file.id }).then(res => res.url),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 60 * 1000,
     });
 
     if (isLoading) {
@@ -410,13 +412,13 @@ export function ContentCreation() {
 
     const { data: project, isLoading: isProjectLoading } = useQuery({
         queryKey: ['project', id],
-        queryFn: () => projectsApi.get(id!),
+        queryFn: () => projectsApi.get(Number(id)),
         enabled: !!id,
     });
 
     const { data: documentsData, isLoading: isMediaLoading } = useQuery({
         queryKey: ['documents', { project: id }],
-        queryFn: () => documentsApi.list({ project: id }),
+        queryFn: () => documentsApi.list({ project: (Number(id)) }),
         enabled: !!id && activeTab === 'media',
     });
 
@@ -455,7 +457,9 @@ export function ContentCreation() {
             setUploadError(null);
 
             // Step 1: Get Upload URL
-            const uploadUrlResponse = await documentsApi.getUploadUrl(id!, {
+            const projectIdNum = Number(id);
+
+            const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
                 file_name: file.name,
                 file_type: file.type || 'application/octet-stream',
             });
@@ -473,7 +477,7 @@ export function ContentCreation() {
             else if (['mp3', 'wav', 'ogg'].includes(ext)) mappedType = 'audio';
             else if (ext === 'pdf') mappedType = 'pdf';
 
-            const confirmResponse = await documentsApi.confirmUpload(id!, {
+            const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
                 file_key: file_key,
                 file_name: file.name,
                 file_type: mappedType,
@@ -481,7 +485,7 @@ export function ContentCreation() {
 
             // Step 4: Call Get Download URL (Required to verify the flow is complete)
             if (confirmResponse.id) {
-                await documentsApi.getDownloadUrl(id!, { document_id: confirmResponse.id });
+                await documentsApi.getDownloadUrl(projectIdNum, { document_id: confirmResponse.id });
             }
 
             // Refresh the media list
@@ -688,7 +692,7 @@ export function ContentCreation() {
                                             onClick={() => setSelectedMedia(file)}
                                         >
                                             <div className="aspect-square bg-muted rounded flex items-center justify-center mb-2 overflow-hidden border relative">
-                                                <MediaThumbnail file={file} projectId={id!} />
+                                                <MediaThumbnail file={file} projectId={Number(id)} />
                                             </div>
                                             <p className="text-xs font-medium truncate">{file.original_file_name || file.name}</p>
                                         </div>
@@ -729,7 +733,7 @@ export function ContentCreation() {
             {selectedMedia && (
                 <MediaPreviewModal
                     doc={selectedMedia}
-                    projectId={id!}
+                    projectId={Number(id)}
                     onClose={() => setSelectedMedia(null)}
                 />
             )}
@@ -741,7 +745,7 @@ export function ContentCreation() {
                             onClose={() => setIsCreateTaskModalOpen(false)}
                             onSuccess={handleTaskCreated}
                             isModal={true}
-                            fixedProjectId={id}
+                            fixedProjectId={Number(id)}
                         />
                     </div>
                 </div>

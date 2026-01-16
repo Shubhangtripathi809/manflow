@@ -17,7 +17,7 @@ import type { Project } from '@/types';
 export function Projects() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>('');
-  const [openMembersCard, setOpenMembersCard] = useState<string | null>(null);
+  const [openMembersCard, setOpenMembersCard] = useState<number | null>(null);
 
   const toggleFavorite = async (e: React.MouseEvent, project: Project) => {
     e.preventDefault();

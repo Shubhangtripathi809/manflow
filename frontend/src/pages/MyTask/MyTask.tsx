@@ -109,7 +109,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
         if (projectId && !projectLabelsMap[projectId]) {
             setLoadingLabels(true);
             try {
-                const data = await projectsApi.getLabels(projectId);
+                const data = await projectsApi.getLabels(Number(projectId));
                 setProjectLabelsMap(prev => ({ ...prev, [projectId]: data.results || [] }));
             } catch (error) {
                 console.error("Failed to fetch labels", error);
@@ -499,7 +499,7 @@ export const MyTask: React.FC = () => {
         deferred: tasks.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
     };
 
-    const handleAITaskGenerate = useCallback(async (projectId: string, description: string) => {
+    const handleAITaskGenerate = useCallback(async (projectId: number, description: string) => {
         console.log('Generating AI task for project:', projectId, 'with description:', description);
     }, [queryClient]);
 

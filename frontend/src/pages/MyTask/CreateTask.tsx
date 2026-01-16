@@ -31,7 +31,7 @@ interface CreateTaskProps {
     onClose?: () => void;
     onSuccess?: () => void;
     isModal?: boolean;
-    fixedProjectId?: string;
+    fixedProjectId?: number;
 }
 
 export const CreateTask: React.FC<CreateTaskProps> = ({
@@ -51,7 +51,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
-    const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
     const [allProjectOptions, setAllProjectOptions] = useState<ProjectMinimal[]>([]);
     const [status, setStatus] = useState('pending');
