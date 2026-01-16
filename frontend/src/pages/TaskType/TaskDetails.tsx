@@ -15,8 +15,12 @@ import { pdfjs, Document as PDFDocument, Page as PDFPage } from 'react-pdf';
 import { FixedSizeList } from 'react-window';
 import './TaskDetails.scss';
 import { APITesting } from './APITesting';
+import type { Task } from '@/types';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+//   'pdfjs-dist/build/pdf.worker.min.mjs',
+//   import.meta.url
+// ).toString();
 
 type TabType = 'tasks' | 'add_documents' | 'gt' | 'api_testing';
 type StatusFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'revision_needed';
@@ -175,7 +179,7 @@ function GTFileViewer({
     onClose
 }: {
     file: GTFile;
-    projectId: string;
+    projectId: number;
     onClose: () => void;
 }) {
     const [numPages, setNumPages] = useState<number | null>(null);
@@ -185,7 +189,7 @@ function GTFileViewer({
     const { data: downloadUrl, isLoading } = useQuery({
         queryKey: ['document-download-url', projectId, file.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: file.id }).then(res => res.url),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 30 * 1000,
     });
 
     return (
@@ -327,7 +331,7 @@ function GTComparisonView({
 }: {
     runningGtFile: GTFile;
     gtFile: GTFile;
-    projectId: string;
+    projectId: number;
     onClose: () => void;
 }) {
     const [numPages, setNumPages] = useState<number>(0);
@@ -415,8 +419,8 @@ export function TaskDetails() {
 
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-    const [tasks, setTasks] = useState<any[]>([]);
-    const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+    // const [tasks, setTasks] = useState<any[]>([]);
+    // const [isLoadingTasks, setIsLoadingTasks] = useState(true);
     const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
@@ -440,22 +444,25 @@ export function TaskDetails() {
 
     const { data: project, isLoading: isProjectLoading } = useQuery({
         queryKey: ['project', id],
-        queryFn: () => projectsApi.get(id!),
+        queryFn: () => projectsApi.get((Number(id))),
         enabled: !!id,
+        staleTime: 30 * 1000,
     });
 
     // Fetch documents for the grid
     const { data: documentsData, isLoading: isMediaLoading } = useQuery({
         queryKey: ['documents', { project: id }],
-        queryFn: () => documentsApi.list({ project: id }),
+        queryFn: () => documentsApi.list({ project: (Number(id)) }),
         enabled: !!id && activeTab === 'add_documents',
+        staleTime: 30 * 1000,
     });
 
     // Fetch GT documents
     const { data: gtDocumentsData, isLoading: isGTLoading } = useQuery({
         queryKey: ['gt-documents', { project: id }],
-        queryFn: () => documentsApi.list({ project: id }),
+        queryFn: () => documentsApi.list({ project: (Number(id)) }),
         enabled: !!id && activeTab === 'gt',
+        staleTime: 30 * 1000, // Add this
     });
 
     const allResults = documentsData?.results || documentsData || [];
@@ -549,23 +556,18 @@ export function TaskDetails() {
         }
     };
 
-    const fetchTasks = useCallback(async () => {
-        try {
-            setIsLoadingTasks(true);
-            const data = await taskApi.list();
+    // 6. ADD this new useQuery for tasks
+    const { data: tasksData, isLoading: isLoadingTasks } = useQuery({
+        queryKey: ['tasks'],
+        queryFn: () => taskApi.list(),
+        staleTime: 60 * 1000,
+        select: (data) => {
             const allTasks = data.tasks || data.results || [];
-            const projectTasks = allTasks.filter((t: any) => String(t.project) === id);
-            setTasks(projectTasks);
-        } catch (error) {
-            console.error("Failed to fetch tasks:", error);
-        } finally {
-            setIsLoadingTasks(false);
-        }
-    }, [id]);
+            return allTasks.filter((t: any) => String(t.project) === id);
+        },
+    });
 
-    useEffect(() => {
-        if (id) fetchTasks();
-    }, [id, fetchTasks]);
+    const tasks = (tasksData || []) as Task[];
 
     // Reusable Upload Flow
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -583,7 +585,7 @@ export function TaskDetails() {
             setUploadError(null);
             const projectIdNum = Number(id);
 
-            const uploadUrlResponse = await documentsApi.getUploadUrl(id!, {
+            const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
                 file_name: file.name,
                 file_type: file.type || 'application/octet-stream',
             });
@@ -605,14 +607,14 @@ export function TaskDetails() {
             else if (docTypes.includes(ext) || spreadsheetTypes.includes(ext) || presentationTypes.includes(ext)) mappedType = 'document';
             else if (ext === 'zip' || ext === 'xml') mappedType = ext;
 
-            const confirmResponse = await documentsApi.confirmUpload(id!, {
+            const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
                 file_key: file_key,
                 file_name: file.name,
                 file_type: mappedType,
             });
 
             if (confirmResponse.id) {
-                await documentsApi.getDownloadUrl(id!, { document_id: confirmResponse.id });
+                await documentsApi.getDownloadUrl(projectIdNum, { document_id: confirmResponse.id });
             }
 
             queryClient.invalidateQueries({ queryKey: ['documents', { project: id }] });
@@ -635,7 +637,7 @@ export function TaskDetails() {
         try {
             const projectIdNum = Number(id);
 
-            const uploadUrlResponse = await documentsApi.getUploadUrl(id!, {
+            const uploadUrlResponse = await documentsApi.getUploadUrl(Number(id), {
                 file_name: file.name,
                 file_type: file.type || 'application/octet-stream',
             });
@@ -650,7 +652,7 @@ export function TaskDetails() {
             else if (ext === 'pdf') mappedType = 'pdf';
             else if (ext === 'json') mappedType = 'json';
 
-            const confirmResponse = await documentsApi.confirmUpload(id!, {
+            const confirmResponse = await documentsApi.confirmUpload(Number(id), {
                 file_key: file_key,
                 file_name: file.name,
                 file_type: mappedType,
@@ -660,7 +662,7 @@ export function TaskDetails() {
             });
 
             if (confirmResponse.id) {
-                await documentsApi.getDownloadUrl(id!,{ document_id: confirmResponse.id });
+                await documentsApi.getDownloadUrl(Number(id), { document_id: confirmResponse.id });
             }
 
             queryClient.invalidateQueries({ queryKey: ['gt-documents', { project: id }] });
@@ -672,7 +674,7 @@ export function TaskDetails() {
     const handleDeleteTask = async (taskId: number) => {
         try {
             await taskApi.delete(taskId);
-            setTasks(prev => prev.filter(t => t.id !== taskId));
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
             setSelectedTask(null);
         } catch (error) {
             console.error("Failed to delete task:", error);
@@ -788,7 +790,7 @@ export function TaskDetails() {
                                             onClick={() => setSelectedMedia(file)}
                                         >
                                             <div className="aspect-square bg-muted rounded flex items-center justify-center mb-2 overflow-hidden border relative">
-                                                <MediaThumbnail file={file} projectId={id!} />
+                                                <MediaThumbnail file={file} projectId={Number(id)} />
                                             </div>
                                             <p className="text-xs font-medium truncate">{file.original_file_name || file.name}</p>
                                         </div>
@@ -839,7 +841,7 @@ export function TaskDetails() {
                                     <GTComparisonView
                                         runningGtFile={comparisonView.runningGtFile}
                                         gtFile={comparisonView.gtFile}
-                                        projectId={id!}
+                                        projectId={Number(id)}
                                         onClose={() => setComparisonView({ gtFile: null, runningGtFile: null, isOpen: false })}
                                     />
                                 </div>
@@ -923,7 +925,7 @@ export function TaskDetails() {
                                                                         onClick={async () => {
                                                                             const file = row.gtFile || row.runningGtFile;
                                                                             if (file) {
-                                                                                const url = await documentsApi.getDownloadUrl(id!, {
+                                                                                 const url = await documentsApi.getDownloadUrl(Number(id), {
                                                                                     document_id: file.id
                                                                                 });
                                                                                 window.open(url.url, '_blank');
@@ -1001,7 +1003,7 @@ export function TaskDetails() {
             {selectedMedia && (
                 <MediaPreviewModal
                     doc={selectedMedia}
-                    projectId={id!}
+                    projectId={Number(id)}
                     onClose={() => setSelectedMedia(null)}
                 />
             )}
@@ -1015,8 +1017,16 @@ export function TaskDetails() {
 
             {isCreateTaskModalOpen && (
                 <div className="content-creation__modal-overlay">
-                    <div className="content-creation__modal-container">
-                        <CreateTask onClose={() => setIsCreateTaskModalOpen(false)} onSuccess={fetchTasks} isModal={true} fixedProjectId={id} />
+                    <div className="content-creation__modal-container bg-gray-50 p-6">
+                        <CreateTask
+                            onClose={() => setIsCreateTaskModalOpen(false)}
+                            onSuccess={() => {
+                                setIsCreateTaskModalOpen(false);
+                                queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                            }}
+                            isModal={true}
+                            fixedProjectId={id ? Number(id) : undefined}
+                        />
                     </div>
                 </div>
             )}
@@ -1025,7 +1035,7 @@ export function TaskDetails() {
                 <TaskDetailModal
                     task={selectedTask}
                     onClose={() => setSelectedTask(null)}
-                    onTaskUpdated={fetchTasks}
+                    onTaskUpdated={() => queryClient.invalidateQueries({ queryKey: ['tasks'] })} 
                     onDelete={handleDeleteTask}
                 />
             )}

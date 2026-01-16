@@ -6,9 +6,10 @@ import { ContentCreation } from '@/pages/TaskType/ContentCreation';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
-import { TaskDetails} from '@/pages/TaskType/TaskDetails';
+import { TaskDetails } from '@/pages/TaskType/TaskDetails';
 import { APITesting } from '@/pages/TaskType/APITesting';
 import { Profile } from '@/components/layout/Profile';
+
 import {
   Dashboard,
   Login,
@@ -22,17 +23,16 @@ import {
   MyTask,
   CreateTask,
   TeamPerformance,
-  PdfVsHtmlViewer,
-  PdfJson,
   Calendar,
+  NotificationsPage,
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAllowed, isLoading } = useAuth();
+  const { isAllowed, isLoading, isAuthenticated } = useAuth();
   const ALLOWED_ROLES: AppUser['role'][] = ['admin', 'manager', 'annotator'];
   const isAuthorized = isAllowed(ALLOWED_ROLES);
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -50,7 +50,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -69,7 +69,7 @@ function ProjectDetailWrapper() {
   const { id } = useParams<{ id: string }>();
   const { data: project } = useQuery({
     queryKey: ['project', id],
-    queryFn: () => projectsApi.get(id!),
+    queryFn: () => projectsApi.get(Number(id)),
     enabled: !!id,
   });
 
@@ -81,7 +81,7 @@ function ProjectDetailWrapper() {
   }
 
   // 2. Extraction & OCR -
-  const taskDetailsTypes = ['client', 'internal', 'Content Creation',  'ideas'];
+  const taskDetailsTypes = ['client', 'internal', 'Content Creation', 'ideas'];
   if (taskDetailsTypes.includes(project.task_type)) {
     return <TaskDetails />;
   }
@@ -115,7 +115,7 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile isOpen={true} onClose={() => {}} />} />
+        <Route path="/profile" element={<Profile isOpen={true} onClose={() => { }} />} />
 
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
@@ -123,7 +123,7 @@ function AppRoutes() {
         <Route path="/projects/:id/api-testing" element={<APITesting />} />
         <Route path="/projects/:projectId/documents/new" element={<DocumentCreate />} />
         <Route path="/projects/:id/settings" element={<ProjectSettings />} />
-
+        {/* <Route path="/notifications" element={<NotificationsPage />} /> */}
         <Route path="/documents" element={<Documents />} />
         <Route path="/documents/:id" element={<DocumentDetail />} />
         <Route path="/calendar" element={<Calendar />} />
@@ -132,7 +132,6 @@ function AppRoutes() {
         <Route path="/test-runs/:id" element={<div>Test Run Detail (Phase 2)</div>} />
 
         <Route path="/settings" element={<div>Settings</div>} />
-
         {/* Taskboard Routes */}
         <Route path="/taskboard" element={<MyTask />}>
           <Route index element={null} />
@@ -159,12 +158,6 @@ function AppRoutes() {
           <Route index element={<Navigate to="user-roles" replace />} />
         </Route>
 
-        {/* ✅ TOOLS ROUTES - NOW INSIDE LAYOUT */}
-        <Route path="/tools">
-          <Route index element={<Navigate to="pdf-vs-html" replace />} />
-          <Route path="pdf-vs-html" element={<PdfVsHtmlViewer />} />
-          <Route path="json-viewer" element={<PdfJson />} />
-        </Route>
       </Route>
     </Routes>
   );

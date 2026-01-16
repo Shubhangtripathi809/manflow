@@ -4,69 +4,13 @@ import {
 } from 'lucide-react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { taskApi } from '@/services/api';
+import { taskApi, projectsApi } from '@/services/api';
 import './MyTask.scss';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { TaskDetailModal } from './TaskDetailModal';
 import { AITask } from './AITask';
+import { Task } from '@/types';
 
-export interface Task {
-    id: number;
-    heading: string;
-    description: string;
-    duration?: string;
-    duration_time?: string;
-    start_date: string;
-    end_date: string;
-    priority: string;
-    project: string | null;
-    project_details?: {
-        id: string;
-        name: string;
-    };
-    project_name: string | null;
-    assigned_to: number[];
-    assigned_to_user_details: Array<{
-        id: number;
-        username: string;
-        first_name: string;
-        last_name: string;
-        email: string;
-        role: string;
-    }>;
-    assigned_by: number;
-    assigned_by_user_details?: {
-        id: number;
-        username: string;
-        first_name: string;
-        last_name: string;
-        email: string;
-        role: string;
-    };
-    status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
-    attachments?: Array<{
-        id: number;
-        file_url: string;
-        file_name: string;
-        uploaded_at: string;
-    }>;
-    created_at?: string;
-    updated_at?: string;
-    comments?: Array<{
-        id: number;
-        task: number;
-        user: number;
-        user_details: {
-            id: number;
-            username: string;
-            first_name: string;
-            last_name: string;
-            email: string;
-        };
-        content: string;
-        created_at: string;
-    }>;
-}
 
 const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -106,8 +50,9 @@ export const TaskCard: React.FC<{ task: Task; onTaskClick: (task: Task) => void 
             <div className="flex items-start justify-between mb-2">
                 <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${statusConfig.badge} text-white`}>{statusConfig.label}</span>
             </div>
-            <h3 className="text-md font-bold mt-2 mb-1">{task.heading}</h3>
-            <div className="text-sm mb-4 text-gray-600 task-description-preview" dangerouslySetInnerHTML={{ __html: task.description }} style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', maxHeight: '4.5em' }} />
+            <div className="text-xs font-bold text-black-600 mb-1">
+                {task.project_details?.name || task.project_name || 'No Project'}
+            </div>
             <div className="space-y-1 text-xs text-gray-500">
                 <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">Start:</span><span className="ml-1">{formatDate(task.start_date)}</span></div>
                 <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">End:</span><span className="ml-1">{formatDate(task.end_date)}</span></div>
@@ -136,6 +81,60 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
     ];
 
     const [activePriorityId, setActivePriorityId] = useState<number | null>(null);
+    const [activeLabelDropdown, setActiveLabelDropdown] = useState<number | null>(null);
+    const [projectLabelsMap, setProjectLabelsMap] = useState<Record<string, any[]>>({});
+    const [loadingLabels, setLoadingLabels] = useState(false);
+
+    // Close label dropdown on outside click
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.jira-td-labels')) {
+                setActiveLabelDropdown(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleLabelDropdownOpen = async (taskId: number, projectId: string | null) => {
+        if (activeLabelDropdown === taskId) {
+            setActiveLabelDropdown(null);
+            return;
+        }
+
+        setActiveLabelDropdown(taskId);
+
+        // Fetch labels for this project if not already cached
+        if (projectId && !projectLabelsMap[projectId]) {
+            setLoadingLabels(true);
+            try {
+                const data = await projectsApi.getLabels(Number(projectId));
+                setProjectLabelsMap(prev => ({ ...prev, [projectId]: data.results || [] }));
+            } catch (error) {
+                console.error("Failed to fetch labels", error);
+            } finally {
+                setLoadingLabels(false);
+            }
+        }
+    };
+
+    const handleToggleLabel = async (task: Task, label: any) => {
+        const currentLabelIds = task.labels?.map(l => l.id) || [];
+        const isSelected = currentLabelIds.includes(label.id);
+
+        // Toggle ID in the array
+        const newLabelIds = isSelected
+            ? currentLabelIds.filter(id => id !== label.id)
+            : [...currentLabelIds, label.id];
+
+        try {
+            await taskApi.update(task.id, { labels: newLabelIds } as any);
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        } catch (error) {
+            console.error("Failed to update labels", error);
+        }
+    };
 
     const handlePriorityChange = async (taskId: number, newPriority: string) => {
         try {
@@ -180,20 +179,6 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
             console.error('Failed to update date:', error);
         }
     };
-
-    // Jirs list Close dropdowns when clicking outside in status
-    React.useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as HTMLElement;
-            if (!target.closest('.jira-td-status') && !target.closest('.jira-td-priority')) {
-                setActiveStatusDropdown(null);
-                setActivePriorityId(null);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
 
     return (
         <div className="jira-list-container bg-white border border-[#dfe1e6] rounded-md overflow-x-auto shadow-sm">
@@ -331,11 +316,21 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
 
                                     {/* Labels Column */}
                                     <td className="jira-td jira-td-labels border-r border-[#f4f5f7]" onClick={e => e.stopPropagation()}>
-                                        <input
-                                            type="text"
-                                            placeholder="Add labels"
-                                            className="bg-transparent border-none text-[12px] focus:ring-0 w-full p-0 text-gray-600"
-                                        />
+                                        <div className="flex flex-wrap gap-1.5 items-center h-full min-h-[24px]">
+                                            {task.labels && task.labels.length > 0 ? (
+                                                task.labels.map((label) => (
+                                                    <span
+                                                        key={label.id}
+                                                        className="px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-sm whitespace-nowrap"
+                                                        style={{ backgroundColor: label.color || '#3b82f6' }}
+                                                    >
+                                                        {label.name}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-gray-300 text-[11px] pl-1">—</span>
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Due Date Column */}
@@ -412,7 +407,6 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
                                                     <X className="w-4 h-4" />
                                                 </button>
                                             </div>
-                                            <p className="text-[10px] text-gray-500 ml-11 mt-1 italic">Press Enter to save, Esc to cancel</p>
                                         </td>
                                     </tr>
                                 )}
@@ -505,7 +499,7 @@ export const MyTask: React.FC = () => {
         deferred: tasks.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
     };
 
-    const handleAITaskGenerate = useCallback(async (projectId: string, description: string) => {
+    const handleAITaskGenerate = useCallback(async (projectId: number, description: string) => {
         console.log('Generating AI task for project:', projectId, 'with description:', description);
     }, [queryClient]);
 
@@ -569,7 +563,7 @@ export const MyTask: React.FC = () => {
                                 <div className="flex rounded-lg border overflow-hidden">
                                     <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white'}`}><List className="w-5 h-5" /></button>
                                     <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white'}`}><Grid3X3 className="w-5 h-5" /></button>
-                                    
+
                                 </div>
                             </div>
                         </div>

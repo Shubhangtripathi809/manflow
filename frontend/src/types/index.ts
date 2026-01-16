@@ -30,7 +30,7 @@ export interface Skill {
 // Project page  types 
 export interface Project {
   is_favourite: boolean;
-  id: string;
+  id: number;
   name: string;
   description: string;
   task_type: TaskType;
@@ -56,7 +56,7 @@ export interface ProjectMember {
 }
 //  In create task load project name from project list API
 export interface ProjectMinimal {
-  id: string;
+  id: number;
   name: string;
 }
 
@@ -121,39 +121,44 @@ export interface TaskAttachment {
   uploaded_at: string;
 }
 
-
-// In task detail page
-export interface TaskResponse {
-  message: string;
-  task: {
-    id: number;
-    heading: string;
-    description: string;
-    start_date: string | null;
-    end_date: string | null;
-    priority: string;
-    project: string;
-    project_details: {
-      id: string;
-      name: string;
-    };
-    assigned_to: number[];
-    assigned_to_user_details: User[];
-    assigned_by: number;
-    assigned_by_user_details: User;
-    status: string;
-    attachments: TaskAttachment[];
-    created_at: string;
-    updated_at: string;
-  };
+// In createtask page add link
+export interface TaskLink {
+  id: number;
+  url: string;
+  created_at: string;
 }
 
-// export interface PaginatedTasksResponse {
-//   tasks: Task[];
-//   count?: number;
-//   next?: string | null;
-//   previous?: string | null;
-// }
+// In task detail page
+export interface Task {
+  id: number;
+  heading: string;
+  description: string;
+  duration?: string;
+  duration_time?: string;
+  start_date: string;
+  end_date: string;
+  priority: string;
+  project: string | null;
+  project_details?: ProjectMinimal;
+  project_name: string | null;
+  assigned_to: number[];
+  assigned_to_user_details: User[];
+  assigned_by: number;
+  assigned_by_user_details?: User;
+  status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
+  labels?: Label[];
+  links?: TaskLink[];
+  attachments?: TaskAttachment[];
+  created_at?: string;
+  updated_at?: string;
+  comments?: TaskComment[];
+}
+
+// Update TaskResponse to use the interface
+export interface TaskResponse {
+  message: string;
+  task: Task;
+}
 
 // In taskdetailmodal comment section 
 export interface TaskComment {
@@ -179,7 +184,7 @@ export interface CreateTaskCommentPayload {
 // Document types
 export interface Document {
   id: string;
-  project: string;
+  project: number;
   project_name?: string;
   name: string;
   description: string;
@@ -235,7 +240,7 @@ export interface DocumentComment {
 // Test types
 export interface TestRun {
   id: string;
-  project: string;
+  project: number;
   name: string;
   description: string;
   status: TestRunStatus;
@@ -282,7 +287,7 @@ export interface DiffData {
 // Issue types
 export interface Issue {
   id: string;
-  project: string;
+  project: number;
   title: string;
   description: string;
   status: IssueStatus;
@@ -537,7 +542,7 @@ export interface GetDownloadUrlResponse {
 
 // Create AI based Task Generation 
 export interface AITaskSuggestionPayload {
-  project_id: string;
+  project_id: number;
   description: string;
 }
 
@@ -547,7 +552,7 @@ export interface AITaskSuggestionResponse {
   start_date: string;
   end_date: string;
   assigned_to: number[];
-  project: string;
+  project: number;
   status: string;
   priority: string;
   ai_metadata: {
@@ -561,7 +566,7 @@ export interface APICollection {
   id: string;
   name: string;
   description?: string;
-  project_id?: string;
+  project_id?: number;
   api_count: number;
   execution_order: 'sequential' | 'parallel';
   environment_variables: Record<string, string>;
@@ -678,7 +683,7 @@ export interface APITestingDashboard {
 export interface CreateCollectionPayload {
   name: string;
   description?: string;
-  project_id?: string;
+  project_id?: number;
   execution_order?: 'sequential' | 'parallel';
   environment_variables?: Record<string, string>;
   tags?: string[];

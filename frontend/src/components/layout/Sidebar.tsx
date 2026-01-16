@@ -2,72 +2,44 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  LayoutDashboard,
-  FolderKanban,
-  FileText,
-  TestTube2,
-  Settings,
-  LogOut,
-  Users,
-  Cog,
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  CheckSquare,
-  CheckCircle,
-  Clock,
-  PlayCircle,
-  Pause,
-  Crown,
-  TrendingUp,
-  Braces,
-  ListTodo,
-  Calendar,
-  Star,
+  LayoutDashboard, FolderKanban, FileText, TestTube2, Settings, LogOut,
+  Users, ChevronDown, ChevronUp, Plus, CheckSquare, CheckCircle,
+  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar, Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { projectsApi } from '@/services/api';
 import type { Project } from '@/types';
 import { getProjectTypeColor } from '@/lib/utils';
+import { notificationsApi } from '@/services/api';
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
 
+// Helper component for Favourite Projects within the accordion
 const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
   const { user } = useAuth();
-  
   const favProjects = useMemo(() => {
     return projects.filter(p =>
-      p.is_favourite &&
-      p.members?.some(member => member.user.id === user?.id)
+      p.is_favourite && p.members?.some(member => member.user.id === user?.id)
     );
   }, [projects, user?.id]);
 
   if (favProjects.length === 0) return null;
 
   return (
-    <div className="ml-4 mt-1 space-y-1 border-l pl-2">
+    <div className="ml-4 mt-1 space-y-1 border-l pl-2 animate-in slide-in-from-left-2">
       {favProjects.map((project) => (
         <NavLink
           key={project.id}
           to={`/projects/${project.id}`}
           className={({ isActive }) =>
-            cn(
-              'flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-              isActive
-                ? 'bg-primary/10 text-primary font-semibold'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            )
+            cn('flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
           }
         >
-          {/* New Circular Avatar */}
-          <div className={cn(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] text-white font-bold uppercase",
-            getProjectTypeColor(project.task_type)
-          )}>
+          <div className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] text-white font-bold uppercase", getProjectTypeColor(project.task_type))}>
             {project.name.charAt(0)}
           </div>
-          
           <span className="truncate">{project.name}</span>
         </NavLink>
       ))}
@@ -75,171 +47,32 @@ const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
   );
 };
 
-const TaskAccordion = () => {
-  const { user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isTaskRoute = location.pathname.startsWith('/taskboard');
-  const isCreateRoute = location.pathname.startsWith('/taskboard/create');
-  const CREATION_ALLOWED_ROLES = ['admin', 'manager', 'annotator'];
-  const isCreationAllowed = !!(user?.role && CREATION_ALLOWED_ROLES.includes(user.role));
-  const [isOpen, setIsOpen] = useState(isTaskRoute);
-
-  useMemo(() => { if (isTaskRoute) setIsOpen(true); }, [isTaskRoute]);
-  const AccordionIcon = isOpen ? ChevronUp : ChevronDown;
-
-  return (
-    <div className="space-y-1">
-      <div
-        className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-          isTaskRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-        )}
-        onClick={() => (isTaskRoute ? setIsOpen(!isOpen) : navigate('/taskboard'))}
-      >
-        <CheckSquare className="h-5 w-5" />
-        <span className="flex-1">My Tasks</span>
-        <AccordionIcon className="h-4 w-4" />
-      </div>
-      {isOpen && (
-        <div className="ml-4 border-l pl-2 space-y-1">
-          {[
-            { id: 'ALL', name: 'All Tasks', href: '/taskboard', icon: CheckSquare },
-            { id: 'COMPLETED', name: 'Completed Tasks', href: '/taskboard/completed', icon: CheckCircle },
-            { id: 'PENDING', name: 'Pending Tasks', href: '/taskboard/pending', icon: Clock },
-            { id: 'BACKLOG', name: 'Backlog Tasks', href: '/taskboard/backlog', icon: ListTodo },
-            { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
-            { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
-            { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
-          ].map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.href}
-              className={({ isActive }) =>
-                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </NavLink>
-          ))}
-          {isCreationAllowed && (
-            <NavLink
-              to="/taskboard/create"
-              className={({ isActive }) =>
-                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
-              }
-            >
-              <Plus className="h-4 w-4" />
-              Add New Task
-            </NavLink>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const UserManagementAccordion = () => {
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
-  const [isOpen, setIsOpen] = useState(isAdminRoute);
-  useMemo(() => { if (isAdminRoute) setIsOpen(true); }, [isAdminRoute]);
-
-  return (
-    <div className="space-y-1">
-      <div
-        className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-          isAdminRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Crown className="h-5 w-5" />
-        <span className="flex-1">Team Management</span>
-        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </div>
-      {isOpen && (
-        <div className="ml-4 border-l pl-2 space-y-1">
-          {[
-            { id: 'USER_ROLES', name: 'User Roles', href: '/admin/user-roles', icon: Users },
-            { id: 'TEAM_PERFORMANCE', name: 'Team Performance', href: '/admin/team-performance', icon: TrendingUp },
-          ].map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.href}
-              className={({ isActive }) =>
-                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const ToolsAccordion = () => {
-  const location = useLocation();
-  const isToolsRoute = location.pathname.startsWith('/tools');
-  const [isOpen, setIsOpen] = useState(isToolsRoute);
-  useMemo(() => { if (isToolsRoute) setIsOpen(true); }, [isToolsRoute]);
-
-  return (
-    <div className="space-y-1">
-      <div
-        className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-          isToolsRoute ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Cog className="h-5 w-5" />
-        <span className="flex-1">Tools</span>
-        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </div>
-      {isOpen && (
-        <div className="ml-4 border-l pl-2 space-y-1">
-          {[
-            { id: 'PDF_HTML', name: 'PDF vs HTML', href: '/tools/pdf-vs-html', icon: FileText },
-            { id: 'JSON', name: 'JSON Viewer', href: '/tools/json-viewer', icon: Braces },
-          ].map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.href}
-              className={({ isActive }) =>
-                cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                  isActive ? 'bg-primary/20 text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 export function Sidebar() {
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // --- Collapsible Logic ---
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const isExpanded = !isCollapsed || isHovered;
+
+  // --- Accordion States ---
   const [isProjectsOpen, setIsProjectsOpen] = useState(location.pathname.startsWith('/projects'));
+  const [isTasksOpen, setIsTasksOpen] = useState(location.pathname.startsWith('/taskboard'));
+  const [isAdminOpen, setIsAdminOpen] = useState(location.pathname.startsWith('/admin'));
 
-  useMemo(() => {
-    if (location.pathname.startsWith('/projects')) {
-      setIsProjectsOpen(true);
-    }
-  }, [location.pathname]);
-
-  const { data: projectsData, isLoading: projectsLoading } = useQuery({
+  const { data: projectsData } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectsApi.list(),
   });
+
+  // Fetching notification summary here makes it available to the entire Sidebar
+  // const { data: notifySummary } = useQuery({
+  //   queryKey: ['notifications-summary'],
+  //   queryFn: () => notificationsApi.getSummary(),
+  //   refetchInterval: 30000, // Sync every 30 seconds
+  // });
 
   const projects = useMemo(() => {
     if (!projectsData) return [];
@@ -248,107 +81,225 @@ export function Sidebar() {
     return [];
   }, [projectsData]) as Project[];
 
-  const shouldShowAdminLink = user?.role && ADMIN_ROLES.includes(user.role);
-
-  // Define base navigation items
-  const baseNavigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Projects', href: '/projects', icon: FolderKanban },
-    { name: 'Documents', href: '/documents', icon: FileText },
-    { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
-    { name: 'Tools', href: '/tools', icon: Cog },
-  ];
-
-  const navigation = useMemo(() => {
-    const nav = [...baseNavigation];
-    nav.splice(2, 0, { name: 'My Tasks', href: '/taskboard', icon: CheckSquare });
-    if (shouldShowAdminLink) {
-      const toolIndex = nav.findIndex(item => item.name === 'Tools');
-      nav.splice(toolIndex + 1, 0, { name: 'Team Management', href: '/admin/user-roles', icon: Crown });
-    }
-    return nav;
-  }, [shouldShowAdminLink]);
-
-  const isLoading = authLoading || projectsLoading;
+  const showAdmin = user?.role && ADMIN_ROLES.includes(user.role);
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-card">
-      <div className="flex h-16 items-center border-b px-6">
-        <span className="text-xl font-bold text-primary">ZanFlow</span>
+    <div
+      className={cn(
+        "relative flex h-full flex-col border-r bg-card transition-all duration-300 ease-in-out z-50",
+        isExpanded ? "w-64" : "w-20"
+      )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Header with "Z" Toggle Button */}
+      <div className="flex h-16 items-center px-4 border-b">
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all",
+            // If NOT collapsed (fixed expanded state), apply specific green color
+            !isCollapsed
+              ? "bg-[#97bd30] text-white"
+              : "bg-primary text-primary-foreground hover:opacity-90"
+          )}
+        >
+          <span className="text-xl font-bold">Z</span>
+        </button>
+        {isExpanded && (
+          <span className="ml-3 text-xl font-bold text-primary animate-in fade-in duration-300">
+            ZanFlow
+          </span>
+        )}
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {isLoading ? (
-          <div className="p-3 text-sm text-muted-foreground animate-pulse">Loading navigation...</div>
-        ) : (
-          navigation.map((item) => {
-            if (item.name === 'My Tasks') return <TaskAccordion key="my-tasks" />;
-            if (item.name === 'Team Management') return <UserManagementAccordion key="admin-tools" />;
-            if (item.name === 'Tools') return <ToolsAccordion key="tools-accordion" />;
-            if (item.name === 'Projects') {
-              const isRouteActive = location.pathname.startsWith('/projects');
+      <nav className="flex-1 space-y-2 px-3 py-4 overflow-y-auto overflow-x-hidden">
+        {/* Dashboard */}
+        <NavLink
+          to="/"
+          className={({ isActive }) =>
+            cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              !isExpanded && "justify-center px-0")
+          }
+        >
+          <LayoutDashboard className="h-5 w-5 shrink-0" />
+          {isExpanded && <span>Dashboard</span>}
+        </NavLink>
 
-              return (
-                <div key="projects-group" className="space-y-1">
-                  <div
-                    onClick={() => {
-                      if (!isRouteActive) {
-                        navigate(item.href);
-                        setIsProjectsOpen(true);
-                      } else {
-                        setIsProjectsOpen(!isProjectsOpen);
-                      }
-                    }}
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
-                      isRouteActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span className="flex-1">{item.name}</span>
-                    {isProjectsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                  {isProjectsOpen && <FavouriteProjectsAccordion projects={projects} />}
-                </div>
-              );
-            }
-
-            return (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                className={({ isActive }) =>
-                  cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
+        {/* Projects Accordion */}
+        <div className="space-y-1">
+          <div
+            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              location.pathname.startsWith('/projects') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
+              !isExpanded && "justify-center px-0 cursor-pointer")}
+            onClick={() => !isExpanded && navigate('/projects')}
+          >
+            <div
+              className={cn("flex items-center gap-3", isExpanded && "flex-1 cursor-pointer")}
+              onClick={(e) => {
+                if (isExpanded) {
+                  e.stopPropagation();
+                  navigate('/projects');
                 }
+              }}
+            >
+              <FolderKanban className="h-5 w-5 shrink-0" />
+              {isExpanded && <span className="flex-1">Projects</span>}
+            </div>
+
+            {isExpanded && (
+              <div
+                className="cursor-pointer p-0.5 hover:bg-primary/20 rounded"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsProjectsOpen(!isProjectsOpen);
+                }}
               >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </NavLink>
-            );
-          })
+                {isProjectsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </div>
+            )}
+          </div>
+          {isExpanded && isProjectsOpen && <FavouriteProjectsAccordion projects={projects} />}
+        </div>
+
+        {/* Tasks Accordion */}
+        <div className="space-y-1">
+          <div
+            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              location.pathname.startsWith('/taskboard') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
+              !isExpanded && "justify-center px-0 cursor-pointer")}
+            onClick={() => !isExpanded && navigate('/taskboard')}
+          >
+            <div
+              className={cn("flex items-center gap-3", isExpanded && "flex-1 cursor-pointer")}
+              onClick={(e) => {
+                if (isExpanded) {
+                  e.stopPropagation();
+                  navigate('/taskboard');
+                }
+              }}
+            >
+              <CheckSquare className="h-5 w-5 shrink-0" />
+              {isExpanded && <span className="flex-1">My Tasks</span>}
+            </div>
+            {isExpanded && (
+              <div
+                className="cursor-pointer p-0.5 hover:bg-primary/20 rounded"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsTasksOpen(!isTasksOpen);
+                }}
+              >
+                {isTasksOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </div>
+            )}
+          </div>
+          {isExpanded && isTasksOpen && (
+            <div className="ml-4 border-l pl-2 space-y-1 animate-in slide-in-from-left-2">
+              {[
+                { id: 'ALL', name: 'All Tasks', href: '/taskboard', icon: CheckSquare },
+                { id: 'COMPLETED', name: 'Completed Tasks', href: '/taskboard/completed', icon: CheckCircle },
+                { id: 'PENDING', name: 'Pending Tasks', href: '/taskboard/pending', icon: Clock },
+                { id: 'BACKLOG', name: 'Backlog Tasks', href: '/taskboard/backlog', icon: ListTodo },
+                { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
+                { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
+                { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
+              ].map((sub) => (
+                <NavLink key={sub.name} to={sub.href} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary transition-colors">
+                  <sub.icon className="h-3.5 w-3.5" /> {sub.name}
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Simple Nav Links */}
+        {[
+          { name: 'Documents', href: '/documents', icon: FileText },
+          { name: 'Calendar', href: '/calendar', icon: Calendar },
+          // { name: 'Activity', href: '/notifications', icon: Bell },
+          { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
+        ].map((item) => (
+          <NavLink
+            key={item.name}
+            to={item.href}
+            className={({ isActive }) =>
+              cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent',
+                !isExpanded && "justify-center px-0")
+            }
+          >
+            {/* <div className="relative"> */}
+              <item.icon className="h-5 w-5 shrink-0" />
+              {/* {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ee6b6e] text-[10px] font-bold text-white">
+                  {notifySummary?.unread}
+                </span>
+              )}
+            </div> */}
+            {isExpanded && <span>{item.name}</span>}
+          </NavLink>
+        ))}
+
+        {/* Team Management Accordion */}
+        {showAdmin && (
+          <div className="space-y-1">
+            <div
+              onClick={() => setIsAdminOpen(!isAdminOpen)}
+              className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm. font-medium cursor-pointer transition-colors',
+                location.pathname.startsWith('/admin') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
+                !isExpanded && "justify-center px-0")}
+            >
+              <Crown className="h-5 w-5 shrink-0" />
+              {isExpanded && (
+                <>
+                  <span className="flex-1">Team Management</span>
+                  {isAdminOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </>
+              )}
+            </div>
+            {isExpanded && isAdminOpen && (
+              <div className="ml-4 border-l pl-2 space-y-1 animate-in slide-in-from-left-2">
+                <NavLink to="/admin/user-roles" className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary">
+                  <Users className="h-3.5 w-3.5" /> Roles
+                </NavLink>
+                <NavLink to="/admin/team-performance" className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary">
+                  <TrendingUp className="h-3.5 w-3.5" /> Performance
+                </NavLink>
+              </div>
+            )}
+          </div>
         )}
       </nav>
 
+      {/* Profile & Footer */}
       <div className="border-t p-4">
-        <div className="flex items-center gap-3 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors" onClick={() => navigate('/profile')}>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <div className={cn("flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent cursor-pointer", !isExpanded && "justify-center px-0")} onClick={() => navigate('/profile')}>
+          <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-primary-foreground font-bold",
+            !isCollapsed
+              ? "bg-[#97bd30] text-white"
+              : "bg-primary text-primary-foreground hover:opacity-90")}>
             {user?.username?.charAt(0).toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium">{user?.username}</p>
-            <p className="truncate text-xs text-muted-foreground capitalize">{user?.role}</p>
+          {isExpanded && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{user?.username}</p>
+              <p className="truncate text-xs text-muted-foreground capitalize">{user?.role}</p>
+            </div>
+          )}
+        </div>
+
+        {isExpanded && (
+          <div className="mt-4 flex gap-2 animate-in fade-in slide-in-from-bottom-2">
+            <button onClick={() => navigate('/settings')} className="flex flex-1 items-center justify-center gap-2 rounded-lg border p-2 text-muted-foreground hover:bg-accent">
+              <Settings className="h-4 w-4" /> Settings
+            </button>
+            <button onClick={logout} className="flex flex-1 items-center justify-center gap-2 rounded-lg border p-2 text-muted-foreground hover:bg-accent text-destructive">
+              <LogOut className="h-4 w-4" /> Logout
+            </button>
           </div>
-        </div>
-        <div className="mt-4 flex gap-2">
-          <NavLink to="/settings" className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-accent">
-            <Settings className="h-4 w-4" /> Settings
-          </NavLink>
-          <button onClick={logout} className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-accent">
-            <LogOut className="h-4 w-4" /> Logout
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

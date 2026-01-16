@@ -31,19 +31,22 @@ import { Document as PDFDocument, Page as PDFPage, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-
+// pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 function useDownloadUrl(projectId: string | undefined, documentId: string | undefined) {
   return useQuery({
     queryKey: ['document-download-url', projectId, documentId],
     queryFn: async () => {
       if (!projectId || !documentId) return null;
       console.log(`[SourcePreview] Requesting download URL for doc: ${documentId}`);
-      const response = await documentsApi.getDownloadUrl(projectId, { document_id: documentId });
+      const response = await documentsApi.getDownloadUrl(Number(projectId), { document_id: documentId });
       return response.url;
     },
     enabled: !!projectId && !!documentId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -54,7 +57,7 @@ function SourcePreview({ doc }: { doc: Document }) {
   const [pageNumber, setPageNumber] = useState(1);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
 
-  const { data: downloadUrl, isLoading: isUrlLoading } = useDownloadUrl(doc.project, doc.id);
+  const { data: downloadUrl, isLoading: isUrlLoading } = useDownloadUrl(doc.project?.toString(), doc.id);
 
   // DEBUG LOGS
   console.log(`[SourcePreview] Rendering doc: ${doc.name}`);

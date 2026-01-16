@@ -1,21 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import {
-  FileText,
-  Search,
-  Filter,
-  Plus,
-  ChevronDown,
-  Trash2,
-} from 'lucide-react';
-import {
-  Button,
-  Card,
-  CardContent,
-  Badge,
-  Input,
-} from '@/components/common';
+import { FileText, Search, Filter, ChevronDown, Trash2, } from 'lucide-react';
+import { Button, Card, CardContent, Badge, Input } from '@/components/common';
 import { documentsApi, projectsApi } from '@/services/api';
 import { formatRelativeTime, getStatusColor } from '@/lib/utils';
 import type { Document, Project } from '@/types';
@@ -111,7 +98,7 @@ export function Documents() {
     queryKey: ['documents', projectFilter, statusFilter, fileTypeFilter],
     queryFn: () =>
       documentsApi.list({
-        project: projectFilter || undefined,
+        project: projectFilter ? Number(projectFilter) : undefined,
         status: statusFilter || undefined,
         file_type: fileTypeFilter || undefined,
       }),
@@ -151,12 +138,6 @@ export function Documents() {
             Manage all ground truth documents across projects
           </p>
         </div>
-        <Link to="/projects">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Document
-          </Button>
-        </Link>
       </div>
 
       {/* Search and Filters */}

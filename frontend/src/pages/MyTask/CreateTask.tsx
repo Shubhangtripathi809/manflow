@@ -12,11 +12,13 @@ import {
     Paperclip,
     Type,
     Sparkles,
+    Plus,
+    Link,
+    Trash2
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
-import { ProjectMinimal } from '@/types';
-import { AITaskSuggestionResponse } from '@/types';
+import { ProjectMinimal, AITaskSuggestionResponse, Label } from '@/types';
 import { AITask } from './AITask';
 
 interface UserOption {
@@ -25,16 +27,11 @@ interface UserOption {
     id: number;
 }
 
-interface ProjectOption {
-    id: string;
-    name: string;
-}
-
 interface CreateTaskProps {
     onClose?: () => void;
     onSuccess?: () => void;
     isModal?: boolean;
-    fixedProjectId?: string;
+    fixedProjectId?: number;
 }
 
 export const CreateTask: React.FC<CreateTaskProps> = ({
@@ -54,9 +51,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
-    const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-    const [allProjectOptions, setAllProjectOptions] = useState<ProjectOption[]>([]);
+    const [allProjectOptions, setAllProjectOptions] = useState<ProjectMinimal[]>([]);
     const [status, setStatus] = useState('pending');
     const [priority, setPriority] = useState('medium');
     const [loading, setLoading] = useState(false);
@@ -66,8 +63,14 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [success, setSuccess] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [labels, setLabels] = useState('');
+    const [linkInput, setLinkInput] = useState('');
+    const [links, setLinks] = useState<string[]>([]);
     const [showAIModal, setShowAIModal] = useState(false);
+    const [showSuccessView, setShowSuccessView] = useState(false);
     const [duration, setDuration] = useState('');
+    const [projectLabels, setProjectLabels] = useState<Label[]>([]);
+    const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
+    const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -115,6 +118,23 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         setDuration(val);
     };
 
+    useEffect(() => {
+        const fetchLabels = async () => {
+            if (selectedProjects.length > 0) {
+                try {
+                    const data = await projectsApi.getLabels(selectedProjects[0]);
+                    setProjectLabels(data.results || []);
+                } catch (error) {
+                    console.error("Failed to fetch project labels:", error);
+                }
+            } else {
+                setProjectLabels([]);
+                setSelectedLabelIds([]);
+            }
+        };
+        fetchLabels();
+    }, [selectedProjects]);
+
     const insertTable = () => {
         const table = `
         <table border="1" style="border-collapse: collapse; width: 100%; margin: 10px 0;">
@@ -158,8 +178,20 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         setAttachments(prev => prev.filter((_, i) => i !== index));
     };
 
+    const handleAddLink = () => {
+        if (linkInput.trim()) {
+            setLinks([...links, linkInput.trim()]);
+            setLinkInput('');
+        }
+    };
+
+    const removeLink = (index: number) => {
+        setLinks(links.filter((_, i) => i !== index));
+    };
+
     const priorityOptions = [
-        { value: 'high', label: 'High', color: 'text-red-600', icon: '🔴' },
+        { value: 'critical', label: 'Critical', color: 'text-red-600', icon: '🔴' },
+        { value: 'high', label: 'High', color: 'text-red-600', icon: '🔵' },
         { value: 'medium', label: 'Medium', color: 'text-orange-600', icon: '🟡' },
         { value: 'low', label: 'Low', color: 'text-green-600', icon: '🟢' },
     ];
@@ -187,11 +219,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 setAllUserOptions(mappedUsers);
 
                 const projectData = await projectsApi.list();
-                const mappedProjects: ProjectOption[] = projectData.results.map((project: ProjectMinimal) => ({
-                    id: project.id,
-                    name: project.name,
-                }));
-                setAllProjectOptions(mappedProjects);
+                setAllProjectOptions(projectData.results);
 
             } catch (err) {
                 console.error("Failed to load dynamic data for task creation:", err);
@@ -221,6 +249,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 setPriorityDropdownOpen(false);
                 setDropdownOpen(false);
                 setProjectDropdownOpen(false);
+                setLabelDropdownOpen(false);
             }
         };
 
@@ -290,7 +319,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         setError(null);
         setSuccess(null);
 
-        if (!heading || !description || !startDate || !endDate || assignedToList.length === 0 || selectedProjects.length === 0) {
+        if (!heading || selectedProjects.length === 0) {
             setError('Please fill in all required fields.');
             setLoading(false);
             return;
@@ -301,12 +330,18 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             const formData = new FormData();
             formData.append('heading', heading);
             formData.append('description', description);
-            formData.append('start_date', `${startDate}T09:00:00Z`);
-            formData.append('end_date', `${endDate}T18:00:00Z`);
+            if (startDate) formData.append('start_date', `${startDate}T09:00:00Z`);
+            if (endDate) formData.append('end_date', `${endDate}T18:00:00Z`);
             formData.append('duration_time', duration);
             formData.append('status', status);
             formData.append('priority', priority);
             formData.append('project', String(projectId));
+            selectedLabelIds.forEach(id => {
+                formData.append('labels', String(id));
+            });
+            links.forEach(link => {
+                formData.append('links', link);
+            });
             assignedToList.forEach(id => {
                 formData.append('assigned_to', String(id));
             });
@@ -316,7 +351,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
             await taskApi.create(formData);
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            setSuccess('Task created successfully!');
+            setShowSuccessView(true);
 
             setTimeout(() => {
                 if (isModal && onSuccess) {
@@ -338,6 +373,19 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             <div className="flex items-center justify-center h-full min-h-screen">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
                 <p className="ml-3 text-gray-600">Loading resources...</p>
+            </div>
+        );
+    }
+
+    if (showSuccessView) {
+        return (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+                <div className="bg-white px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-out duration-200">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">Task created successfully</h2>
+                </div>
             </div>
         );
     }
@@ -465,7 +513,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                             {/*  Description Section */}
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                                    Description <span className="text-red-500">*</span>
+                                    Description
                                 </label>
                                 <div className="border border-gray-300 rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500">
                                     <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 bg-white">
@@ -637,6 +685,57 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                `}</style>
                             </div>
 
+                            {/* Link Field */}
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                    <Link className="w-4 h-4" />
+                                    Links
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={linkInput}
+                                        onChange={(e) => setLinkInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLink())}
+                                        placeholder="Paste URL here..."
+                                        className="flex-1 p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAddLink}
+                                        className="p-2.5 bg-blue-50 text-blue-600 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                {links.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                        {links.map((link, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 group">
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    <Link className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                                    <a 
+                                                        href={link.startsWith('http') ? link : `https://${link}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer" 
+                                                        className="text-sm text-blue-600 hover:underline truncate"
+                                                    >
+                                                        {link}
+                                                    </a>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeLink(index)}
+                                                    className="p-1 text-gray-400 hover:text-red-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="border-t border-gray-200 pt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Status */}
@@ -732,14 +831,13 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                             <div className="">
                                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                                     <Calendar className="w-4 h-4" />
-                                                    Start date <span className="text-red-500">*</span>
+                                                    Start date
                                                 </label>
                                                 <input
                                                     type="date"
                                                     value={startDate}
                                                     onChange={(e) => setStartDate(e.target.value)}
                                                     className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                    required
                                                 />
                                             </div>
 
@@ -747,14 +845,13 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                             <div>
                                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                                     <Calendar className="w-4 h-4" />
-                                                    Due Date <span className="text-red-500">*</span>
+                                                    Due Date
                                                 </label>
                                                 <input
                                                     type="date"
                                                     value={endDate}
                                                     onChange={(e) => setEndDate(e.target.value)}
                                                     className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                    required
                                                 />
                                             </div>
 
@@ -785,7 +882,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                         <User className="w-4 h-4" />
-                                        Assignees <span className="text-red-500">*</span>
+                                        Assignees
                                     </label>
                                     <div className="relative">
                                         <div
@@ -835,20 +932,97 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Right: Labels*/}
+                                {/* Right: Labels */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                         <Flag className="w-4 h-4 text-gray-400" />
                                         Labels
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={labels}
-                                        onChange={(e) => setLabels(e.target.value)}
-                                        placeholder="e.g. frontend, bug, enhancement"
-                                        className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
-                                    />
-                                    <p className="text-[10px] text-gray-400 mt-1 italic">Separate labels with commas</p>
+                                    <div className="relative">
+                                        <div
+                                            className={`w-full p-2.5 rounded border border-gray-300 bg-white flex flex-wrap gap-2 min-h-[42px] transition-colors ${selectedProjects.length === 0 ? 'cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-gray-400'}`}
+                                            onClick={() => selectedProjects.length > 0 && setLabelDropdownOpen(!labelDropdownOpen)}
+                                        >
+                                            {selectedLabelIds.length === 0 ? (
+                                                <span className="text-gray-400 text-sm">
+                                                    {selectedProjects.length === 0 ? 'Select labels' : 'Select labels'}
+                                                </span>
+                                            ) : (
+                                                selectedLabelIds.map((labelId) => {
+                                                    const label = projectLabels.find(l => l.id === labelId);
+                                                    if (!label) return null;
+                                                    return (
+                                                        <span
+                                                            key={labelId}
+                                                            className="px-2 py-1 rounded text-xs font-medium text-white flex items-center gap-1"
+                                                            style={{ backgroundColor: label.color }}
+                                                        >
+                                                            {label.name}
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedLabelIds(prev => prev.filter(id => id !== labelId));
+                                                                }}
+                                                                className="hover:text-black/50 ml-1"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </span>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                        {labelDropdownOpen && projectLabels.length > 0 && (
+                                            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                                                {projectLabels.filter(label => !selectedLabelIds.includes(label.id)).map((label) => (
+                                                    <div
+                                                        key={label.id}
+                                                        className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm flex items-center justify-between gap-2"
+                                                        onClick={() => {
+                                                            setSelectedLabelIds([...selectedLabelIds, label.id]);
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span
+                                                                className="w-3 h-3 rounded-full"
+                                                                style={{ backgroundColor: label.color }}
+                                                            />
+                                                            {label.name}
+                                                        </div>
+                                                        {/* Show checkmark for labels being added (not yet saved) */}
+                                                        {selectedLabelIds.includes(label.id) && (
+                                                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {projectLabels.filter(label => !selectedLabelIds.includes(label.id)).length === 0 && (
+                                                    <div className="px-4 py-2.5 text-sm text-gray-500 italic">
+                                                        No more labels available
+                                                        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-2 mt-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setLabelDropdownOpen(false);
+                                                                }}
+                                                                className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                                                            >
+                                                                Done {selectedLabelIds.length > 0 && `(${selectedLabelIds.length} selected)`}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {labelDropdownOpen && projectLabels.length === 0 && (
+                                            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500 text-center">
+                                                No labels found for this project.
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

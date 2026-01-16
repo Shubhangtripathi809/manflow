@@ -2,15 +2,20 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
   AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
   GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
-  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload
+  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
+  Label
 } from '@/types';
 
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+
+const API_URL = "http://localhost:8000/api/v1";
+//import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 //import.meta.env.VITE_API_URL || 'http://3.233.241.87:8000/api/v1';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+//const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
+//const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
+
+const API_BASE_URL = "http://localhost:8000";
+// import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 //import.meta.env.VITE_API_BASE_URL || 'http://3.233.241.87:8000';
   
 export const api = axios.create({
@@ -155,15 +160,48 @@ export const authApi = {
     return response.data;
   },
 
-  setNewPassword: async (data: { 
-    email: string; 
-    reset_token: string; 
-    password: string; 
-    password_confirm: string; 
+  setNewPassword: async (data: {
+    email: string;
+    reset_token: string;
+    password: string;
+    password_confirm: string;
   }) => {
     const response = await api.post('/auth/set-new-password/', data);
     return response.data;
   },
+};
+
+// Add this to your api.ts file
+export const notificationsApi = {
+  // Fetch paginated notifications
+  list: async (params?: { limit?: number; offset?: number }) => {
+    const response = await api.get('/notification/', { params });
+    return response.data; // Matches the screenshot structure: { notifications: [], total: x, ... }
+  },
+
+  getSummary: async () => {
+    const response = await api.get('/notification/');
+    return {
+      total: response.data.total,
+      unread: response.data.unread_count // Based on your Postman screenshot
+    };
+  },
+
+  // Mark a notification as read
+  markAsRead: async (id: number) => {
+    const response = await api.patch(`/notification/${id}/`, { is_read: true });
+    return response.data;
+  },
+
+  // Delete a specific notification
+  delete: async (id: number) => {
+    await api.delete(`/notification/${id}/`);
+  },
+
+  // Optional: Archive or Clear all (Update these if your backend supports them)
+  clearAll: async () => {
+    await api.post('/notification/clear_all/');
+  }
 };
 
 
@@ -174,7 +212,7 @@ export const projectsApi = {
     return response.data;
   },
 
-  get: async (id: string) => {
+  get: async (id: number) => {
     const response = await api.get(`/projects/${id}/`);
     return response.data;
   },
@@ -184,28 +222,33 @@ export const projectsApi = {
     return response.data;
   },
 
-  update: async (id: string, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
+  update: async (id: number, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
     const response = await api.patch(`/projects/${id}/`, data);
     return response.data;
   },
 
-  delete: async (id: string) => {
+  delete: async (id: number) => {
     await api.delete(`/projects/${id}/`);
   },
 
-  getStats: async (id: string) => {
+  getStats: async (id: number) => {
     const response = await api.get(`/projects/${id}/stats/`);
     return response.data;
   },
 
   // Add inside projectsApi object:
-  createLabel: async (projectId: string, data: { name: string; color: string }) => {
+  createLabel: async (projectId: number, data: { name: string; color: string }) => {
     const response = await api.post(`/projects/${projectId}/labels/`, data);
     return response.data;
   },
 
-  deleteLabel: async (projectId: string, labelId: number) => {
+  deleteLabel: async (projectId: number, labelId: number) => {
     const response = await api.delete(`/projects/${projectId}/labels/${labelId}/`);
+    return response.data;
+  },
+
+  getLabels: async (projectId: number) => {
+    const response = await api.get<PaginatedResponse<Label>>(`/projects/${projectId}/labels/`);
     return response.data;
   },
 };
@@ -213,7 +256,7 @@ export const projectsApi = {
 // Add Documents API in task type file
 export const documentsApi = {
   list: async (params?: {
-    project?: string;
+    project?: number;
     status?: string;
     file_type?: string;
     page?: number;
@@ -228,7 +271,7 @@ export const documentsApi = {
   },
 
 
-  getUploadUrl: async (projectId: string, data: GetUploadUrlPayload) => {
+  getUploadUrl: async (projectId: number, data: GetUploadUrlPayload) => {
     const response = await api.post<GetUploadUrlResponse>(
       `/projects/${projectId}/get-upload-url/`,
       data
@@ -255,7 +298,7 @@ export const documentsApi = {
 
   // This `create` now expects the final S3 file_key
   create: async (data: {
-    project: string;
+    project: number;
     name: string;
     description: string;
     file_key: string;
@@ -268,7 +311,7 @@ export const documentsApi = {
   },
 
   // 3rd API: Confirm Upload
-  confirmUpload: async (projectId: string, data: ConfirmUploadPayload) => {
+  confirmUpload: async (projectId: number, data: ConfirmUploadPayload) => {
     const response = await api.post<ConfirmUploadResponse>(
       `/projects/${projectId}/confirm-upload/`,
       data
@@ -277,7 +320,7 @@ export const documentsApi = {
   },
 
   // 4th API: Get Download URL
-  getDownloadUrl: async (projectId: string, data: GetDownloadUrlPayload) => {
+  getDownloadUrl: async (projectId: number, data: GetDownloadUrlPayload) => {
     const response = await api.post<GetDownloadUrlResponse>(
       `/projects/${projectId}/get-download-url/`,
       data
@@ -373,11 +416,17 @@ export const taskApi = {
     if (data.tasks && Array.isArray(data.tasks)) {
       data.tasks = data.tasks.map((task: any) => ({
         ...task,
-        attachments: task.attachments || []
+        attachments: task.attachments || [],
+        labels: task.label_details || []
       }));
     }
 
     return data;
+  },
+
+  get: async (taskId: number) => {
+    const response = await api.get(`/tasksite/${taskId}/`);
+    return response.data;
   },
 
   // Create a new task
@@ -387,10 +436,13 @@ export const taskApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    if (response.data?.task?.label_details) {
+      response.data.task.labels = response.data.task.label_details;
+    }
     return response.data;
   },
 
-  update: async (taskId: number, data: Partial<{ status: string }>) => {
+  update: async (taskId: number, data: Partial<{ status: string; priority: string; duration_time: string; labels: number[]; start_date: string; end_date: string; description: string; assigned_to: number[]; links: string[]; }>) => {
     const response = await api.patch(`/tasksite/${taskId}/`, data);
     return response.data;
   },
@@ -578,7 +630,7 @@ export const toolApi = {
 // API Testing Platform API
 export const apiTestingApi = {
   // Collections
-  listCollections: async (params?: { project_id?: string }) => {
+  listCollections: async (params?: { project_id?: number }) => {
     const response = await api.get<PaginatedResponse<APICollection>>('/api-testing/collections/', { params });
     return response.data;
   },

@@ -4,21 +4,18 @@ import { useNavigate } from 'react-router-dom';
 import { projectsApi, taskApi } from '@/services/api';
 import { ProjectMinimal, AITaskSuggestionPayload } from '@/types';
 
-interface ProjectOption {
-    id: string;
-    name: string;
-}
+
 
 interface AITaskProps {
     onClose: () => void;
-    onGenerate?: (projectId: string, description: string) => void;
+    onGenerate?: (projectId: number, description: string) => void;
 }
 
 export const AITask: React.FC<AITaskProps> = ({ onClose, onGenerate }) => {
     const navigate = useNavigate();
-    const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-    const [allProjectOptions, setAllProjectOptions] = useState<ProjectOption[]>([]);
+    const [allProjectOptions, setAllProjectOptions] = useState<ProjectMinimal[]>([]);
     const [description, setDescription] = useState('');
     const [isDataLoading, setIsDataLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -84,13 +81,9 @@ export const AITask: React.FC<AITaskProps> = ({ onClose, onGenerate }) => {
     useEffect(() => {
         const fetchProjects = async () => {
             setIsDataLoading(true);
-            try {
+           try {
                 const projectData = await projectsApi.list();
-                const mappedProjects: ProjectOption[] = projectData.results.map((project: ProjectMinimal) => ({
-                    id: project.id,
-                    name: project.name,
-                }));
-                setAllProjectOptions(mappedProjects);
+                setAllProjectOptions(projectData.results);
             } catch (err) {
                 console.error("Failed to load projects:", err);
                 setError("Failed to load projects. Please try refreshing.");
