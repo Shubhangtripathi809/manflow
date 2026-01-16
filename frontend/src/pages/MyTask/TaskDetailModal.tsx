@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, Trash2, Save, Edit3, Loader2, ChevronDown, FileText, Download, Send, Maximize2, Minimize2,
-    Clock, ListTodo, PlayCircle, CheckCircle, CheckSquare, Pause, Calendar, Plus
+    Clock, ListTodo, PlayCircle, CheckCircle, CheckSquare, Pause, Calendar, Plus, Link,
 } from 'lucide-react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { taskApi, usersApi, documentsApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { getStatusConfig } from './MyTask';
-import { Task } from '@/types';
-
-
+import { Task, TaskAttachment, TaskLink } from '@/types';
 
 const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -21,8 +19,6 @@ const formatDate = (dateString: string) => {
         return dateString;
     }
 };
-
-
 interface TaskDetailModalProps {
     task: Task;
     onClose: () => void;
@@ -53,7 +49,31 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
     const [showAddUsersDropdown, setShowAddUsersDropdown] = useState(false);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [editableDescription, setEditableDescription] = useState(task.description);
+    const getInitialLinks = (taskLinks: TaskLink[] | undefined): string[] => {
+        if (!taskLinks) return [];
+        return taskLinks.map(link => {
+            return typeof link === 'object' && link.url ? link.url : String(link);
+        });
+    };
+    //  Fetch full task details to get the links ---
+    const { data: fullTaskDetails } = useQuery({
+        queryKey: ['task-detail', task.id],
+        queryFn: () => taskApi.get(task.id),
+        enabled: !!task.id,
+    });
 
+    // Sync links when full details arrive
+    useEffect(() => {
+        const remoteTask = fullTaskDetails?.task || fullTaskDetails;
+        if (remoteTask?.links) {
+            setLinks(getInitialLinks(remoteTask.links));
+        }
+    }, [fullTaskDetails]);
+    const [links, setLinks] = useState<string[]>(getInitialLinks(task.links));
+    const [linkInput, setLinkInput] = useState('')
+    const [startDate, setStartDate] = useState(task.start_date?.split('T')[0] || '');
+    const [endDate, setEndDate] = useState(task.end_date?.split('T')[0] || '');
+    const canEditDates = ['admin', 'manager'].includes(user?.role || '');
     const toggleMaximize = () => setIsMaximized(!isMaximized);
     const queryClient = useQueryClient();
 
@@ -112,9 +132,28 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         const statusChanged = selectedStatus !== task.status;
         const usersChanged = newUsers.length > 0;
         const docsChanged = newDocuments.length > 0;
-        setHasUnsavedChanges(statusChanged || usersChanged || docsChanged);
-    }, [selectedStatus, task.status, newUsers.length, newDocuments.length]);
+        const descriptionChanged = editableDescription !== task.description;
+        const datesChanged = startDate !== (task.start_date?.split('T')[0] || '') ||
+            endDate !== (task.end_date?.split('T')[0] || '');
+        const remoteTask = fullTaskDetails?.task || fullTaskDetails;
+        const baselineLinks = remoteTask?.links || task.links;
 
+        const originalLinks = getInitialLinks(baselineLinks);
+        const linksChanged = JSON.stringify(links) !== JSON.stringify(originalLinks);
+
+        setHasUnsavedChanges(statusChanged || usersChanged || docsChanged || descriptionChanged || datesChanged || linksChanged);
+    }, [selectedStatus, task.status, newUsers.length, newDocuments.length, editableDescription, task.description, startDate, endDate, task.start_date, task.end_date, links, task.links]);
+
+    const handleAddLink = () => {
+        if (linkInput.trim()) {
+            setLinks([...links, linkInput.trim()]);
+            setLinkInput('');
+        }
+    };
+
+    const removeLink = (index: number) => {
+        setLinks(links.filter((_, i) => i !== index));
+    };
     const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget && !updateTaskMutation.isPending) onClose();
     };
@@ -124,9 +163,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             const updates: any = {};
             if (selectedStatus !== task.status) updates.status = selectedStatus;
             if (newUsers.length > 0) updates.assigned_to = [...task.assigned_to, ...newUsers];
-            // Add description update check
             if (editableDescription !== task.description) updates.description = editableDescription;
+            const originalStart = task.start_date?.split('T')[0] || '';
+            const originalEnd = task.end_date?.split('T')[0] || '';
 
+            if (startDate !== originalStart) updates.start_date = startDate ? `${startDate}T09:00:00Z` : null;
+            if (endDate !== originalEnd) updates.end_date = endDate ? `${endDate}T18:00:00Z` : null;
+           const remoteTask = fullTaskDetails?.task || fullTaskDetails;
+            const baselineLinks = remoteTask?.links || task.links;
+            const originalLinks = getInitialLinks(baselineLinks);
+            if (JSON.stringify(links) !== JSON.stringify(originalLinks)) {
+                updates.links = links;
+            }
             if (Object.keys(updates).length === 0) return;
             updateTaskMutation.mutate(updates);
             setNewUsers([]);
@@ -206,21 +254,31 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         } finally {
             setUploadingDocs(false);
             setNewDocuments([]);
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         }
     };
 
-    // const handleUploadDocuments = async () => {
-    //     if (newDocuments.length === 0) return;
-    //     setUploadingDocs(true);
-    //     try {
-    //         await new Promise(resolve => setTimeout(resolve, 1500));
-    //         setNewDocuments([]);
-    //         setShowAddDocuments(false);
-    //         alert('Documents uploaded successfully!');
-    //     } finally {
-    //         setUploadingDocs(false);
-    //     }
-    // };
+    const handleAttachmentClick = async (attachment: TaskAttachment) => {
+        try {
+            const projectIdNum = task.project || (task as any).project_details?.id;
+            if (!projectIdNum) {
+                console.error("Project ID missing for download");
+                return;
+            }
+
+            // Get download URL
+            const downloadResponse = await documentsApi.getDownloadUrl(projectIdNum, {
+                document_id: attachment.id.toString()
+            });
+
+            if (downloadResponse?.url) {
+                window.open(downloadResponse.url, '_blank');
+            }
+        } catch (error) {
+            console.error('Failed to open attachment:', error);
+            alert('Failed to open attachment. Please try again.');
+        }
+    };
 
     const addCommentMutation = useMutation({
         mutationFn: (content: string) => taskApi.addComment(task.id, { content }),
@@ -243,7 +301,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
     return (
         <div
-            className={`fixed inset-0 z-50 ${isMaximized ? 'bg-gray-50 flex' : 'flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'}`}
+            className={`fixed inset-0 z-50 ${isMaximized ? 'bg-gray-50 flex' : 'flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'}onClick={handleBackdropClick}`}
             onClick={handleBackdropClick}
         >
             {isMaximized && (
@@ -284,44 +342,48 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 <div className="flex-1">
                                     <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-gray-700">
                                         {/* Start Date */}
-                                        <span className="flex items-center group cursor-pointer relative">
+                                        <span className={`flex items-center group relative ${canEditDates ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
                                             <div className="flex flex-col">
-                                                <span className="text-[14px] text-gray-400 uppercase leading-none mb-1">Start Date</span>
+                                                <span className="text-sm font-semibold text-gray-700 block mb-4">Start Date</span>
                                                 <input
                                                     type="date"
-                                                    defaultValue={task.start_date?.split('T')[0]}
+                                                    value={startDate}
+                                                    disabled={!canEditDates}
                                                     onChange={(e) => {
-                                                        setHasUnsavedChanges(true);
+                                                        const newStart = e.target.value;
+                                                        setStartDate(newStart);
+                                                        if (endDate && newStart > endDate) {
+                                                            setEndDate('');
+                                                        }
                                                     }}
-                                                    className="bg-transparent border-none p-0 text-sm font-bold focus:ring-0 cursor-pointer text-gray-700"
+                                                    className={`text-xs text-gray-400 ${canEditDates ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                                                 />
                                             </div>
                                         </span>
 
                                         {/* End Date */}
-                                        <span className="flex items-center group cursor-pointer relative">
+                                        <span className={`flex items-center group relative ${canEditDates ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
                                             <div className="flex flex-col">
-                                                <span className="text-[14px] text-gray-400 uppercase leading-none mb-1">End Date</span>
+                                                <span className="text-sm font-semibold text-gray-700 block mb-4">End Date</span>
                                                 <input
                                                     type="date"
-                                                    defaultValue={task.end_date?.split('T')[0]}
-                                                    onChange={(e) => {
-                                                        setSelectedStatus(task.status);
-                                                        setHasUnsavedChanges(true);
-                                                    }}
-                                                    className="bg-transparent border-none p-0 text-sm font-bold focus:ring-0 cursor-pointer text-gray-700"
+                                                    value={endDate}
+                                                    disabled={!canEditDates}
+                                                    min={startDate}
+                                                    onChange={(e) => setEndDate(e.target.value)}
+                                                    className={`text-xs text-gray-400 ${canEditDates ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                                                 />
                                             </div>
                                         </span>
 
                                         {/* Duration Time */}
                                         <span className="flex items-center group">
-                                            <div className="flex items-center justify-center w-5 h-5 bg-blue-50 text-blue-600 rounded-full mr-2 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                                            <div className="flex items-center justify-center w-5 h-5 bg-blue-50 text-blue-700 rounded-full mr-2 transition-colors group-hover:bg-blue-600 group-hover:text-white">
                                                 <Clock className="w-3 h-3" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[14px] text-gray-400 uppercase leading-none mb-1">Duration</span>
-                                                <span className="text-sm font-bold text-gray-700">
+                                                <span className="text-sm font-semibold text-gray-700 block mb-4">Duration</span>
+                                                <span className="text-xs text-gray-400">
                                                     {(task as any).duration_time || 'N/A'}
                                                 </span>
                                             </div>
@@ -331,7 +393,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                                 {/* Status logic*/}
                                 <div className="flex-shrink-0 border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-4">
-                                    <label className="text-[12px] font-bold uppercase tracking-widest text-gray-400 block mb-1.5">Task Status</label>
+                                    <label className="text-sm font-semibold text-gray-700 block mb-4">Task Status</label>
                                     <button
                                         onClick={() => setShowStatusDropdown(!showStatusDropdown)}
                                         className={`inline-flex items-center px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:shadow-sm ${getStatusConfig(selectedStatus).bg} ${getStatusConfig(selectedStatus).text}`}
@@ -357,7 +419,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                         {/* 2. Description Div */}
                         <div className="description bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                             <div className="flex justify-between items-center mb-2">
-                                <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400">Description</label>
+                                <label className="text-sm font-semibold text-gray-700 block mb-4">Description</label>
                                 {!isEditingDescription && (
                                     <button
                                         onClick={() => setIsEditingDescription(true)}
@@ -390,7 +452,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                         {/* 3. Project Assignees*/}
                         <div className="project-assignees bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                             <div className="flex items-center justify-between mb-3 cursor-pointer" onClick={() => setAssignedMembersOpen(!assignedMembersOpen)}>
-                                <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400">Assignees</label>
+                                <label className="text-sm font-semibold text-gray-700 block mb-4">Assignees</label>
                             </div>
 
                             {assignedMembersOpen && (
@@ -489,9 +551,64 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                             )}
                         </div>
 
+                        {/* Links Section */}
+                        <div className="links bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                            <label className="text-sm font-semibold text-gray-700 block mb-3">Links</label>
+
+                            {/* List Existing Links */}
+                            {links.length > 0 && (
+                                <div className="space-y-2 mb-3">
+                                    {links.map((link, index) => (
+                                        <div key={index} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200 group transition-all hover:border-gray-300">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <div className="p-1.5 bg-blue-50 rounded-md text-blue-600">
+                                                    <Link className="w-3.5 h-3.5" />
+                                                </div>
+                                                <a
+                                                    href={link.startsWith('http') ? link : `https://${link}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-600 hover:underline truncate font-medium"
+                                                    title={link}
+                                                >
+                                                    {link}
+                                                </a>
+                                            </div>
+                                            <button
+                                                onClick={() => removeLink(index)}
+                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                                                title="Remove link"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Add New Link */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={linkInput}
+                                    onChange={(e) => setLinkInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+                                    placeholder="Paste URL to add..."
+                                    className="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                />
+                                <button
+                                    onClick={handleAddLink}
+                                    disabled={!linkInput.trim()}
+                                    className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
                         {/* 4. Documents */}
                         <div className="documents bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                            <label className="text-sm font-bold text-gray-700 block mb-4">Attachment</label>
+                            <label className="text-sm font-semibold text-gray-700 block mb-4">Attachment</label>
 
                             {/* Dropzone with auto-trigger */}
                             <div className={`relative border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center transition-all ${uploadingDocs ? 'bg-blue-50/30 border-blue-200' : 'bg-gray-50/30 border-gray-200 hover:bg-gray-50 hover:border-gray-300'} group`}>
@@ -510,9 +627,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                             <Plus className="w-5 h-5 text-gray-500" />
                                         )}
                                     </div>
-                                    <p className="text-lg text-gray-600 font-medium">
+                                    <p className="text-lg text-gray-500 font-small">
                                         {uploadingDocs ? 'Uploading documents...' : (
-                                            <>Drop files to attach or <span className="text-blue-600 hover:underline font-bold">Browse</span></>
+                                            <>Drop files to attach or <span className="text-blue-500 hover:underline font-semibold">Browse</span></>
                                         )}
                                     </p>
                                 </div>
@@ -522,11 +639,21 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                             {task.attachments && task.attachments.length > 0 && (
                                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {task.attachments.map(doc => (
-                                        <div key={doc.id} className="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow group h-full">
+                                        <div
+                                            key={doc.id}
+                                            className="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow group h-full cursor-pointer"
+                                            onClick={() => handleAttachmentClick(doc)}
+                                        >
                                             <div className="h-32 bg-gray-100 flex items-center justify-center border-b border-gray-100 relative">
                                                 <FileText className="w-10 h-10 text-gray-400" />
                                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button className="p-1.5 bg-white/90 rounded-md shadow-sm text-gray-600 hover:text-red-600">
+                                                    <button
+                                                        className="p-1.5 bg-white/90 rounded-md shadow-sm text-gray-600 hover:text-red-600"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Add delete functionality here if needed
+                                                        }}
+                                                    >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -545,7 +672,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                         {/* 5. Discussion */}
                         <div className="discussion bg-white rounded-xl p-4 border border-gray-100 shadow-sm space-y-3">
-                            <label className="text-[14px] font-bold uppercase tracking-widest text-gray-400">Discussion ({comments.length})</label>
+                            <label className="text-sm font-semibold text-gray-700 block mb-4">Discussion ({comments.length})</label>
                             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                                 {comments.map((comment: { id: React.Key | null | undefined; user_details: { first_name: any[]; username: any[]; }; created_at: string | number | Date; content: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; }) => (
                                     <div key={comment.id} className="flex gap-2.5">

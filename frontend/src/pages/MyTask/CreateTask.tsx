@@ -12,6 +12,9 @@ import {
     Paperclip,
     Type,
     Sparkles,
+    Plus,
+    Link,
+    Trash2
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
@@ -60,6 +63,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [success, setSuccess] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [labels, setLabels] = useState('');
+    const [linkInput, setLinkInput] = useState('');
+    const [links, setLinks] = useState<string[]>([]);
     const [showAIModal, setShowAIModal] = useState(false);
     const [showSuccessView, setShowSuccessView] = useState(false);
     const [duration, setDuration] = useState('');
@@ -171,6 +176,17 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
     const removeAttachment = (index: number) => {
         setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleAddLink = () => {
+        if (linkInput.trim()) {
+            setLinks([...links, linkInput.trim()]);
+            setLinkInput('');
+        }
+    };
+
+    const removeLink = (index: number) => {
+        setLinks(links.filter((_, i) => i !== index));
     };
 
     const priorityOptions = [
@@ -322,6 +338,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             formData.append('project', String(projectId));
             selectedLabelIds.forEach(id => {
                 formData.append('labels', String(id));
+            });
+            links.forEach(link => {
+                formData.append('links', link);
             });
             assignedToList.forEach(id => {
                 formData.append('assigned_to', String(id));
@@ -664,6 +683,57 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                         pointer-events: none;
                                         }
                                `}</style>
+                            </div>
+
+                            {/* Link Field */}
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                                    <Link className="w-4 h-4" />
+                                    Links
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={linkInput}
+                                        onChange={(e) => setLinkInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLink())}
+                                        placeholder="Paste URL here..."
+                                        className="flex-1 p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAddLink}
+                                        className="p-2.5 bg-blue-50 text-blue-600 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                {links.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                        {links.map((link, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 group">
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    <Link className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                                    <a 
+                                                        href={link.startsWith('http') ? link : `https://${link}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer" 
+                                                        className="text-sm text-blue-600 hover:underline truncate"
+                                                    >
+                                                        {link}
+                                                    </a>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeLink(index)}
+                                                    className="p-1 text-gray-400 hover:text-red-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="border-t border-gray-200 pt-4">

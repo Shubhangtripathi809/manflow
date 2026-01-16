@@ -2,7 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
   AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
   GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
-  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload
+  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
+  Label
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
@@ -367,6 +368,11 @@ export const taskApi = {
     return data;
   },
 
+  get: async (taskId: number) => {
+    const response = await api.get(`/tasksite/${taskId}/`);
+    return response.data;
+  },
+
   // Create a new task
   create: async (formData: FormData) => {
     const response = await api.post('/tasksite/', formData, {
@@ -380,7 +386,7 @@ export const taskApi = {
     return response.data;
   },
 
-  update: async (taskId: number, data: Partial<{ status: string; priority: string; duration_time: string; labels: number[]; start_date: string; end_date: string; description: string; assigned_to: number[] }>) => {
+  update: async (taskId: number, data: Partial<{ status: string; priority: string; duration_time: string; labels: number[]; start_date: string; end_date: string; description: string; assigned_to: number[]; links: string[]; }>) => {
     const response = await api.patch(`/tasksite/${taskId}/`, data);
     return response.data;
   },

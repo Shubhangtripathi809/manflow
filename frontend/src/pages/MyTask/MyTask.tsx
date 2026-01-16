@@ -50,8 +50,9 @@ export const TaskCard: React.FC<{ task: Task; onTaskClick: (task: Task) => void 
             <div className="flex items-start justify-between mb-2">
                 <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${statusConfig.badge} text-white`}>{statusConfig.label}</span>
             </div>
-            <h3 className="text-md font-bold mt-2 mb-1">{task.heading}</h3>
-            <div className="text-sm mb-4 text-gray-600 task-description-preview" dangerouslySetInnerHTML={{ __html: task.description }} style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', maxHeight: '4.5em' }} />
+            <div className="text-xs font-bold text-black-600 mb-1">
+                {task.project_details?.name || task.project_name || 'No Project'}
+            </div>
             <div className="space-y-1 text-xs text-gray-500">
                 <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">Start:</span><span className="ml-1">{formatDate(task.start_date)}</span></div>
                 <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">End:</span><span className="ml-1">{formatDate(task.end_date)}</span></div>

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, Plus, Trash2 } from 'lucide-react';
 import {
   Button,
   Input,
@@ -41,9 +41,14 @@ export function ProjectCreate() {
     task_type: 'key_value',
   });
   const [assignedTo, setAssignedTo] = useState<{ userId: number; role: string }[]>([]);
-  const [activeRolePicker, setActiveRolePicker] = useState<number | null>(null);
+  const [tempUser, setTempUser] = useState<number | null>(null);
+  const [tempRole, setTempRole] = useState<string>('');
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+  const taskTypeDropdownRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [taskTypeDropdownOpen, setTaskTypeDropdownOpen] = useState(false);
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['allUsers'],
@@ -101,20 +106,35 @@ export function ProjectCreate() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.assigned-to-container')) {
-        setDropdownOpen(false);
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(event.target as Node)) {
+        setRoleDropdownOpen(false);
+      }
+      if (taskTypeDropdownRef.current && !taskTypeDropdownRef.current.contains(event.target as Node)) {
+        setTaskTypeDropdownOpen(false);
       }
     };
 
-    if (dropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [dropdownOpen]);
+  }, []);
+
+  const handleAddMember = () => {
+    if (tempUser && tempRole) {
+      if (assignedTo.some(a => a.userId === tempUser)) {
+        setTempUser(null);
+        setTempRole('');
+        return;
+      }
+      setAssignedTo([...assignedTo, { userId: tempUser, role: tempRole }]);
+      setTempUser(null);
+      setTempRole('');
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -176,98 +196,125 @@ export function ProjectCreate() {
               />
             </div>
 
-            {/* Assigned To */}
-            <div className="relative space-y-2 assigned-to-container">
+            {/* Assigned To (Split UI) */}
+            <div className="space-y-3">
               <label className="text-sm font-medium">
                 Assigned To <span className="text-destructive">*</span>
               </label>
 
-              {/* Selection Display Box */}
-              <div
-                className="w-full p-3 rounded-lg border border-input bg-background cursor-pointer flex flex-wrap gap-2 min-h-[50px] text-sm"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-              >
-                {assignedTo.length === 0 && (
-                  <span className="text-muted-foreground">Select users...</span>
-                )}
-                {assignedTo.map((assignment) => {
-                  const user = usersData?.find((u) => u.value === assignment.userId);
-                  if (!user) return null;
-                  return (
-                    <Badge key={assignment.userId} variant="secondary" className="px-2 py-1 flex items-center gap-1">
-                      {user.label} <span className="text-[10px] opacity-60">({assignment.role})</span>
-                      <button
-                        type="button"
-                        className="ml-1 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAssignedTo(assignedTo.filter((a) => a.userId !== assignment.userId));
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
+              <div className="flex gap-3">
+                {/* Left: User Select (50%) */}
+                <div className="relative flex-1" ref={userDropdownRef}>
+                  <div
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  >
+                    <span className={tempUser ? "text-foreground" : "text-muted-foreground"}>
+                      {tempUser ? usersData?.find(u => u.value === tempUser)?.label : "Select User"}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="m6 9 6 6 6-6" /></svg>
+                  </div>
+
+                  {userDropdownOpen && (
+                    <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                      {usersData
+                        ?.filter((user) => !assignedTo.some((a) => a.userId === user.value))
+                        .map((user) => (
+                          <div
+                            key={user.value}
+                            className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                            onClick={() => {
+                              setTempUser(user.value);
+                              setUserDropdownOpen(false);
+                            }}
+                          >
+                            {user.label}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Role Select + Add Button (50%) */}
+                <div className="flex flex-1 gap-2">
+                  <div className="relative flex-1" ref={roleDropdownRef}>
+                    <div
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+                      onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                    >
+                      <span className={tempRole ? "text-foreground" : "text-muted-foreground"}>
+                        {PROJECT_ROLES.find(r => r.value === tempRole)?.label || "Select Role"}
+                      </span>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
+
+                    {roleDropdownOpen && (
+                      <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                        {PROJECT_ROLES.map((role) => (
+                          <div
+                            key={role.value}
+                            className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                            onClick={() => {
+                              setTempRole(role.value);
+                              setRoleDropdownOpen(false);
+                            }}
+                          >
+                            {role.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    className="h-10 w-12 bg-muted/50 hover:bg-muted shrink-0"
+                    onClick={handleAddMember}
+                    disabled={!tempUser || !tempRole}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
-              {/* Main User List Dropdown */}
-              {dropdownOpen && (
-                <div className="absolute z-20 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-72 overflow-y-auto">
-                  {usersData
-                    ?.filter((user) => !assignedTo.some((a) => a.userId === user.value))
-                    .map((user) => (
-                      <div key={user.value} className="relative border-b last:border-0 p-2 hover:bg-accent/30">
-                        <div className="flex items-center justify-between px-2">
-                          <span className="text-sm font-medium">{user.label}</span>
+              {/* Rendered List Below */}
+              {assignedTo.length > 0 && (
+                <div className="space-y-2 mt-2 max-w-md">
+                  {assignedTo.map((assignment) => {
+                    const user = usersData?.find((u) => u.value === assignment.userId);
+                    const roleLabel = PROJECT_ROLES.find((r) => r.value === assignment.role)?.label;
+                    if (!user) return null;
 
-                          {/* Role Selector Trigger */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              className="text-xs px-3 py-1.5 border rounded-md bg-background hover:bg-accent transition-colors flex items-center gap-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveRolePicker(activeRolePicker === user.value ? null : user.value);
-                              }}
-                            >
-                              {activeRolePicker === user.value ? 'Cancel' : 'Select Role'}
-                              <svg className={`h-3 w-3 transition-transform ${activeRolePicker === user.value ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-
-                            {/* Inline Role Dropdown */}
-                            {activeRolePicker === user.value && (
-                              <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-background border rounded-md shadow-xl py-1">
-                                {PROJECT_ROLES.map((roleObj) => (
-                                  <button
-                                    key={roleObj.value}
-                                    type="button"
-                                    className="w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-primary-foreground transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAssignedTo([...assignedTo, { userId: user.value, role: roleObj.value }]);
-                                      setActiveRolePicker(null);
-                                      setDropdownOpen(false);
-                                    }}
-                                  >
-                                    {roleObj.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                    return (
+                      <div key={assignment.userId} className="flex items-center justify-between p-2 rounded-md border bg-card">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                            {user.label.charAt(0)}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{user.label}</span>
+                            <span className="text-xs text-muted-foreground">{roleLabel}</span>
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-destructive p-1"
+                          onClick={() => setAssignedTo(assignedTo.filter((a) => a.userId !== assignment.userId))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                    ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Task Type*/}
-              <div className="relative space-y-2">
+              <div className="relative space-y-2" ref={taskTypeDropdownRef}>
                 <label className="text-sm font-medium">
                   Task Type <span className="text-destructive">*</span>
                 </label>

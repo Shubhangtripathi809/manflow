@@ -121,6 +121,12 @@ export interface TaskAttachment {
   uploaded_at: string;
 }
 
+// In createtask page add link
+export interface TaskLink {
+  id: number;
+  url: string;
+  created_at: string;
+}
 
 // In task detail page
 export interface Task {
@@ -141,6 +147,7 @@ export interface Task {
   assigned_by_user_details?: User;
   status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
   labels?: Label[];
+  links?: TaskLink[];
   attachments?: TaskAttachment[];
   created_at?: string;
   updated_at?: string;
@@ -152,13 +159,6 @@ export interface TaskResponse {
   message: string;
   task: Task;
 }
-
-// export interface PaginatedTasksResponse {
-//   tasks: Task[];
-//   count?: number;
-//   next?: string | null;
-//   previous?: string | null;
-// }
 
 // In taskdetailmodal comment section 
 export interface TaskComment {

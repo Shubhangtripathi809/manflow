@@ -15,6 +15,7 @@ import { pdfjs, Document as PDFDocument, Page as PDFPage } from 'react-pdf';
 import { FixedSizeList } from 'react-window';
 import './TaskDetails.scss';
 import { APITesting } from './APITesting';
+import type { Task } from '@/types';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -185,7 +186,7 @@ function GTFileViewer({
     const { data: downloadUrl, isLoading } = useQuery({
         queryKey: ['document-download-url', projectId, file.id],
         queryFn: () => documentsApi.getDownloadUrl(projectId, { document_id: file.id }).then(res => res.url),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 30 * 1000,
     });
 
     return (
@@ -415,8 +416,8 @@ export function TaskDetails() {
 
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-    const [tasks, setTasks] = useState<any[]>([]);
-    const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+    // const [tasks, setTasks] = useState<any[]>([]);
+    // const [isLoadingTasks, setIsLoadingTasks] = useState(true);
     const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
@@ -442,6 +443,7 @@ export function TaskDetails() {
         queryKey: ['project', id],
         queryFn: () => projectsApi.get(id!),
         enabled: !!id,
+        staleTime: 30 * 1000,
     });
 
     // Fetch documents for the grid
@@ -449,6 +451,7 @@ export function TaskDetails() {
         queryKey: ['documents', { project: id }],
         queryFn: () => documentsApi.list({ project: id }),
         enabled: !!id && activeTab === 'add_documents',
+        staleTime: 30 * 1000,
     });
 
     // Fetch GT documents
@@ -456,6 +459,7 @@ export function TaskDetails() {
         queryKey: ['gt-documents', { project: id }],
         queryFn: () => documentsApi.list({ project: id }),
         enabled: !!id && activeTab === 'gt',
+        staleTime: 30 * 1000, // Add this
     });
 
     const allResults = documentsData?.results || documentsData || [];
@@ -549,23 +553,18 @@ export function TaskDetails() {
         }
     };
 
-    const fetchTasks = useCallback(async () => {
-        try {
-            setIsLoadingTasks(true);
-            const data = await taskApi.list();
+    // 6. ADD this new useQuery for tasks
+    const { data: tasksData, isLoading: isLoadingTasks } = useQuery({
+        queryKey: ['tasks'],
+        queryFn: () => taskApi.list(),
+        staleTime: 60 * 1000, // Cache for 1 minute
+        select: (data) => {
             const allTasks = data.tasks || data.results || [];
-            const projectTasks = allTasks.filter((t: any) => String(t.project) === id);
-            setTasks(projectTasks);
-        } catch (error) {
-            console.error("Failed to fetch tasks:", error);
-        } finally {
-            setIsLoadingTasks(false);
-        }
-    }, [id]);
+            return allTasks.filter((t: any) => String(t.project) === id);
+        },
+    });
 
-    useEffect(() => {
-        if (id) fetchTasks();
-    }, [id, fetchTasks]);
+    const tasks = (tasksData || []) as Task[];
 
     // Reusable Upload Flow
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -672,7 +671,7 @@ export function TaskDetails() {
     const handleDeleteTask = async (taskId: number) => {
         try {
             await taskApi.delete(taskId);
-            setTasks(prev => prev.filter(t => t.id !== taskId));
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
             setSelectedTask(null);
         } catch (error) {
             console.error("Failed to delete task:", error);
@@ -1020,7 +1019,7 @@ export function TaskDetails() {
                             onClose={() => setIsCreateTaskModalOpen(false)}
                             onSuccess={() => {
                                 setIsCreateTaskModalOpen(false);
-                                fetchTasks();
+                                queryClient.invalidateQueries({ queryKey: ['tasks'] });
                             }}
                             isModal={true}
                             fixedProjectId={id}
@@ -1033,7 +1032,7 @@ export function TaskDetails() {
                 <TaskDetailModal
                     task={selectedTask}
                     onClose={() => setSelectedTask(null)}
-                    onTaskUpdated={fetchTasks}
+                    onTaskUpdated={() => queryClient.invalidateQueries({ queryKey: ['tasks'] })} // Update this line
                     onDelete={handleDeleteTask}
                 />
             )}

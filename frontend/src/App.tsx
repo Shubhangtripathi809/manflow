@@ -6,7 +6,7 @@ import { ContentCreation } from '@/pages/TaskType/ContentCreation';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
-import { TaskDetails} from '@/pages/TaskType/TaskDetails';
+import { TaskDetails } from '@/pages/TaskType/TaskDetails';
 import { APITesting } from '@/pages/TaskType/APITesting';
 import { Profile } from '@/components/layout/Profile';
 import {
@@ -26,11 +26,11 @@ import {
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAllowed, isLoading } = useAuth();
+  const { isAllowed, isLoading, isAuthenticated } = useAuth();
   const ALLOWED_ROLES: AppUser['role'][] = ['admin', 'manager', 'annotator'];
   const isAuthorized = isAllowed(ALLOWED_ROLES);
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -48,7 +48,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -79,7 +79,7 @@ function ProjectDetailWrapper() {
   }
 
   // 2. Extraction & OCR -
-  const taskDetailsTypes = ['client', 'internal', 'Content Creation',  'ideas'];
+  const taskDetailsTypes = ['client', 'internal', 'Content Creation', 'ideas'];
   if (taskDetailsTypes.includes(project.task_type)) {
     return <TaskDetails />;
   }
@@ -113,7 +113,7 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile isOpen={true} onClose={() => {}} />} />
+        <Route path="/profile" element={<Profile isOpen={true} onClose={() => { }} />} />
 
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
