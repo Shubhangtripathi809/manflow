@@ -147,6 +147,39 @@ export const authApi = {
   },
 };
 
+// Add this to your api.ts file
+export const notificationsApi = {
+  // Fetch paginated notifications
+  list: async (params?: { limit?: number; offset?: number }) => {
+    const response = await api.get('/notification/', { params });
+    return response.data; // Matches the screenshot structure: { notifications: [], total: x, ... }
+  },
+
+  getSummary: async () => {
+    const response = await api.get('/notification/');
+    return {
+      total: response.data.total,
+      unread: response.data.unread_count // Based on your Postman screenshot
+    };
+  },
+
+  // Mark a notification as read
+  markAsRead: async (id: number) => {
+    const response = await api.patch(`/notification/${id}/`, { is_read: true });
+    return response.data;
+  },
+
+  // Delete a specific notification
+  delete: async (id: number) => {
+    await api.delete(`/notification/${id}/`);
+  },
+
+  // Optional: Archive or Clear all (Update these if your backend supports them)
+  clearAll: async () => {
+    await api.post('/notification/clear_all/');
+  }
+};
+
 
 // Projects API
 export const projectsApi = {

@@ -15,4 +15,5 @@ export { ProjectSettings } from './ProjectSettings';
 export { Sidebar } from '../components/layout/Sidebar';
 export { Profile } from '../components/layout/Profile';
 export { Calendar } from './Calendar/Calendar';
+export { NotificationsPage } from './NotificationsPage';
 

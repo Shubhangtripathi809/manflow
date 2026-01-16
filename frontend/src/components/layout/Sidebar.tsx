@@ -4,13 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, FolderKanban, FileText, TestTube2, Settings, LogOut,
   Users, ChevronDown, ChevronUp, Plus, CheckSquare, CheckCircle,
-  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar
+  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar, Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { projectsApi } from '@/services/api';
 import type { Project } from '@/types';
 import { getProjectTypeColor } from '@/lib/utils';
+import { notificationsApi } from '@/services/api';
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
 
@@ -66,6 +67,13 @@ export function Sidebar() {
     queryFn: () => projectsApi.list(),
   });
 
+  // Fetching notification summary here makes it available to the entire Sidebar
+  // const { data: notifySummary } = useQuery({
+  //   queryKey: ['notifications-summary'],
+  //   queryFn: () => notificationsApi.getSummary(),
+  //   refetchInterval: 30000, // Sync every 30 seconds
+  // });
+
   const projects = useMemo(() => {
     if (!projectsData) return [];
     if (Array.isArray(projectsData)) return projectsData;
@@ -103,7 +111,7 @@ export function Sidebar() {
             ZanFlow
           </span>
         )}
-      </div>  
+      </div>
 
       <nav className="flex-1 space-y-2 px-3 py-4 overflow-y-auto overflow-x-hidden">
         {/* Dashboard */}
@@ -177,6 +185,7 @@ export function Sidebar() {
         {[
           { name: 'Documents', href: '/documents', icon: FileText },
           { name: 'Calendar', href: '/calendar', icon: Calendar },
+          // { name: 'Activity', href: '/notifications', icon: Bell },
           { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
         ].map((item) => (
           <NavLink
@@ -188,7 +197,14 @@ export function Sidebar() {
                 !isExpanded && "justify-center px-0")
             }
           >
-            <item.icon className="h-5 w-5 shrink-0" />
+            {/* <div className="relative"> */}
+              <item.icon className="h-5 w-5 shrink-0" />
+              {/* {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ee6b6e] text-[10px] font-bold text-white">
+                  {notifySummary?.unread}
+                </span>
+              )}
+            </div> */}
             {isExpanded && <span>{item.name}</span>}
           </NavLink>
         ))}
@@ -228,9 +244,9 @@ export function Sidebar() {
       <div className="border-t p-4">
         <div className={cn("flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent cursor-pointer", !isExpanded && "justify-center px-0")} onClick={() => navigate('/profile')}>
           <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-primary-foreground font-bold",
-          !isCollapsed
-        ? "bg-[#97bd30] text-white" 
-        : "bg-primary text-primary-foreground hover:opacity-90")}>
+            !isCollapsed
+              ? "bg-[#97bd30] text-white"
+              : "bg-primary text-primary-foreground hover:opacity-90")}>
             {user?.username?.charAt(0).toUpperCase()}
           </div>
           {isExpanded && (

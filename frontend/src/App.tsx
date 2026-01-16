@@ -9,6 +9,7 @@ import { projectsApi } from '@/services/api';
 import { TaskDetails} from '@/pages/TaskType/TaskDetails';
 import { APITesting } from '@/pages/TaskType/APITesting';
 import { Profile } from '@/components/layout/Profile';
+
 import {
   Dashboard,
   Login,
@@ -23,6 +24,7 @@ import {
   CreateTask,
   TeamPerformance,
   Calendar,
+  NotificationsPage,
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -121,7 +123,7 @@ function AppRoutes() {
         <Route path="/projects/:id/api-testing" element={<APITesting />} />
         <Route path="/projects/:projectId/documents/new" element={<DocumentCreate />} />
         <Route path="/projects/:id/settings" element={<ProjectSettings />} />
-
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/documents/:id" element={<DocumentDetail />} />
         <Route path="/calendar" element={<Calendar />} />
@@ -130,7 +132,6 @@ function AppRoutes() {
         <Route path="/test-runs/:id" element={<div>Test Run Detail (Phase 2)</div>} />
 
         <Route path="/settings" element={<div>Settings</div>} />
-
         {/* Taskboard Routes */}
         <Route path="/taskboard" element={<MyTask />}>
           <Route index element={null} />

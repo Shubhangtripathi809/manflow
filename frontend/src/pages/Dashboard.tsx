@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Calendar,
   Users,
+  Bell
 } from 'lucide-react';
 import {
   Button,
@@ -23,11 +24,12 @@ import {
   CardTitle,
   Badge,
 } from '@/components/common';
-import { projectsApi, documentsApi, taskApi, } from '@/services/api';
+import { projectsApi, documentsApi, taskApi, notificationsApi, } from '@/services/api';
 import { formatRelativeTime, getStatusColor } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project, Document } from '@/types';
 import { getStatusConfig } from '../pages/MyTask/MyTask';
+import { NotificationsPage } from './NotificationsPage';
 
 // Type Definitions
 type TaskStatus = 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred';
@@ -62,6 +64,7 @@ export function Dashboard() {
   const [updatingTaskId, setUpdatingTaskId] = React.useState<number | null>(null);
   const [updatingDocId, setUpdatingDocId] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
+  const [isActivityOpen, setIsActivityOpen] = React.useState(false);
 
   // Data Fetching
   const { data: projectsData, isLoading: projectsLoading } = useQuery({
@@ -183,15 +186,6 @@ export function Dashboard() {
     { value: 'deferred', label: 'Deferred', color: 'text-gray-600' },
   ];
 
-  // Statistics
-  const stats = {
-    totalTasks: tasksData?.tasks?.length || tasksData?.results?.length || 0,
-    totalProjects: projects.length,
-    totalDocuments: documents.length,
-    draftDocs: documents.filter((d: Document) => d.status === 'draft').length,
-    inReviewDocs: documents.filter((d: Document) => d.status === 'in_review').length,
-    approvedDocs: documents.filter((d: Document) => d.status === 'approved').length,
-  };
 
   const recentProjects = Array.isArray(projects)
     ? projects.filter(p =>
@@ -201,7 +195,12 @@ export function Dashboard() {
     : [];
   const recentDocuments = Array.isArray(documents) ? documents.slice(0, 5) : [];
 
-  const isLoading = projectsLoading || docsLoading;
+  // Fetch unread count for the badge
+  const { data: summary } = useQuery({
+    queryKey: ['notifications-summary'],
+    queryFn: () => notificationsApi.getSummary(),
+    refetchInterval: 30000,
+  });
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -216,243 +215,265 @@ export function Dashboard() {
     }
   };
   return (
-    <div className="space-y-6">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Welcome Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">
-            Welcome back{user?.first_name ? `, ${user.first_name}` : ''}!
-          </h1>
-          <p className="text-muted-foreground">
-            Here's an overview of your ground truth management
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link to="/projects/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Project
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <div className={`flex-1 overflow-y-auto p-6 transition-all duration-300 ${isActivityOpen ? 'mr-0' : ''}`}>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">
+              Welcome back{user?.first_name ? `, ${user.first_name}` : ''}!
+            </h1>
+            <p className="text-muted-foreground">
+              Here's an overview of your ground truth management
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {/* 3. Notification Toggle Button */}
+            {/* <Button
+              variant={isActivityOpen ? "secondary" : "outline"}
+              className="relative"
+              onClick={() => setIsActivityOpen(!isActivityOpen)}
+            >
+              <Bell className="h-5 w-5" />
+              {(summary?.unread ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                  {summary?.unread}
+                </span>
+              )}
+            </Button> */}
 
-      {/* Stats Cards */}
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <div className="h-16 animate-pulse bg-muted rounded" />
-              </CardContent>
-            </Card>
-          ))}
+            <Link to="/projects/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" /> New Project
+              </Button>
+            </Link>
+          </div>
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* 1. Tasks Card */}
-          {/* <Card
-            className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => navigate('/taskboard')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Tasks
+
+
+        {/* Main Content Grid */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Compact List */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-3">
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowStatusFilter(!showStatusFilter)}
+                    className="h-8 w-12 flex items-center justify-center p-0"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+
+                  {showStatusFilter && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowStatusFilter(false)}
+                      />
+                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
+                        {statusOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => {
+                              setSelectedTaskStatus(option.value);
+                              setShowStatusFilter(false);
+                            }}
+                            className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors flex items-center justify-between ${selectedTaskStatus === option.value ? 'bg-gray-100' : ''
+                              }`}
+                          >
+                            <span className={option.color}>{option.label}</span>
+                            {selectedTaskStatus === option.value && (
+                              <CheckCircle className="h-4 w-4 text-primary" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Status Label */}
+                <span>
+                  {statusOptions.find((s) => s.value === selectedTaskStatus)?.label}
+                </span>
               </CardTitle>
-              <CheckCircle className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalTasks}</div>
-              <span className="text-xs text-primary hover:underline">
-                Go to Taskboard
-              </span>
-            </CardContent>
-          </Card> */}
+              {filteredTasks.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    No {selectedTaskStatus} tasks assigned to you
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {myAssignedTasks.length > 0
+                      ? `You have ${myAssignedTasks.length} total assigned task(s) in other statuses`
+                      : 'No tasks are currently assigned to you'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  {filteredTasks.map((task) => {
+                    const statusConfig = getStatusConfig(task.status as any);
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => navigate(`/taskboard/${task.status.toLowerCase()}`)}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-gray-100"
+                      >
+                        {/* Left Section: Task Info */}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{task.heading}</div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {task.description}
+                            </div>
+                          </div>
+                        </div>
 
-          {/* 2. Projects Card */}
-          {/* <Card
-            className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => navigate('/projects')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Projects
-              </CardTitle>
-              <FolderKanban className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProjects}</div>
-              <Link to="/projects" className="text-xs text-primary hover:underline">
-                View all projects
-              </Link>
-            </CardContent>
-          </Card> */}
-
-          {/* 3. Total Documents Card */}
-          {/* <Card
-            className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => navigate('/documents')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Documents
-              </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalDocuments}</div>
-              <Link to="/documents" className="text-xs text-primary hover:underline">
-                View all documents
-              </Link>
-            </CardContent>
-          </Card> */}
-        </div>
-      )}
-
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Compact List */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-3">
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowStatusFilter(!showStatusFilter)}
-                  className="h-8 w-12 flex items-center justify-center p-0"
-                >
-                  <Filter className="h-4 w-4" />
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                </Button>
-
-                {showStatusFilter && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setShowStatusFilter(false)}
-                    />
-                    <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
-                      {statusOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => {
-                            setSelectedTaskStatus(option.value);
-                            setShowStatusFilter(false);
-                          }}
-                          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors flex items-center justify-between ${selectedTaskStatus === option.value ? 'bg-gray-100' : ''
-                            }`}
-                        >
-                          <span className={option.color}>{option.label}</span>
-                          {selectedTaskStatus === option.value && (
-                            <CheckCircle className="h-4 w-4 text-primary" />
+                        {/* Right Section: Metadata */}
+                        <div className="flex items-center gap-4 ml-4 flex-shrink-0">
+                          {/* Project Name */}
+                          {task.project_name && (
+                            <span className="text-xs text-muted-foreground hidden md:block">
+                              {task.project_name}
+                            </span>
                           )}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
 
-              {/* Status Label */}
-              <span>
-                {statusOptions.find((s) => s.value === selectedTaskStatus)?.label}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredTasks.length === 0 ? (
-              <div className="text-center py-12">
-                <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-2">
-                  No {selectedTaskStatus} tasks assigned to you
-                </p>
-                <p className="text-xs text-gray-400">
-                  {myAssignedTasks.length > 0
-                    ? `You have ${myAssignedTasks.length} total assigned task(s) in other statuses`
-                    : 'No tasks are currently assigned to you'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {filteredTasks.map((task) => {
-                  const statusConfig = getStatusConfig(task.status as any);
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => navigate(`/taskboard/${task.status.toLowerCase()}`)}
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-gray-100"
-                    >
-                      {/* Left Section: Task Info */}
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{task.heading}</div>
-                          <div className="text-sm text-muted-foreground truncate">
-                            {task.description}
+                          {/* Assignees Count */}
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground hidden sm:flex">
+                            <Users className="h-3 w-3" />
+                            <span>{task.assigned_to.length}</span>
+                          </div>
+
+                          {/* Due Date */}
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground hidden lg:flex">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatDate(task.end_date)}</span>
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className="relative group/status" onClick={(e) => e.stopPropagation()}>
+                            <select
+                              disabled={updatingTaskId === task.id}
+                              value={task.status}
+                              onChange={(e) => handleStatusUpdate(task.id, e.target.value as TaskStatus, e as any)}
+                              className={`appearance-none px-2 py-1 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusConfig.bg} ${statusConfig.text} ${updatingTaskId === task.id ? 'opacity-50' : ''}`}
+                            >
+                              {statusOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value} className="bg-white text-gray-900">
+                                  {opt.label.toUpperCase()}
+                                </option>
+                              ))}
+                            </select>
+                            {updatingTaskId === task.id && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-white/10 rounded-full">
+                                <div className="h-2 w-2 animate-ping bg-current rounded-full" />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                      {/* Right Section: Metadata */}
-                      <div className="flex items-center gap-4 ml-4 flex-shrink-0">
-                        {/* Project Name */}
-                        {task.project_name && (
-                          <span className="text-xs text-muted-foreground hidden md:block">
-                            {task.project_name}
-                          </span>
-                        )}
+          {/* Recent Documents */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                  <FileText className="h-4 w-4 text-primary" />
+                </div>
+                <span>Recent Documents</span>
+              </CardTitle>
+              <Link to="/documents">
+                <Button variant="ghost" size="sm">
+                  View All
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {recentDocuments.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-2">No documents yet</p>
+                  <Link to="/projects">
+                    <Button variant="outline" size="sm" className="mt-2">
+                      Create Document
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  {recentDocuments.map((doc: Document) => {
+                    const statusColorClass = getStatusColor(doc.status);
 
-                        {/* Assignees Count */}
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground hidden sm:flex">
-                          <Users className="h-3 w-3" />
-                          <span>{task.assigned_to.length}</span>
-                        </div>
-
-                        {/* Due Date */}
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground hidden lg:flex">
-                          <Calendar className="h-3 w-3" />
-                          <span>{formatDate(task.end_date)}</span>
-                        </div>
-
-                        {/* Status Badge */}
-                        <div className="relative group/status" onClick={(e) => e.stopPropagation()}>
-                          <select
-                            disabled={updatingTaskId === task.id}
-                            value={task.status}
-                            onChange={(e) => handleStatusUpdate(task.id, e.target.value as TaskStatus, e as any)}
-                            className={`appearance-none px-2 py-1 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusConfig.bg} ${statusConfig.text} ${updatingTaskId === task.id ? 'opacity-50' : ''}`}
-                          >
-                            {statusOptions.map((opt) => (
-                              <option key={opt.value} value={opt.value} className="bg-white text-gray-900">
-                                {opt.label.toUpperCase()}
-                              </option>
-                            ))}
-                          </select>
-                          {updatingTaskId === task.id && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/10 rounded-full">
-                              <div className="h-2 w-2 animate-ping bg-current rounded-full" />
+                    return (
+                      <Link
+                        key={doc.id}
+                        to={`/documents/${doc.id}`}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-gray-100"
+                      >
+                        {/* Left Section: Document Info */}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                            <FileText className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{doc.name}</div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {doc.project_name || `Project ${doc.project}`}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Recent Documents */}
+                        {/* Right Section: Metadata */}
+                        <div className="flex items-center gap-4 ml-4 flex-shrink-0">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground hidden lg:flex">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatRelativeTime(doc.updated_at)}</span>
+                          </div>
+                          <div className="relative" onClick={(e) => e.stopPropagation()}>
+                            <select
+                              disabled={updatingDocId === doc.id}
+                              value={doc.status}
+                              onChange={(e) => handleDocStatusUpdate(doc.id, e.target.value, e)}
+                              className={`appearance-none px-2 py-1 rounded-full text-xs font-medium cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusColorClass} ${updatingDocId === doc.id ? 'opacity-50' : ''}`}
+                            >
+                              {['draft', 'in_review', 'approved', 'archived'].map((status) => (
+                                <option key={status} value={status} className="bg-white text-gray-900">
+                                  {status.replace('_', ' ').toUpperCase()}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Projects */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                <FileText className="h-4 w-4 text-primary" />
-              </div>
-              <span>Recent Documents</span>
+            <CardTitle className="flex items-center gap-2">
+              <FolderKanban className="h-5 w-5" />
+              Recent Projects
             </CardTitle>
-            <Link to="/documents">
+            <Link to="/projects">
               <Button variant="ghost" size="sm">
                 View All
                 <ArrowRight className="h-4 w-4 ml-1" />
@@ -460,162 +481,96 @@ export function Dashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {recentDocuments.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-2">No documents yet</p>
-                <Link to="/projects">
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Create Document
-                  </Button>
-                </Link>
+            {recentProjects.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {recentProjects.map((project: Project) => (
+                  <Link
+                    key={project.id}
+                    to={`/projects/${project.id}`}
+                    className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <FolderKanban className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="font-medium truncate">{project.name}</div>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {project.task_type.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{project.document_count || 0} documents</span>
+                      <span>{formatRelativeTime(project.updated_at)}</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
             ) : (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {recentDocuments.map((doc: Document) => {
-                  const statusColorClass = getStatusColor(doc.status);
-
-                  return (
-                    <Link
-                      key={doc.id}
-                      to={`/documents/${doc.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-gray-100"
-                    >
-                      {/* Left Section: Document Info */}
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                          <FileText className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{doc.name}</div>
-                          <div className="text-sm text-muted-foreground truncate">
-                            {doc.project_name || `Project ${doc.project}`}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right Section: Metadata */}
-                      <div className="flex items-center gap-4 ml-4 flex-shrink-0">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground hidden lg:flex">
-                          <Clock className="h-3 w-3" />
-                          <span>{formatRelativeTime(doc.updated_at)}</span>
-                        </div>
-                        <div className="relative" onClick={(e) => e.stopPropagation()}>
-                          <select
-                            disabled={updatingDocId === doc.id}
-                            value={doc.status}
-                            onChange={(e) => handleDocStatusUpdate(doc.id, e.target.value, e)}
-                            className={`appearance-none px-2 py-1 rounded-full text-xs font-medium cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusColorClass} ${updatingDocId === doc.id ? 'opacity-50' : ''}`}
-                          >
-                            {['draft', 'in_review', 'approved', 'archived'].map((status) => (
-                              <option key={status} value={status} className="bg-white text-gray-900">
-                                {status.replace('_', ' ').toUpperCase()}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="text-center py-8">
+                <FolderKanban className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No projects yet</p>
+                <Link to="/projects/new">
+                  <Button variant="outline" size="sm" className="mt-2">
+                    Create Project
+                  </Button>
+                </Link>
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Recent Projects */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <FolderKanban className="h-5 w-5" />
-            Recent Projects
-          </CardTitle>
-          <Link to="/projects">
-            <Button variant="ghost" size="sm">
-              View All
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recentProjects.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {recentProjects.map((project: Project) => (
-                <Link
-                  key={project.id}
-                  to={`/projects/${project.id}`}
-                  className="p-4 border rounded-lg hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <FolderKanban className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="font-medium truncate">{project.name}</div>
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {project.task_type.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>{project.document_count || 0} documents</span>
-                    <span>{formatRelativeTime(project.updated_at)}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <FolderKanban className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No projects yet</p>
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Quick Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
               <Link to="/projects/new">
-                <Button variant="outline" size="sm" className="mt-2">
-                  Create Project
+                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+                  <FolderKanban className="h-6 w-6" />
+                  <span>New Project</span>
+                </Button>
+              </Link>
+              <Link to="/documents">
+                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+                  <FileText className="h-6 w-6" />
+                  <span>Browse Documents</span>
+                </Button>
+              </Link>
+              <Link to="/documents?status=in_review">
+                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+                  <Clock className="h-6 w-6" />
+                  <span>Review Queue</span>
+                </Button>
+              </Link>
+              <Link to="/documents?status=approved">
+                <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
+                  <CheckCircle className="h-6 w-6" />
+                  <span>Approved Docs</span>
                 </Button>
               </Link>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <Link to="/projects/new">
-              <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                <FolderKanban className="h-6 w-6" />
-                <span>New Project</span>
-              </Button>
-            </Link>
-            <Link to="/documents">
-              <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                <FileText className="h-6 w-6" />
-                <span>Browse Documents</span>
-              </Button>
-            </Link>
-            <Link to="/documents?status=in_review">
-              <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                <Clock className="h-6 w-6" />
-                <span>Review Queue</span>
-              </Button>
-            </Link>
-            <Link to="/documents?status=approved">
-              <Button variant="outline" className="w-full h-auto py-4 flex flex-col gap-2">
-                <CheckCircle className="h-6 w-6" />
-                <span>Approved Docs</span>
-              </Button>
-            </Link>
+          </CardContent>
+        </Card>
+      </div>
+      {/* Right Sidebar - Activity Feed */}
+      {/* {isActivityOpen && (
+        <>
+          <div
+            className="fixed inset-0  "
+            onClick={() => setIsActivityOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 w-[340px] bg-white border-l border-black/10 z-[9999]">
+            <NotificationsPage onClose={() => setIsActivityOpen(false)} />
           </div>
-        </CardContent>
-      </Card>
+        </>
+      )} */}
     </div>
   );
 }
