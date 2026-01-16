@@ -2,7 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
   AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
   GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
-  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload
+  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
+  Label
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
@@ -136,11 +137,11 @@ export const authApi = {
     return response.data;
   },
 
-  setNewPassword: async (data: { 
-    email: string; 
-    reset_token: string; 
-    password: string; 
-    password_confirm: string; 
+  setNewPassword: async (data: {
+    email: string;
+    reset_token: string;
+    password: string;
+    password_confirm: string;
   }) => {
     const response = await api.post('/auth/set-new-password/', data);
     return response.data;
@@ -220,6 +221,11 @@ export const projectsApi = {
 
   deleteLabel: async (projectId: string, labelId: number) => {
     const response = await api.delete(`/projects/${projectId}/labels/${labelId}/`);
+    return response.data;
+  },
+
+  getLabels: async (projectId: string) => {
+    const response = await api.get<PaginatedResponse<Label>>(`/projects/${projectId}/labels/`);
     return response.data;
   },
 };
@@ -387,11 +393,17 @@ export const taskApi = {
     if (data.tasks && Array.isArray(data.tasks)) {
       data.tasks = data.tasks.map((task: any) => ({
         ...task,
-        attachments: task.attachments || []
+        attachments: task.attachments || [],
+        labels: task.label_details || []
       }));
     }
 
     return data;
+  },
+
+  get: async (taskId: number) => {
+    const response = await api.get(`/tasksite/${taskId}/`);
+    return response.data;
   },
 
   // Create a new task
@@ -401,10 +413,13 @@ export const taskApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    if (response.data?.task?.label_details) {
+      response.data.task.labels = response.data.task.label_details;
+    }
     return response.data;
   },
 
-  update: async (taskId: number, data: Partial<{ status: string }>) => {
+  update: async (taskId: number, data: Partial<{ status: string; priority: string; duration_time: string; labels: number[]; start_date: string; end_date: string; description: string; assigned_to: number[]; links: string[]; }>) => {
     const response = await api.patch(`/tasksite/${taskId}/`, data);
     return response.data;
   },

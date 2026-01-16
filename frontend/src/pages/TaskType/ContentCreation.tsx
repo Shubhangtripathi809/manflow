@@ -85,7 +85,7 @@ export function MediaPreviewModal({
     const pptTypes = ['ppt', 'pptx'];
     const docTypes = ['doc', 'docx'];
     const xmlTypes = ['xml'];
-    const videoTypes = ['mp4', 'mov', 'avi', 'webm', 'mkv', 'flv', 'wmv']; // ADD THIS LINE
+    const videoTypes = ['mp4', 'mov', 'avi', 'webm', 'mkv', 'flv', 'wmv'];
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -609,7 +609,7 @@ export function ContentCreation() {
                                         <TaskCard
                                             key={task.id}
                                             task={task as any}
-                                            onTaskClick={(t) => setSelectedTask(t as Task)}
+                                            onTaskClick={(t) => setSelectedTask(t as unknown as Task)}
                                         />
                                     ))}
                                 </div>
@@ -736,12 +736,12 @@ export function ContentCreation() {
 
             {isCreateTaskModalOpen && (
                 <div className="content-creation__modal-overlay">
-                    <div className="content-creation__modal-container">
+                    <div className="content-creation__modal-container bg-gray-50 p-6">
                         <CreateTask
                             onClose={() => setIsCreateTaskModalOpen(false)}
                             onSuccess={handleTaskCreated}
                             isModal={true}
-                            fixedProjectId={Number(id)}
+                            fixedProjectId={id}
                         />
                     </div>
                 </div>

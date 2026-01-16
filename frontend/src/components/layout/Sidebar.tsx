@@ -130,17 +130,34 @@ export function Sidebar() {
         {/* Projects Accordion */}
         <div className="space-y-1">
           <div
-            onClick={() => isExpanded ? setIsProjectsOpen(!isProjectsOpen) : navigate('/projects')}
-            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-colors',
+            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               location.pathname.startsWith('/projects') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
-              !isExpanded && "justify-center px-0")}
+              !isExpanded && "justify-center px-0 cursor-pointer")}
+            onClick={() => !isExpanded && navigate('/projects')}
           >
-            <FolderKanban className="h-5 w-5 shrink-0" />
+            <div
+              className={cn("flex items-center gap-3", isExpanded && "flex-1 cursor-pointer")}
+              onClick={(e) => {
+                if (isExpanded) {
+                  e.stopPropagation();
+                  navigate('/projects');
+                }
+              }}
+            >
+              <FolderKanban className="h-5 w-5 shrink-0" />
+              {isExpanded && <span className="flex-1">Projects</span>}
+            </div>
+
             {isExpanded && (
-              <>
-                <span className="flex-1">Projects</span>
+              <div
+                className="cursor-pointer p-0.5 hover:bg-primary/20 rounded"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsProjectsOpen(!isProjectsOpen);
+                }}
+              >
                 {isProjectsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </>
+              </div>
             )}
           </div>
           {isExpanded && isProjectsOpen && <FavouriteProjectsAccordion projects={projects} />}
@@ -149,17 +166,33 @@ export function Sidebar() {
         {/* Tasks Accordion */}
         <div className="space-y-1">
           <div
-            onClick={() => isExpanded ? setIsTasksOpen(!isTasksOpen) : navigate('/taskboard')}
-            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-colors',
+            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               location.pathname.startsWith('/taskboard') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
-              !isExpanded && "justify-center px-0")}
+              !isExpanded && "justify-center px-0 cursor-pointer")}
+            onClick={() => !isExpanded && navigate('/taskboard')}
           >
-            <CheckSquare className="h-5 w-5 shrink-0" />
+            <div
+              className={cn("flex items-center gap-3", isExpanded && "flex-1 cursor-pointer")}
+              onClick={(e) => {
+                if (isExpanded) {
+                  e.stopPropagation();
+                  navigate('/taskboard');
+                }
+              }}
+            >
+              <CheckSquare className="h-5 w-5 shrink-0" />
+              {isExpanded && <span className="flex-1">My Tasks</span>}
+            </div>
             {isExpanded && (
-              <>
-                <span className="flex-1">My Tasks</span>
+              <div
+                className="cursor-pointer p-0.5 hover:bg-primary/20 rounded"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsTasksOpen(!isTasksOpen);
+                }}
+              >
                 {isTasksOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </>
+              </div>
             )}
           </div>
           {isExpanded && isTasksOpen && (

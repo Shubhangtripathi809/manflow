@@ -121,39 +121,44 @@ export interface TaskAttachment {
   uploaded_at: string;
 }
 
-
-// In task detail page
-export interface TaskResponse {
-  message: string;
-  task: {
-    id: number;
-    heading: string;
-    description: string;
-    start_date: string | null;
-    end_date: string | null;
-    priority: string;
-    project: string;
-    project_details: {
-      id: string;
-      name: string;
-    };
-    assigned_to: number[];
-    assigned_to_user_details: User[];
-    assigned_by: number;
-    assigned_by_user_details: User;
-    status: string;
-    attachments: TaskAttachment[];
-    created_at: string;
-    updated_at: string;
-  };
+// In createtask page add link
+export interface TaskLink {
+  id: number;
+  url: string;
+  created_at: string;
 }
 
-// export interface PaginatedTasksResponse {
-//   tasks: Task[];
-//   count?: number;
-//   next?: string | null;
-//   previous?: string | null;
-// }
+// In task detail page
+export interface Task {
+  id: number;
+  heading: string;
+  description: string;
+  duration?: string;
+  duration_time?: string;
+  start_date: string;
+  end_date: string;
+  priority: string;
+  project: string | null;
+  project_details?: ProjectMinimal;
+  project_name: string | null;
+  assigned_to: number[];
+  assigned_to_user_details: User[];
+  assigned_by: number;
+  assigned_by_user_details?: User;
+  status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
+  labels?: Label[];
+  links?: TaskLink[];
+  attachments?: TaskAttachment[];
+  created_at?: string;
+  updated_at?: string;
+  comments?: TaskComment[];
+}
+
+// Update TaskResponse to use the interface
+export interface TaskResponse {
+  message: string;
+  task: Task;
+}
 
 // In taskdetailmodal comment section 
 export interface TaskComment {

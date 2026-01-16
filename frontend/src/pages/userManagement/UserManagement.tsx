@@ -11,6 +11,7 @@ import {
   X,
   Lock,
   RotateCw,
+  ChevronDown,
 } from 'lucide-react';
 import {
   Button,
@@ -20,9 +21,9 @@ import {
   CardContent,
   Badge,
 } from '@/components/common';
-import { usersApi } from '@/services/api'; 
-import { formatDate } from '@/lib/utils'; 
-import type { User as AppUser, PaginatedResponse } from '@/types'; 
+import { usersApi } from '@/services/api';
+import { formatDate } from '@/lib/utils';
+import type { User as AppUser, PaginatedResponse } from '@/types';
 
 
 const RoleBadge = ({ role }: { role: AppUser['role'] }) => {
@@ -77,11 +78,11 @@ const CustomModal: React.FC<ModalProps> = ({ isOpen, onClose, children, title })
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity"
       onClick={handleBackdropClick}
     >
-      <div 
+      <div
         ref={modalRef}
         className="bg-white rounded-lg shadow-2xl w-full max-w-md m-4 transform transition-all p-6"
         role="dialog"
@@ -120,7 +121,7 @@ const ChangeRoleModal: React.FC<RoleChangeModalProps> = ({ user, isOpen, onClose
     },
     onError: (error) => {
       console.error('Failed to change role:', error);
-      alert('Failed to change role. Check console for details.'); 
+      alert('Failed to change role. Check console for details.');
     },
   });
 
@@ -133,9 +134,9 @@ const ChangeRoleModal: React.FC<RoleChangeModalProps> = ({ user, isOpen, onClose
   };
 
   return (
-    <CustomModal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <CustomModal
+      isOpen={isOpen}
+      onClose={onClose}
       title={`Change Role for ${user.username}`}
     >
       <div className="py-4 space-y-4">
@@ -184,12 +185,28 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [firstName, setFirstName] = useState(''); 
-  const [lastName, setLastName] = useState('');   
-  const [role, setRole] = useState<AppUser['role']>('viewer'); 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState<AppUser['role']>('viewer');
   const [error, setError] = useState('');
-  
-  const roles: AppUser['role'][] = ['admin', 'manager', 'annotator', 'viewer']; 
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(event.target as Node)) {
+        setIsRoleDropdownOpen(false);
+      }
+    };
+    if (isRoleDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isRoleDropdownOpen]);
+
+  const roles: AppUser['role'][] = ['admin', 'manager', 'annotator', 'viewer'];
 
   const createUserMutation = useMutation({
     mutationFn: usersApi.create,
@@ -199,19 +216,19 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
       setEmail('');
       setPassword('');
       setConfirmPassword('');
-      setFirstName(''); 
-      setLastName('');  
-      setRole('viewer'); 
+      setFirstName('');
+      setLastName('');
+      setRole('viewer');
       setError('');
       onClose();
     },
     onError: (err: any) => {
-      const errorMsg = err.response?.data?.username?.[0] || 
-                       err.response?.data?.email?.[0] || 
-                       err.response?.data?.password?.[0] || 
-                       err.response?.data?.first_name?.[0] ||
-                       err.response?.data?.last_name?.[0] ||
-                       'Failed to create user.';
+      const errorMsg = err.response?.data?.username?.[0] ||
+        err.response?.data?.email?.[0] ||
+        err.response?.data?.password?.[0] ||
+        err.response?.data?.first_name?.[0] ||
+        err.response?.data?.last_name?.[0] ||
+        'Failed to create user.';
       setError(errorMsg);
       console.error('User creation failed:', err);
     },
@@ -222,7 +239,7 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
       setError('Passwords do not match.');
       return;
     }
-    if (!username || !password || !email || !firstName || !lastName) { 
+    if (!username || !password || !email || !firstName || !lastName) {
       setError('Please fill out all required fields.');
       return;
     }
@@ -231,16 +248,16 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
       email,
       password,
       password_confirm: confirmPassword,
-      first_name: firstName, 
-      last_name: lastName,   
-      role: role,           
+      first_name: firstName,
+      last_name: lastName,
+      role: role,
     });
   };
 
   return (
-    <CustomModal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <CustomModal
+      isOpen={isOpen}
+      onClose={onClose}
       title="Add New User"
     >
       <div className="py-4 space-y-4">
@@ -264,7 +281,7 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
             disabled={createUserMutation.isPending}
           />
         </div>
-        
+
         {/* Last Name */}
         <div className="space-y-2">
           <label className="text-sm font-medium flex items-center">
@@ -309,25 +326,41 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
             disabled={createUserMutation.isPending}
           />
         </div>
-        
+
         {/* Role Dropdown */}
-        <div className="space-y-2">
+        <div className="space-y-2" ref={roleDropdownRef}>
           <label className="text-sm font-medium flex items-center">
             <Crown className="h-4 w-4 mr-1 text-muted-foreground" /> Role
           </label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as AppUser['role'])}
-            className="w-full rounded-md border border-gray-300 bg-white p-2 text-sm focus:ring-primary focus:border-primary"
-            disabled={createUserMutation.isPending}
-          >
-            {/* Displaying roles in lowercase as requested */}
-            {roles.map((r) => (
-              <option key={r} value={r}>
-                {r.toLowerCase()}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+              disabled={createUserMutation.isPending}
+              className="w-full flex items-center justify-between rounded-md border border-gray-300 bg-white p-2 text-sm focus:ring-primary focus:border-primary capitalize"
+            >
+              {role}
+              <ChevronDown className="h-4 w-4 text-gray-500" />
+            </button>
+
+            {isRoleDropdownOpen && (
+              <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-300 bg-white shadow-lg max-h-60 overflow-auto">
+                {roles.map((r) => (
+                  <div
+                    key={r}
+                    onClick={() => {
+                      setRole(r);
+                      setIsRoleDropdownOpen(false);
+                    }}
+                    className={`cursor-pointer p-2 text-sm capitalize hover:bg-gray-100 ${role === r ? 'bg-gray-50 font-medium' : ''
+                      }`}
+                  >
+                    {r}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
 
@@ -377,10 +410,10 @@ const AddUserModal: React.FC<{ isOpen: boolean; onClose: () => void; queryClient
   );
 };
 
-const DeleteConfirmationModal: React.FC<{ 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onConfirm: () => void; 
+const DeleteConfirmationModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
   username: string;
   isPending: boolean;
 }> = ({ isOpen, onClose, onConfirm, username, isPending }) => (
@@ -485,14 +518,14 @@ export function UserManagement() {
                       </p>
                     </div>
                   </div>
-                  
+
                   {/* Action Buttons */}
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setRoleChangeUser(user)}
-                      disabled={deleteUserMutation.isPending} 
+                      disabled={deleteUserMutation.isPending}
                       className="flex items-center"
                     >
                       <Crown className="h-4 w-4 mr-2" />
