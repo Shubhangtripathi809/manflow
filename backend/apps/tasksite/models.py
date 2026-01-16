@@ -75,6 +75,18 @@ class Task(models.Model):
     def __str__(self):
         return self.heading
     
+class TaskLink(models.Model):
+    task = models.ForeignKey(
+        Task, 
+        related_name='links',  # Access links via task.links.all()
+        on_delete=models.CASCADE
+    )
+    url = models.URLField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.url
+    
 class TaskAttachment(models.Model):
     task = models.ForeignKey(
         Task, 
