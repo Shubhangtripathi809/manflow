@@ -4,13 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, FolderKanban, FileText, TestTube2, Settings, LogOut,
   Users, ChevronDown, ChevronUp, Plus, CheckSquare, CheckCircle,
-  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar
+  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar, Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { projectsApi } from '@/services/api';
 import type { Project } from '@/types';
 import { getProjectTypeColor } from '@/lib/utils';
+import { notificationsApi } from '@/services/api';
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
 
@@ -65,6 +66,13 @@ export function Sidebar() {
     queryKey: ['projects'],
     queryFn: () => projectsApi.list(),
   });
+
+  // Fetching notification summary here makes it available to the entire Sidebar
+  // const { data: notifySummary } = useQuery({
+  //   queryKey: ['notifications-summary'],
+  //   queryFn: () => notificationsApi.getSummary(),
+  //   refetchInterval: 30000, // Sync every 30 seconds
+  // });
 
   const projects = useMemo(() => {
     if (!projectsData) return [];
@@ -210,6 +218,7 @@ export function Sidebar() {
         {[
           { name: 'Documents', href: '/documents', icon: FileText },
           { name: 'Calendar', href: '/calendar', icon: Calendar },
+          // { name: 'Activity', href: '/notifications', icon: Bell },
           { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
         ].map((item) => (
           <NavLink
@@ -221,7 +230,14 @@ export function Sidebar() {
                 !isExpanded && "justify-center px-0")
             }
           >
-            <item.icon className="h-5 w-5 shrink-0" />
+            {/* <div className="relative"> */}
+              <item.icon className="h-5 w-5 shrink-0" />
+              {/* {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ee6b6e] text-[10px] font-bold text-white">
+                  {notifySummary?.unread}
+                </span>
+              )}
+            </div> */}
             {isExpanded && <span>{item.name}</span>}
           </NavLink>
         ))}
