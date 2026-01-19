@@ -51,7 +51,7 @@ export const TaskCard: React.FC<{ task: Task; onTaskClick: (task: Task) => void 
                 <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${statusConfig.badge} text-white`}>{statusConfig.label}</span>
             </div>
             <div className="text-xs font-bold text-black-600 mb-1">
-                {task.project_details?.name || task.project_name || 'No Project'}
+                {task.heading || 'No Task'}
             </div>
             <div className="space-y-1 text-xs text-gray-500">
                 <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">Start:</span><span className="ml-1">{formatDate(task.start_date)}</span></div>
@@ -494,6 +494,7 @@ export const MyTask: React.FC = () => {
         total: tasks.length,
         completed: tasks.filter((t: Task) => t.status.toLowerCase() === 'completed').length,
         pending: tasks.filter((t: Task) => t.status.toLowerCase() === 'pending').length,
+        backlog: tasks.filter((t: Task) => t.status.toLowerCase() === 'backlog').length,
         inProgress: tasks.filter((t: Task) => t.status.toLowerCase() === 'in_progress').length,
         deployed: tasks.filter((t: Task) => t.status.toLowerCase() === 'deployed').length,
         deferred: tasks.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
@@ -539,16 +540,24 @@ export const MyTask: React.FC = () => {
                                 </div>
                             </div>
                             {/* Stats Grid */}
-                            <div className="grid grid-cols-6 gap-4 mb-6 stat-cards-container">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6 stat-cards-container">
                                 {[
-                                    { label: 'Total', val: stats.total, color: 'text-gray-900' },
-                                    { label: 'Completed', val: stats.completed, color: 'text-green-600' },
-                                    { label: 'Pending', val: stats.pending, color: 'text-yellow-600' },
-                                    { label: 'In Progress', val: stats.inProgress, color: 'text-blue-600' },
-                                    { label: 'Deployed', val: stats.deployed, color: 'text-purple-600' },
-                                    { label: 'Deferred', val: stats.deferred, color: 'text-gray-600' }
+                                    { label: 'Total', val: stats.total, color: 'text-gray-900', filter: 'ALL' },
+                                    { label: 'Completed', val: stats.completed, color: 'text-green-600', filter: 'COMPLETED' },
+                                    { label: 'Pending', val: stats.pending, color: 'text-yellow-600', filter: 'PENDING' },
+                                    { label: 'Backlog', val: stats.backlog, color: 'text-orange-600', filter: 'BACKLOG' },
+                                    { label: 'In Progress', val: stats.inProgress, color: 'text-blue-600', filter: 'IN_PROGRESS' },
+                                    { label: 'Deployed', val: stats.deployed, color: 'text-purple-600', filter: 'DEPLOYED' },
+                                    { label: 'Deferred', val: stats.deferred, color: 'text-gray-600', filter: 'DEFERRED' }
                                 ].map(s => (
-                                    <div key={s.label} className="p-4 rounded-lg bg-white shadow-sm text-center stat-card border border-[#d0d5dd]">
+                                    <div
+                                        key={s.label}
+                                        onClick={() => navigate(s.filter === 'ALL' ? '/taskboard' : `/taskboard/${s.filter.toLowerCase()}`)}
+                                        className={`p-4 rounded-lg shadow-sm text-center stat-card border cursor-pointer transition-all ${activeFilter === s.filter
+                                            ? 'bg-gray-50 border-blue-500 ring-1 ring-blue-500 shadow-md'
+                                            : 'bg-white border-[#d0d5dd] hover:bg-gray-50'
+                                            }`}
+                                    >
                                         <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
                                         <div className="text-sm text-gray-600">{s.label}</div>
                                     </div>

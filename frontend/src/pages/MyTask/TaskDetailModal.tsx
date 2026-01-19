@@ -27,6 +27,8 @@ interface TaskDetailModalProps {
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDelete, onTaskUpdated }) => {
+    console.log('🔍 [TaskDetailModal] Initial task prop:', task);
+    console.log('🔍 [TaskDetailModal] Initial task.links:', task.links);
     const taskWithLabels = React.useMemo(() => ({
         ...task,
         labels: (task as any).label_details || task.labels || []
@@ -55,7 +57,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             return typeof link === 'object' && link.url ? link.url : String(link);
         });
     };
-    //  Fetch full task details to get the links ---
     const { data: fullTaskDetails } = useQuery({
         queryKey: ['task-detail', task.id],
         queryFn: () => taskApi.get(task.id),

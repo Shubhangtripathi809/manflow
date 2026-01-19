@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout';
 import type { User as AppUser } from '@/types';
 import { ContentCreation } from '@/pages/TaskType/ContentCreation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
 import { TaskDetails } from '@/pages/TaskType/TaskDetails';
@@ -67,10 +67,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function ProjectDetailWrapper() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
+
   const { data: project } = useQuery({
     queryKey: ['project', id],
     queryFn: () => projectsApi.get(Number(id)),
     enabled: !!id,
+    placeholderData: () => {
+      const cache = queryClient.getQueryData(['projects']) as any || queryClient.getQueryData(['projects', '']) as any;
+      const list = Array.isArray(cache) ? cache : (cache?.results || []);
+      return list.find((p: any) => p.id === Number(id));
+    },
   });
 
   if (!project) return null;
