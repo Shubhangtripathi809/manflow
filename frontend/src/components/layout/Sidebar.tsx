@@ -100,7 +100,7 @@ export function Sidebar() {
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all",
             // If NOT collapsed (fixed expanded state), apply specific green color
             !isCollapsed
-              ? "bg-[#97bd30] text-white"
+              ? "bg-indigo-300 text-white"
               : "bg-primary text-primary-foreground hover:opacity-90"
           )}
         >
@@ -278,7 +278,7 @@ export function Sidebar() {
         <div className={cn("flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent cursor-pointer", !isExpanded && "justify-center px-0")} onClick={() => navigate('/profile')}>
           <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-primary-foreground font-bold",
             !isCollapsed
-              ? "bg-[#97bd30] text-white"
+              ? "bg-indigo-300 text-white"
               : "bg-primary text-primary-foreground hover:opacity-90")}>
             {user?.username?.charAt(0).toUpperCase()}
           </div>
