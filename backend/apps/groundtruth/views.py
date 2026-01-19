@@ -9,7 +9,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.audit.services import get_object_history, log_action
-
+from django.db.models import Q
 from .models import Document, DocumentComment, GTVersion
 from .serializers import (
     DocumentBulkImportSerializer,
@@ -42,23 +42,36 @@ class DocumentFilter(filters.FilterSet):
 
 class DocumentViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Document CRUD operations.
+    ViewSet for Document CRUD operations with restricted visibility.
     """
-    queryset = Document.objects.select_related(
-        "project", "created_by", "current_gt_version"
-    ).prefetch_related("versions")
-    filterset_class = DocumentFilter
-    search_fields = ["name", "description"]
-    ordering_fields = ["name", "created_at", "updated_at", "status"]
-    ordering = ["-created_at"]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-    
+    # 1. Add the dynamic queryset logic inside the class
+    def get_queryset(self):
+        user = self.request.user
+        
+        # Start with an optimized queryset including related data
+        queryset = Document.objects.select_related(
+            "project", "created_by", "current_gt_version"
+        ).prefetch_related("versions")
+
+        # FILTER: Show only if user is the creator OR a member of the project
+        return queryset.filter(
+            Q(project__created_by=user) | Q(project__members=user)
+        ).distinct()
+
+    # 2. Re-add the serializer logic to fix the AssertionError
     def get_serializer_class(self):
         if self.action == "create":
             return DocumentCreateSerializer
         if self.action == "retrieve":
             return DocumentDetailSerializer
         return DocumentSerializer
+
+    # --- Standard ViewSet Configurations ---
+    filterset_class = DocumentFilter
+    search_fields = ["name", "description"]
+    ordering_fields = ["name", "created_at", "updated_at", "status"]
+    ordering = ["-created_at"]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     # --- MODIFIED CREATE METHOD ---
     def create(self, request, *args, **kwargs):
@@ -348,10 +361,18 @@ class DocumentCommentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentCommentSerializer
     
     def get_queryset(self):
-        document_id = self.kwargs.get("document_pk")
-        return DocumentComment.objects.filter(
-            document_id=document_id
-        ).select_related("created_by")
+        user = self.request.user
+        
+        # 1. Start with the optimized base queryset
+        queryset = Document.objects.select_related(
+            "project", "created_by", "current_gt_version"
+        ).prefetch_related("versions")
+
+        # 2. Filter: Only show documents if the project was created by the user 
+        # OR if the user is a member of the project.
+        return queryset.filter(
+            Q(project__created_by=user) | Q(project__members=user)
+        ).distinct()
     
     def perform_create(self, serializer):
         document_id = self.kwargs.get("document_pk")

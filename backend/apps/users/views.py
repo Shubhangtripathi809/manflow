@@ -79,30 +79,53 @@ class UserListView(generics.ListAPIView):
 
 class ChangeUserRoleView(APIView):
     """
-    Endpoint to change a user's role.
-    Only accessible by Admins and Managers.
+    Endpoint to change a user's role with strict hierarchy rules.
     """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, user_id):
-        # 1. Permission Check: Only Admins/Managers can change roles
-        if not request.user.is_manager:
+        user = request.user
+        target_user = get_object_or_404(User, id=user_id)
+        new_role = request.data.get('role')
+
+        # 1. SECURITY: Prevent any user from changing their own role
+        if user.id == target_user.id:
             return Response(
-                {"detail": "You do not have permission to change user roles."},
+                {"detail": "You cannot change your own role."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2. MANAGER RESTRICTIONS
+        if user.role == User.Role.MANAGER:
+            # A. Prevent Managers from touching Admins or other Managers
+            if target_user.role in [User.Role.ADMIN, User.Role.MANAGER]:
+                return Response(
+                    {"detail": "Managers cannot change roles for Admins or other Managers."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # B. Limit allowed role transitions (only Viewer <-> Annotator)
+            allowed_manager_roles = [User.Role.ANNOTATOR, User.Role.VIEWER]
+            if new_role not in allowed_manager_roles:
+                return Response(
+                    {"detail": "Managers can only assign Annotator or Viewer roles."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        # 3. ADMIN CHECK: If not Admin and failed Manager check, deny access
+        elif user.role != User.Role.ADMIN:
+            return Response(
+                {"detail": "Only Admins and Managers can change user roles."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # 2. Get the user to be updated
-        target_user = get_object_or_404(User, id=user_id)
-
-        # 3. Serialize and Save
+        # 4. PERFORM UPDATE
         serializer = UserRoleUpdateSerializer(target_user, data=request.data, partial=True)
-        
         if serializer.is_valid():
             serializer.save()
             return Response({
-                "message": f"Role for {target_user.username} updated to {serializer.data['role']}",
+                "message": f"Role for {target_user.username} updated to {new_role}",
                 "user": serializer.data
             }, status=status.HTTP_200_OK)
             
