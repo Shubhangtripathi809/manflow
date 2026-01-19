@@ -41,14 +41,17 @@ class TaskListCreateView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
     def get(self, request):
-        # --- UPDATE THIS CONDITION ---
-        # Allow if Manager OR Superuser (Admin)
-        if request.user.is_manager or request.user.is_superuser:
-            tasks = Task.objects.all()
-        else:
-            tasks = Task.objects.filter(assigned_to=request.user).distinct()
+        user = self.request.user
+        # 1. Base Queryset
+        queryset = Task.objects.all()
+
+        # 2. Privacy Logic: 
+        # Show tasks only if the user is assigned TO it OR if they created it (assigned_by)
+        tasks = queryset.filter(
+            Q(assigned_to=user) | Q(assigned_by=user)
+        ).distinct()
         
-        # (Include your project filtering logic here from the previous step)
+        # 3. Existing Project Filtering
         project_id = request.query_params.get('project_id')
         if project_id:
             tasks = tasks.filter(project__id=project_id)

@@ -67,9 +67,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "labels"
         )
         
-        if user.is_admin:
-            return queryset
-        
         return queryset.filter(
             Q(members=user) | Q(created_by=user)
         ).distinct()
