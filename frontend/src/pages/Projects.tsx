@@ -17,7 +17,7 @@ import type { Project } from '@/types';
 export function Projects() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>('');
-  const [openMembersCard, setOpenMembersCard] = useState<string | null>(null);
+  const [openMembersCard, setOpenMembersCard] = useState<number | null>(null);
 
   const toggleFavorite = async (e: React.MouseEvent, project: Project) => {
     e.preventDefault();
@@ -36,8 +36,8 @@ export function Projects() {
   const { data, isLoading } = useQuery({
   queryKey: ['projects', filter],
   queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
-  staleTime: 1000 * 60 * 10,       // cache for 10 mins
-  refetchOnMount: false,
+  staleTime: 1000 * 60 * 10, 
+  refetchOnMount: true,
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
 });

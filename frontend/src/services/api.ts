@@ -6,8 +6,8 @@ import type {
   Label
 } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.9:8001/';
+const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.6:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
 
 
 export const api = axios.create({
@@ -189,7 +189,7 @@ export const projectsApi = {
     return response.data;
   },
 
-  get: async (id: string) => {
+  get: async (id: number) => {
     const response = await api.get(`/projects/${id}/`);
     return response.data;
   },
@@ -199,32 +199,32 @@ export const projectsApi = {
     return response.data;
   },
 
-  update: async (id: string, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
+  update: async (id: number, data: Partial<{ name: string; description: string; is_favourite: boolean }>) => {
     const response = await api.patch(`/projects/${id}/`, data);
     return response.data;
   },
 
-  delete: async (id: string) => {
+  delete: async (id: number) => {
     await api.delete(`/projects/${id}/`);
   },
 
-  getStats: async (id: string) => {
+  getStats: async (id: number) => {
     const response = await api.get(`/projects/${id}/stats/`);
     return response.data;
   },
 
   // Add inside projectsApi object:
-  createLabel: async (projectId: string, data: { name: string; color: string }) => {
+  createLabel: async (projectId: number, data: { name: string; color: string }) => {
     const response = await api.post(`/projects/${projectId}/labels/`, data);
     return response.data;
   },
 
-  deleteLabel: async (projectId: string, labelId: number) => {
+  deleteLabel: async (projectId: number, labelId: number) => {
     const response = await api.delete(`/projects/${projectId}/labels/${labelId}/`);
     return response.data;
   },
 
-  getLabels: async (projectId: string) => {
+  getLabels: async (projectId: number) => {
     const response = await api.get<PaginatedResponse<Label>>(`/projects/${projectId}/labels/`);
     return response.data;
   },
@@ -233,7 +233,7 @@ export const projectsApi = {
 // Add Documents API in task type file
 export const documentsApi = {
   list: async (params?: {
-    project?: string;
+    project?: number;
     status?: string;
     file_type?: string;
     page?: number;
@@ -248,7 +248,7 @@ export const documentsApi = {
   },
 
 
-  getUploadUrl: async (projectId: string, data: GetUploadUrlPayload) => {
+  getUploadUrl: async (projectId: number, data: GetUploadUrlPayload) => {
     const response = await api.post<GetUploadUrlResponse>(
       `/projects/${projectId}/get-upload-url/`,
       data
@@ -275,7 +275,7 @@ export const documentsApi = {
 
   // This `create` now expects the final S3 file_key
   create: async (data: {
-    project: string;
+    project: number;
     name: string;
     description: string;
     file_key: string;
@@ -288,7 +288,7 @@ export const documentsApi = {
   },
 
   // 3rd API: Confirm Upload
-  confirmUpload: async (projectId: string, data: ConfirmUploadPayload) => {
+  confirmUpload: async (projectId: number, data: ConfirmUploadPayload) => {
     const response = await api.post<ConfirmUploadResponse>(
       `/projects/${projectId}/confirm-upload/`,
       data
@@ -297,7 +297,7 @@ export const documentsApi = {
   },
 
   // 4th API: Get Download URL
-  getDownloadUrl: async (projectId: string, data: GetDownloadUrlPayload) => {
+  getDownloadUrl: async (projectId: number, data: GetDownloadUrlPayload) => {
     const response = await api.post<GetDownloadUrlResponse>(
       `/projects/${projectId}/get-download-url/`,
       data
@@ -607,7 +607,7 @@ export const toolApi = {
 // API Testing Platform API
 export const apiTestingApi = {
   // Collections
-  listCollections: async (params?: { project_id?: string }) => {
+  listCollections: async (params?: { project_id?: number }) => {
     const response = await api.get<PaginatedResponse<APICollection>>('/api-testing/collections/', { params });
     return response.data;
   },

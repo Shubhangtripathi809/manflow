@@ -37,10 +37,10 @@ export function DocumentCreate() {
 
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
-    queryFn: () => projectsApi.get(projectId!),
+    queryFn: () => projectsApi.get(Number(projectId)),
     enabled: !!projectId,
   });
-
+  const projectIdNum = Number(projectId);
   // UPDATED MUTATION 
   const createMutation = useMutation({
     mutationFn: async ({ name, description, file_key, initial_gt_data, file_type, original_file_name }: {
@@ -52,7 +52,7 @@ export function DocumentCreate() {
       original_file_name: string;
     }) => {
       return documentsApi.create({
-        project: projectId!,
+        project: projectIdNum,
         name,
         description,
         file_key,
@@ -95,7 +95,7 @@ export function DocumentCreate() {
     try {
       // Step 1: Get Upload URL from backend API
       console.log('[DocumentCreate] Step 1: Requesting upload URL...');
-      const uploadUrlResponse = await documentsApi.getUploadUrl(projectId!, {
+      const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
         file_name: file.name,
         file_type: file.type || 'application/octet-stream',
       });
@@ -110,7 +110,7 @@ export function DocumentCreate() {
       // Step 3: CONFIRM UPLOAD original_file_name
       const fileNameWithoutPath = file_key.split('/').pop() || file.name;
       console.log(`[DocumentCreate] Step 3: Confirming upload with file_key: ${file_key}, file_name: ${fileNameWithoutPath}`);
-      const confirmResponse = await documentsApi.confirmUpload(projectId!, {
+      const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
         file_key: file_key,
         file_name: file.name,
         file_type: formData.file_type,

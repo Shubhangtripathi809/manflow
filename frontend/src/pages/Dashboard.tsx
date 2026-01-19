@@ -65,6 +65,8 @@ export function Dashboard() {
   const [updatingDocId, setUpdatingDocId] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
   const [isActivityOpen, setIsActivityOpen] = React.useState(false);
+  const [openTaskDropdownId, setOpenTaskDropdownId] = React.useState<number | null>(null);
+  const [dropdownPos, setDropdownPos] = React.useState<{ top: number; left: number } | null>(null);
 
   // Data Fetching
   const { data: projectsData, isLoading: projectsLoading } = useQuery({
@@ -77,13 +79,8 @@ export function Dashboard() {
     queryFn: () => documentsApi.list(),
   });
 
-  const { data: tasksData } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => taskApi.list(),
-  });
-
   const { data: tasksResponse } = useQuery({
-    queryKey: ['dashboard-tasks'],
+    queryKey: ['tasks'],
     queryFn: () => taskApi.list(),
   });
 
@@ -134,8 +131,7 @@ export function Dashboard() {
     try {
       await taskApi.update(taskId, { status: newStatus });
 
-      // Update cache immediately for instant UI feedback
-      queryClient.setQueryData(['dashboard-tasks'], (old: any) => {
+      queryClient.setQueryData(['tasks'], (old: any) => {
         if (!old) return old;
         const update = (list: any[]) => list.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
         if (Array.isArray(old.tasks)) return { ...old, tasks: update(old.tasks) };
@@ -144,7 +140,6 @@ export function Dashboard() {
         return old;
       });
 
-      queryClient.invalidateQueries({ queryKey: ['dashboard-tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } catch (error) {
       console.error("Failed to update status:", error);
@@ -224,7 +219,7 @@ export function Dashboard() {
               Welcome back{user?.first_name ? `, ${user.first_name}` : ''}!
             </h1>
             <p className="text-muted-foreground">
-              Here's an overview of your ground truth management
+              Here’s a quick overview of your workspace.
             </p>
           </div>
           <div className="flex gap-2">
@@ -242,6 +237,12 @@ export function Dashboard() {
               )}
             </Button> */}
 
+            <Link to="/taskboard/create">
+              <Button>
+                Create Task
+              </Button>
+            </Link>
+
             <Link to="/projects/new">
               <Button>
                 <Plus className="h-4 w-4 mr-2" /> New Project
@@ -258,15 +259,16 @@ export function Dashboard() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-3">
                 <div className="relative">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  {/* Clickable Status Header */}
+                  <div
                     onClick={() => setShowStatusFilter(!showStatusFilter)}
-                    className="h-8 w-12 flex items-center justify-center p-0"
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity select-none"
                   >
-                    <Filter className="h-4 w-4" />
-                    <ChevronDown className="h-3 w-3 ml-1" />
-                  </Button>
+                    <h2 className="text-xl font-bold">
+                      {statusOptions.find((s) => s.value === selectedTaskStatus)?.label}
+                    </h2>
+                    <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${showStatusFilter ? 'rotate-180' : ''}`} />
+                  </div>
 
                   {showStatusFilter && (
                     <>
@@ -295,11 +297,6 @@ export function Dashboard() {
                     </>
                   )}
                 </div>
-
-                {/* Status Label */}
-                <span>
-                  {statusOptions.find((s) => s.value === selectedTaskStatus)?.label}
-                </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -330,7 +327,7 @@ export function Dashboard() {
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{task.heading}</div>
                             <div className="text-sm text-muted-foreground truncate">
-                              {task.description}
+                              {task.description?.replace(/<[^>]*>/g, ' ')}
                             </div>
                           </div>
                         </div>
@@ -357,21 +354,55 @@ export function Dashboard() {
                           </div>
 
                           {/* Status Badge */}
-                          <div className="relative group/status" onClick={(e) => e.stopPropagation()}>
-                            <select
+                          <div className="relative" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
                               disabled={updatingTaskId === task.id}
-                              value={task.status}
-                              onChange={(e) => handleStatusUpdate(task.id, e.target.value as TaskStatus, e as any)}
-                              className={`appearance-none px-2 py-1 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusConfig.bg} ${statusConfig.text} ${updatingTaskId === task.id ? 'opacity-50' : ''}`}
+                              onClick={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setDropdownPos({
+                                  top: rect.bottom + 4,
+                                  left: rect.right - 192 // 192px is the width of w-48 (12rem), aligning right edges
+                                });
+                                setOpenTaskDropdownId(openTaskDropdownId === task.id ? null : task.id);
+                              }}
+                              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-2 focus:ring-primary/20 transition-all ${statusConfig.bg} ${statusConfig.text} ${updatingTaskId === task.id ? 'opacity-50' : 'hover:brightness-95'}`}
                             >
-                              {statusOptions.map((opt) => (
-                                <option key={opt.value} value={opt.value} className="bg-white text-gray-900">
-                                  {opt.label.toUpperCase()}
-                                </option>
-                              ))}
-                            </select>
+                              <span>{statusOptions.find(opt => opt.value === task.status)?.label.toUpperCase()}</span>
+                              <ChevronDown className="h-3 w-3 opacity-70" />
+                            </button>
+
+                            {openTaskDropdownId === task.id && dropdownPos && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={() => setOpenTaskDropdownId(null)}
+                                />
+                                <div
+                                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                                  className="fixed w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 py-1 animate-in fade-in zoom-in-95 duration-100"
+                                >
+                                  {statusOptions.map((opt) => (
+                                    <button
+                                      key={opt.value}
+                                      onClick={(e) => {
+                                        handleStatusUpdate(task.id, opt.value, e as any);
+                                        setOpenTaskDropdownId(null);
+                                      }}
+                                      className={`w-full px-4 py-2.5 text-left text-xs font-medium hover:bg-gray-50 transition-colors flex items-center justify-between gap-2 ${task.status === opt.value ? 'bg-gray-50' : ''}`}
+                                    >
+                                      <span className={opt.color}>{opt.label}</span>
+                                      {task.status === opt.value && (
+                                        <CheckCircle className="h-3 w-3 text-primary" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+
                             {updatingTaskId === task.id && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-white/10 rounded-full">
+                              <div className="absolute inset-0 flex items-center justify-center bg-white/10 rounded-full pointer-events-none">
                                 <div className="h-2 w-2 animate-ping bg-current rounded-full" />
                               </div>
                             )}

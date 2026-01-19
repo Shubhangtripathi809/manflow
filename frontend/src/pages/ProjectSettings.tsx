@@ -60,7 +60,7 @@ export function ProjectSettings() {
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
-    queryFn: () => projectsApi.get((id!)),
+    queryFn: () => projectsApi.get(Number(id)),
     enabled: !!id,
   });
 
@@ -78,7 +78,7 @@ export function ProjectSettings() {
   }
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<Project>) => projectsApi.update(id!, data),
+    mutationFn: (data: Partial<Project>) => projectsApi.update(Number(id), data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -87,7 +87,7 @@ export function ProjectSettings() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => projectsApi.delete(id!),
+    mutationFn: () => projectsApi.delete(Number(id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       navigate('/projects');
@@ -96,7 +96,7 @@ export function ProjectSettings() {
 
   const createLabelMutation = useMutation({
     mutationFn: (data: { name: string; color: string }) =>
-      projectsApi.createLabel(id!, data),
+      projectsApi.createLabel(Number(id), data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       setNewLabel({ name: '', color: '#3b82f6' });
@@ -104,7 +104,7 @@ export function ProjectSettings() {
   });
 
   const deleteLabelMutation = useMutation({
-    mutationFn: (labelId: number) => projectsApi.deleteLabel(id!, labelId),
+    mutationFn: (labelId: number) => projectsApi.deleteLabel(Number(id), labelId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
     },

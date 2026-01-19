@@ -30,7 +30,7 @@ export interface Skill {
 // Project page  types 
 export interface Project {
   is_favourite: boolean;
-  id: string;
+  id: number;
   name: string;
   description: string;
   task_type: TaskType;
@@ -56,7 +56,7 @@ export interface ProjectMember {
 }
 //  In create task load project name from project list API
 export interface ProjectMinimal {
-  id: string;
+  id: number;
   name: string;
 }
 
@@ -184,7 +184,7 @@ export interface CreateTaskCommentPayload {
 // Document types
 export interface Document {
   id: string;
-  project: string;
+  project: number;
   project_name?: string;
   name: string;
   description: string;
@@ -240,7 +240,7 @@ export interface DocumentComment {
 // Test types
 export interface TestRun {
   id: string;
-  project: string;
+  project: number;
   name: string;
   description: string;
   status: TestRunStatus;
@@ -287,7 +287,7 @@ export interface DiffData {
 // Issue types
 export interface Issue {
   id: string;
-  project: string;
+  project: number;
   title: string;
   description: string;
   status: IssueStatus;
@@ -542,7 +542,7 @@ export interface GetDownloadUrlResponse {
 
 // Create AI based Task Generation 
 export interface AITaskSuggestionPayload {
-  project_id: string;
+  project_id: number;
   description: string;
 }
 
@@ -552,7 +552,7 @@ export interface AITaskSuggestionResponse {
   start_date: string;
   end_date: string;
   assigned_to: number[];
-  project: string;
+  project: number;
   status: string;
   priority: string;
   ai_metadata: {
@@ -566,7 +566,7 @@ export interface APICollection {
   id: string;
   name: string;
   description?: string;
-  project_id?: string;
+  project_id?: number;
   api_count: number;
   execution_order: 'sequential' | 'parallel';
   environment_variables: Record<string, string>;
@@ -683,7 +683,7 @@ export interface APITestingDashboard {
 export interface CreateCollectionPayload {
   name: string;
   description?: string;
-  project_id?: string;
+  project_id?: number;
   execution_order?: 'sequential' | 'parallel';
   environment_variables?: Record<string, string>;
   tags?: string[];

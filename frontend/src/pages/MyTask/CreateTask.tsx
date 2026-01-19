@@ -16,7 +16,7 @@ import {
     Link,
     Trash2
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
 import { ProjectMinimal, AITaskSuggestionResponse, Label } from '@/types';
 import { AITask } from './AITask';
@@ -31,7 +31,7 @@ interface CreateTaskProps {
     onClose?: () => void;
     onSuccess?: () => void;
     isModal?: boolean;
-    fixedProjectId?: string;
+    fixedProjectId?: number;
 }
 
 export const CreateTask: React.FC<CreateTaskProps> = ({
@@ -51,15 +51,12 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
-    const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-    const [allProjectOptions, setAllProjectOptions] = useState<ProjectMinimal[]>([]);
     const [status, setStatus] = useState('pending');
     const [priority, setPriority] = useState('medium');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [allUserOptions, setAllUserOptions] = useState<UserOption[]>([]);
-    const [isDataLoading, setIsDataLoading] = useState(true);
     const [success, setSuccess] = useState<string | null>(null);
     const [attachments, setAttachments] = useState<File[]>([]);
     const [labels, setLabels] = useState('');
@@ -205,42 +202,41 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         { value: 'deferred', label: 'Deferred', color: 'bg-gray-100 text-gray-600' },
     ];
 
+    const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
+        queryKey: ['users'],
+        queryFn: usersApi.list,
+        staleTime: Infinity,
+    });
+
+    const { data: projectsData, isLoading: projectsLoading, error: projectsError } = useQuery({
+        queryKey: ['projects'],
+        queryFn: () => projectsApi.list(),
+        staleTime: Infinity, 
+    });
+
+    // Memoize derived data to maintain existing variable names
+    const allUserOptions = React.useMemo<UserOption[]>(() => {
+        if (!usersData) return [];
+        const data = (usersData as any).results || usersData;
+        return Array.isArray(data) ? data.map((user: any) => ({
+            value: String(user.id),
+            label: user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username,
+            id: user.id,
+        })) : [];
+    }, [usersData]);
+
+    const allProjectOptions = React.useMemo<ProjectMinimal[]>(() => {
+        if (!projectsData) return [];
+        return (projectsData as any).results || projectsData || [];
+    }, [projectsData]);
+
+    // Handle initial load errors
     useEffect(() => {
-        const fetchDynamicData = async () => {
-            setIsDataLoading(true);
-            try {
-                const userResponse = await usersApi.list();
-                const userData = userResponse.results || userResponse;
-                const mappedUsers: UserOption[] = userData.map((user: any) => ({
-                    value: String(user.id),
-                    label: user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.username,
-                    id: user.id,
-                }));
-                setAllUserOptions(mappedUsers);
-
-                const projectData = await projectsApi.list();
-                setAllProjectOptions(projectData.results);
-
-            } catch (err) {
-                console.error("Failed to load dynamic data for task creation:", err);
-                setError("Failed to load required user/project lists. Please try refreshing.");
-            } finally {
-                setIsDataLoading(false);
-            }
-        };
-        fetchDynamicData();
-    }, []);
-
-    useEffect(() => {
-        if (fixedProjectId && allProjectOptions.length > 0) {
-            const currentProject = allProjectOptions.find(p => p.id === fixedProjectId);
-            if (currentProject) {
-                setAllProjectOptions([currentProject]);
-                setSelectedProjects([fixedProjectId]);
-            }
+        if (usersError || projectsError) {
+            console.error("Failed to load dynamic data:", usersError || projectsError);
+            setError("Failed to load required lists. Please refresh.");
         }
-    }, [fixedProjectId, allProjectOptions.length]);
-
+    }, [usersError, projectsError]);
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as HTMLElement;
@@ -368,15 +364,6 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         }
     };
 
-    if (isDataLoading) {
-        return (
-            <div className="flex items-center justify-center h-full min-h-screen">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
-                <p className="ml-3 text-gray-600">Loading resources...</p>
-            </div>
-        );
-    }
-
     if (showSuccessView) {
         return (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
@@ -449,7 +436,12 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                         className={`w-full p-2.5 rounded border border-gray-300 bg-white flex flex-wrap gap-2 min-h-[42px] ${fixedProjectId ? 'cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-gray-400'} transition-colors`}
                                         onClick={() => !fixedProjectId && setProjectDropdownOpen(!projectDropdownOpen)}
                                     >
-                                        {selectedProjects.length === 0 ? (
+                                        {projectsLoading ? (
+                                            <span className="text-gray-400 text-sm flex items-center gap-2">
+                                                <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                                Loading projects...
+                                            </span>
+                                        ) : selectedProjects.length === 0 ? (
                                             <span className="text-gray-400 text-sm">Select a project</span>
                                         ) : (
                                             selectedProjects.map((projectId) => {
@@ -714,10 +706,10 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                             <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 group">
                                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                                     <Link className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                                    <a 
-                                                        href={link.startsWith('http') ? link : `https://${link}`} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
+                                                    <a
+                                                        href={link.startsWith('http') ? link : `https://${link}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
                                                         className="text-sm text-blue-600 hover:underline truncate"
                                                     >
                                                         {link}
@@ -882,14 +874,19 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                         <User className="w-4 h-4" />
-                                        Assignees
+                                        Assignees <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="relative">
+                                   <div className="relative">
                                         <div
                                             className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex flex-wrap gap-2 min-h-[42px] transition-colors"
                                             onClick={() => setDropdownOpen(!dropdownOpen)}
                                         >
-                                            {assignedToList.length === 0 ? (
+                                            {usersLoading ? (
+                                                <span className="text-gray-400 text-sm flex items-center gap-2">
+                                                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                                    Loading users...
+                                                </span>
+                                            ) : assignedToList.length === 0 ? (
                                                 <span className="text-gray-400 text-sm">Assign to team members</span>
                                             ) : (
                                                 assignedToList.map((userId) => {
