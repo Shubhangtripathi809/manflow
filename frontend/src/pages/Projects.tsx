@@ -36,8 +36,8 @@ export function Projects() {
   const { data, isLoading } = useQuery({
   queryKey: ['projects', filter],
   queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
-  staleTime: 1000 * 60 * 10,       // cache for 10 mins
-  refetchOnMount: false,
+  staleTime: 1000 * 60 * 10, 
+  refetchOnMount: true,
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
 });

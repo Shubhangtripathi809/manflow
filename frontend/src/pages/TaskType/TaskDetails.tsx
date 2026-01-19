@@ -419,8 +419,6 @@ export function TaskDetails() {
 
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-    // const [tasks, setTasks] = useState<any[]>([]);
-    // const [isLoadingTasks, setIsLoadingTasks] = useState(true);
     const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
@@ -446,15 +444,20 @@ export function TaskDetails() {
         queryKey: ['project', id],
         queryFn: () => projectsApi.get((Number(id))),
         enabled: !!id,
-        staleTime: 30 * 1000,
+        staleTime: Infinity,
+        placeholderData: () => {
+            const cache = queryClient.getQueryData(['projects']) as any || queryClient.getQueryData(['projects', '']) as any;
+            const list = Array.isArray(cache) ? cache : (cache?.results || []);
+            return list.find((p: any) => p.id === Number(id));
+        }
     });
 
     // Fetch documents for the grid
     const { data: documentsData, isLoading: isMediaLoading } = useQuery({
         queryKey: ['documents', { project: id }],
         queryFn: () => documentsApi.list({ project: (Number(id)) }),
-        enabled: !!id && activeTab === 'add_documents',
-        staleTime: 30 * 1000,
+        enabled: !!id,
+        staleTime: 1000 * 60 * 5,
     });
 
     // Fetch GT documents
@@ -462,7 +465,7 @@ export function TaskDetails() {
         queryKey: ['gt-documents', { project: id }],
         queryFn: () => documentsApi.list({ project: (Number(id)) }),
         enabled: !!id && activeTab === 'gt',
-        staleTime: 30 * 1000, // Add this
+        staleTime: 30 * 1000,
     });
 
     const allResults = documentsData?.results || documentsData || [];
@@ -925,7 +928,7 @@ export function TaskDetails() {
                                                                         onClick={async () => {
                                                                             const file = row.gtFile || row.runningGtFile;
                                                                             if (file) {
-                                                                                 const url = await documentsApi.getDownloadUrl(Number(id), {
+                                                                                const url = await documentsApi.getDownloadUrl(Number(id), {
                                                                                     document_id: file.id
                                                                                 });
                                                                                 window.open(url.url, '_blank');
@@ -1035,7 +1038,7 @@ export function TaskDetails() {
                 <TaskDetailModal
                     task={selectedTask}
                     onClose={() => setSelectedTask(null)}
-                    onTaskUpdated={() => queryClient.invalidateQueries({ queryKey: ['tasks'] })} 
+                    onTaskUpdated={() => queryClient.invalidateQueries({ queryKey: ['tasks'] })}
                     onDelete={handleDeleteTask}
                 />
             )}

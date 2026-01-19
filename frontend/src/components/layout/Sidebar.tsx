@@ -100,7 +100,7 @@ export function Sidebar() {
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all",
             // If NOT collapsed (fixed expanded state), apply specific green color
             !isCollapsed
-              ? "bg-[#97bd30] text-white"
+              ? "bg-indigo-300 text-white"
               : "bg-primary text-primary-foreground hover:opacity-90"
           )}
         >
@@ -198,6 +198,7 @@ export function Sidebar() {
           {isExpanded && isTasksOpen && (
             <div className="ml-4 border-l pl-2 space-y-1 animate-in slide-in-from-left-2">
               {[
+                { id: 'CREATE', name: 'Create Task', href: '/taskboard/create', icon: Plus },
                 { id: 'ALL', name: 'All Tasks', href: '/taskboard', icon: CheckSquare },
                 { id: 'COMPLETED', name: 'Completed Tasks', href: '/taskboard/completed', icon: CheckCircle },
                 { id: 'PENDING', name: 'Pending Tasks', href: '/taskboard/pending', icon: Clock },
@@ -205,8 +206,20 @@ export function Sidebar() {
                 { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
                 { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
                 { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
-              ].map((sub) => (
-                <NavLink key={sub.name} to={sub.href} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary transition-colors">
+            ].map((sub) => (
+                <NavLink
+                  key={sub.name}
+                  to={sub.href}
+                  end={sub.href === '/taskboard'}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-primary"
+                    )
+                  }
+                >
                   <sub.icon className="h-3.5 w-3.5" /> {sub.name}
                 </NavLink>
               ))}
@@ -278,7 +291,7 @@ export function Sidebar() {
         <div className={cn("flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent cursor-pointer", !isExpanded && "justify-center px-0")} onClick={() => navigate('/profile')}>
           <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-primary-foreground font-bold",
             !isCollapsed
-              ? "bg-[#97bd30] text-white"
+              ? "bg-indigo-300 text-white"
               : "bg-primary text-primary-foreground hover:opacity-90")}>
             {user?.username?.charAt(0).toUpperCase()}
           </div>

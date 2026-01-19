@@ -13,7 +13,6 @@ export { ContentCreation } from './TaskType/ContentCreation';
 export { Documents } from './Documents';
 export { ProjectSettings } from './ProjectSettings';
 export { Sidebar } from '../components/layout/Sidebar';
-export { Profile } from '../components/layout/Profile';
 export { Calendar } from './Calendar/Calendar';
 export { NotificationsPage } from './NotificationsPage';
-
+export { Profile } from  './Profile'

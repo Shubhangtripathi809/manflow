@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@/components/common';
 import { getCredentials } from '@/services/authStorage';
@@ -6,7 +7,9 @@ import { authApi } from '@/services/api';
 
 
 
+
 export function Login() {
+  const queryClient = useQueryClient();
   const { login } = useAuth();
   const savedCredentials = getCredentials();
   const [username, setUsername] = useState(savedCredentials?.username || '');
@@ -64,6 +67,7 @@ export function Login() {
     setIsLoading(true);
 
     try {
+      queryClient.clear();
       await login(username, password);
     } catch {
       setError('Invalid username or password');
@@ -71,7 +75,6 @@ export function Login() {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50">

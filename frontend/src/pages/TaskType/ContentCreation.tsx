@@ -414,12 +414,18 @@ export function ContentCreation() {
         queryKey: ['project', id],
         queryFn: () => projectsApi.get(Number(id)),
         enabled: !!id,
+        staleTime: Infinity,
+        placeholderData: () => {
+            const cache = queryClient.getQueryData(['projects']) as any || queryClient.getQueryData(['projects', '']) as any;
+            const list = Array.isArray(cache) ? cache : (cache?.results || []);
+            return list.find((p: any) => p.id === Number(id));
+        }
     });
 
     const { data: documentsData, isLoading: isMediaLoading } = useQuery({
         queryKey: ['documents', { project: id }],
         queryFn: () => documentsApi.list({ project: (Number(id)) }),
-        enabled: !!id && activeTab === 'media',
+        enabled: !!id,
     });
 
     const mediaFiles = documentsData?.results || documentsData || [];
