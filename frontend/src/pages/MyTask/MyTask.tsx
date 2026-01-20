@@ -450,21 +450,15 @@ export const MyTask: React.FC = () => {
     const tasks = React.useMemo(() => {
         if (!tasksData || !user) return [];
         const allTasks = Array.isArray(tasksData) ? tasksData : tasksData.tasks || tasksData.results || [];
-
-        // Admin: See all tasks
         if (user.role === 'admin') {
             return allTasks;
         }
-
-        // Manager: See tasks they created OR tasks assigned to them
         if (user.role === 'manager') {
             return allTasks.filter((task: Task) =>
                 task.assigned_by === user.id ||
                 task.assigned_to.includes(user.id)
             );
         }
-
-        // Viewer/Annotator: See only tasks assigned to them
         return allTasks.filter((task: Task) =>
             task.assigned_to.includes(user.id)
         );
