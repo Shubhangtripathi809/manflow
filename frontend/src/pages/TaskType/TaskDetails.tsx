@@ -706,14 +706,10 @@ export function TaskDetails() {
                         <div className="content-creation__title-section flex justify-between items-center w-full">
                             <div>
                                 <h1 className="content-creation__title">{project?.name}</h1>
-                                <p className="content-creation__subtitle">
-                                    {project?.task_type.replace('_', ' ').toUpperCase()} Dashboard
-                                </p>
                             </div>
-                            <button onClick={() => navigate(`/projects/${id}/settings`)} className="p-2 hover:bg-gray-100 rounded-full flex items-center gap-2">
-                                <Settings className="h-5 w-5" />
-                                <span className="text-sm font-medium">Settings</span>
-                            </button>
+                            <p className="content-creation__subtitle">
+                                {project?.task_type.replace('_', ' ').toUpperCase()} Dashboard
+                            </p>
                         </div>
                     </div>
                 )}
@@ -732,6 +728,15 @@ export function TaskDetails() {
                         ))}
                         <button className="content-creation__tab content-creation__tab--create-task" onClick={() => setIsCreateTaskModalOpen(true)}>
                             <Plus className="h-4 w-4" /> Create Task
+                        </button>
+
+                        {/* Project Settings Button Moved Here */}
+                        <button 
+                            onClick={() => navigate(`/projects/${id}/settings`)} 
+                            className="p-2 hover:bg-gray-100 rounded-full flex items-center gap-2"
+                        >
+                            <Settings className="h-5 w-5" />
+                            <span className="text-sm font-medium"></span>
                         </button>
                     </div>
                 )}

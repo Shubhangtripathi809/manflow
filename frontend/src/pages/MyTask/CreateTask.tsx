@@ -51,7 +51,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
-    const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
+    const [selectedProjects, setSelectedProjects] = useState<number[]>(
+        fixedProjectId ? [fixedProjectId] : []
+    );
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
     const [status, setStatus] = useState('pending');
     const [priority, setPriority] = useState('medium');
@@ -68,6 +70,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [projectLabels, setProjectLabels] = useState<Label[]>([]);
     const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+    const [assigneeSearchInput, setAssigneeSearchInput] = useState('');
+    const [highlightedUserIndex, setHighlightedUserIndex] = useState(0);
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -230,6 +234,19 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         return (projectsData as any).results || projectsData || [];
     }, [projectsData]);
 
+    // Filter users based on search input
+    const filteredUserOptions = React.useMemo(() => {
+        const availableUsers = allUserOptions.filter((user) => !assignedToList.includes(user.id));
+        
+        if (!assigneeSearchInput.trim()) {
+            return availableUsers;
+        }
+        
+        return availableUsers.filter((user) =>
+            user.label.toLowerCase().startsWith(assigneeSearchInput.toLowerCase())
+        );
+    }, [allUserOptions, assignedToList, assigneeSearchInput]);
+
     // Handle initial load errors
     useEffect(() => {
         if (usersError || projectsError) {
@@ -366,12 +383,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
     if (showSuccessView) {
         return (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
-                <div className="bg-white px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-out duration-200">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                        <CheckCircle className="w-8 h-8 text-green-600" />
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900">Task created successfully</h2>
+           <div className="fixed inset-0 z-[60] flex items-center justify-center">
+                <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg text-base font-medium w-fit">
+                    Task created successfully
                 </div>
             </div>
         );
@@ -870,56 +884,106 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
                             {/* Assignees and Labels Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Assignees */}
+                               {/* Assignees */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                         <User className="w-4 h-4" />
                                         Assignees <span className="text-red-500">*</span>
                                     </label>
                                    <div className="relative">
-                                        <div
-                                            className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 cursor-pointer bg-white flex flex-wrap gap-2 min-h-[42px] transition-colors"
-                                            onClick={() => setDropdownOpen(!dropdownOpen)}
-                                        >
+                                        {/* Main input field - shows selected users + allows typing */}
+                                        <div className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 bg-white flex flex-wrap gap-2 min-h-[42px] transition-colors">
                                             {usersLoading ? (
                                                 <span className="text-gray-400 text-sm flex items-center gap-2">
                                                     <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                                                     Loading users...
                                                 </span>
-                                            ) : assignedToList.length === 0 ? (
-                                                <span className="text-gray-400 text-sm">Assign to team members</span>
                                             ) : (
-                                                assignedToList.map((userId) => {
-                                                    const user = allUserOptions.find(u => u.id === userId);
-                                                    if (!user) return null;
-                                                    return (
-                                                        <span key={userId} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium flex items-center gap-1">
-                                                            {user.label}
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setAssignedToList(assignedToList.filter(id => id !== userId));
-                                                                }}
-                                                                className="hover:text-red-600"
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        </span>
-                                                    );
-                                                })
+                                                <>
+                                                    {/* Selected users as chips */}
+                                                    {assignedToList.map((userId) => {
+                                                        const user = allUserOptions.find(u => u.id === userId);
+                                                        if (!user) return null;
+                                                        return (
+                                                            <span key={userId} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium flex items-center gap-1">
+                                                                {user.label}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setAssignedToList(assignedToList.filter(id => id !== userId));
+                                                                    }}
+                                                                    className="hover:text-red-600"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                    
+                                                    {/* Search input - integrated into the main field */}
+                                                    <input
+                                                        type="text"
+                                                        value={assigneeSearchInput}
+                                                        onChange={(e) => {
+                                                            setAssigneeSearchInput(e.target.value);
+                                                            setHighlightedUserIndex(0);
+                                                            setDropdownOpen(true);
+                                                        }}
+                                                        onFocus={() => {
+                                                            setDropdownOpen(true);
+                                                            setHighlightedUserIndex(0);
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'ArrowDown') {
+                                                                e.preventDefault();
+                                                                setHighlightedUserIndex((prev) => 
+                                                                    Math.min(prev + 1, filteredUserOptions.length - 1)
+                                                                );
+                                                            } else if (e.key === 'ArrowUp') {
+                                                                e.preventDefault();
+                                                                setHighlightedUserIndex((prev) => Math.max(prev - 1, 0));
+                                                            } else if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                if (filteredUserOptions[highlightedUserIndex]) {
+                                                                    setAssignedToList([...assignedToList, filteredUserOptions[highlightedUserIndex].id]);
+                                                                    setAssigneeSearchInput('');
+                                                                    setHighlightedUserIndex(0);
+                                                                }
+                                                            } else if (e.key === 'Escape') {
+                                                                setDropdownOpen(false);
+                                                                setAssigneeSearchInput('');
+                                                                setHighlightedUserIndex(0);
+                                                            } else if (e.key === 'Backspace' && assigneeSearchInput === '' && assignedToList.length > 0) {
+                                                                // Remove last selected user when backspace is pressed on empty input
+                                                                setAssignedToList(assignedToList.slice(0, -1));
+                                                            }
+                                                        }}
+                                                        placeholder={assignedToList.length === 0 ? "Assign to team members" : ""}
+                                                        className="flex-1 min-w-[120px] outline-none text-sm"
+                                                    />
+                                                </>
                                             )}
                                         </div>
-                                        {dropdownOpen && (
+                                        
+                                        {/* Dropdown with filtered users */}
+                                        {dropdownOpen && !usersLoading && filteredUserOptions.length > 0 && (
                                             <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                                                {allUserOptions.filter((user) => !assignedToList.includes(user.id)).map((user) => (
+                                                {filteredUserOptions.map((user, index) => (
                                                     <div
                                                         key={user.id}
-                                                        className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer text-sm"
+                                                        className={`px-4 py-2.5 cursor-pointer text-sm ${
+                                                            index === highlightedUserIndex 
+                                                                ? 'bg-blue-50 text-blue-700' 
+                                                                : 'hover:bg-gray-50'
+                                                        }`}
                                                         onClick={() => {
                                                             setAssignedToList([...assignedToList, user.id]);
+                                                            setAssigneeSearchInput('');
+                                                            setHighlightedUserIndex(0);
                                                             setDropdownOpen(false);
                                                         }}
+                                                        onMouseEnter={() => setHighlightedUserIndex(index)}
                                                     >
                                                         {user.label}
                                                     </div>

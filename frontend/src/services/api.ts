@@ -176,6 +176,16 @@ export const authApi = {
     const response = await api.post('/auth/set-new-password/', data);
     return response.data;
   },
+
+  resetPassword: async (data: {
+    username: string;
+    old_password: string;
+    new_password: string;
+    confirm_new_password: string;
+  }) => {
+    const response = await api.post('/auth/reset-password/', data);
+    return response.data;
+  },
 };
 
 // Add this to your api.ts file
@@ -243,7 +253,6 @@ export const projectsApi = {
     return response.data;
   },
 
-  // Add inside projectsApi object:
   createLabel: async (projectId: number, data: { name: string; color: string }) => {
     const response = await api.post(`/projects/${projectId}/labels/`, data);
     return response.data;
@@ -256,6 +265,10 @@ export const projectsApi = {
 
   getLabels: async (projectId: number) => {
     const response = await api.get<PaginatedResponse<Label>>(`/projects/${projectId}/labels/`);
+    return response.data;
+  },
+  addMember: async (projectId: number, data: { user_id: number; role: string }) => {
+    const response = await api.post(`/projects/${projectId}/add-member/`, data);
     return response.data;
   },
 };

@@ -570,18 +570,8 @@ export function ContentCreation() {
                         <div className="content-creation__title-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                             <div>
                                 <h1 className="content-creation__title">{project.name}</h1>
-                                <p className="content-creation__subtitle">Content Creation Dashboard</p>
                             </div>
-
-                            {/* Project Settings Button */}
-                            <button
-                                onClick={() => navigate(`/projects/${id}/settings`)}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 text-gray-600 hover:text-black"
-                                title="Project Settings"
-                            >
-                                <Settings className="h-5 w-5" />
-                                <span className="text-sm font-medium">Settings</span>
-                            </button>
+                            <p className="content-creation__subtitle">Content Creation Dashboard</p>
                         </div>
                     </div>
 
@@ -602,6 +592,15 @@ export function ContentCreation() {
                         >
                             <Plus className="h-4 w-4" />
                             Create Task
+                        </button>
+
+                        <button
+                            onClick={() => navigate(`/projects/${id}/settings`)}
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 text-gray-600 hover:text-black"
+                            title="Project Settings"
+                        >
+                            <Settings className="h-5 w-5" />
+                            <span className="text-sm font-medium"></span>
                         </button>
                     </div>
                 </div>

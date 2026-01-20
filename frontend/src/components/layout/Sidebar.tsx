@@ -123,7 +123,7 @@ export function Sidebar() {
               !isExpanded && "justify-center px-0")
           }
         >
-          <LayoutDashboard className="h-5 w-5 shrink-0" />
+          <LayoutDashboard className="h-6 w-6 shrink-0" />
           {isExpanded && <span>Dashboard</span>}
         </NavLink>
 
@@ -144,7 +144,7 @@ export function Sidebar() {
                 }
               }}
             >
-              <FolderKanban className="h-5 w-5 shrink-0" />
+              <FolderKanban className="h-6 w-6 shrink-0" />
               {isExpanded && <span className="flex-1">Projects</span>}
             </div>
 
@@ -156,7 +156,7 @@ export function Sidebar() {
                   setIsProjectsOpen(!isProjectsOpen);
                 }}
               >
-                {isProjectsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {isProjectsOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </div>
             )}
           </div>
@@ -180,7 +180,7 @@ export function Sidebar() {
                 }
               }}
             >
-              <CheckSquare className="h-5 w-5 shrink-0" />
+              <CheckSquare className="h-6 w-6 shrink-0" />
               {isExpanded && <span className="flex-1">My Tasks</span>}
             </div>
             {isExpanded && (
@@ -191,7 +191,7 @@ export function Sidebar() {
                   setIsTasksOpen(!isTasksOpen);
                 }}
               >
-                {isTasksOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {isTasksOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </div>
             )}
           </div>
@@ -220,7 +220,7 @@ export function Sidebar() {
                     )
                   }
                 >
-                  <sub.icon className="h-3.5 w-3.5" /> {sub.name}
+                  <sub.icon className="h-6 w-6" /> {sub.name}
                 </NavLink>
               ))}
             </div>
@@ -244,7 +244,7 @@ export function Sidebar() {
             }
           >
             {/* <div className="relative"> */}
-              <item.icon className="h-5 w-5 shrink-0" />
+              <item.icon className="h-6 w-6 shrink-0" />
               {/* {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ee6b6e] text-[10px] font-bold text-white">
                   {notifySummary?.unread}
@@ -275,10 +275,10 @@ export function Sidebar() {
             {isExpanded && isAdminOpen && (
               <div className="ml-4 border-l pl-2 space-y-1 animate-in slide-in-from-left-2">
                 <NavLink to="/admin/user-roles" className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary">
-                  <Users className="h-3.5 w-3.5" /> Roles
+                  <Users className="h-6 w-6" /> Roles
                 </NavLink>
                 <NavLink to="/admin/team-performance" className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary">
-                  <TrendingUp className="h-3.5 w-3.5" /> Performance
+                  <TrendingUp className="h-6 w-6" /> Performance
                 </NavLink>
               </div>
             )}
