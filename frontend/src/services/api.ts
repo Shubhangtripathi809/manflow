@@ -416,6 +416,7 @@ export const taskApi = {
 
   get: async (taskId: number) => {
     const response = await api.get(`/tasksite/${taskId}/`);
+    console.log("API Response",response.data)
     return response.data;
   },
 

@@ -302,18 +302,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
     return (
         <div
-            className={`fixed inset-0 z-50 ${isMaximized ? 'bg-gray-50 flex' : 'flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'}onClick={handleBackdropClick}`}
+            className={`fixed inset-0 z-[100] ${isMaximized ? 'bg-gray-50' : 'flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'}`}
             onClick={handleBackdropClick}
         >
-            {isMaximized && (
-                <div className="h-screen sticky top-0">
-                    <Sidebar />
-                </div>
-            )}
-
-            <div className={`bg-white shadow-2xl transform transition-all overflow-hidden flex flex-col ${isMaximized ? 'flex-1 h-screen overflow-y-auto rounded-none border-l' : 'rounded-xl w-full max-w-2xl'}`} role="dialog">
+            <div 
+                className={`bg-white shadow-2xl transform transition-all flex flex-col ${
+                    isMaximized 
+                        ? 'w-full h-full rounded-none fixed inset-0' 
+                        : 'rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden'
+                }`} 
+                role="dialog"
+            >
                 {/* Header */}
-                <div className={`${isMaximized ? 'max-w-4xl mx-auto w-full px-6' : 'px-8'} py-5 border-b bg-white flex items-center justify-between sticky top-0 z-20 w-full`}>
+                <div className={`${isMaximized ? 'px-4 max-w-4xl mx-auto w-full' : 'px-'} py-5 border-b bg-white flex items-center justify-between sticky top-0 z-20`}>
                     <div className="flex items-center gap-4">
                         <div className="p-2 bg-purple-50 rounded-lg"><Edit3 className="w-5 h-5 text-purple-600" /></div>
                         <h2 className="text-xl font-bold text-gray-900">
@@ -333,9 +334,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className={`flex-1 ${isMaximized ? 'bg-gray-50 py-6 px-6' : 'overflow-y-auto bg-gray-50/50 max-h-[85vh]'}`}>
-                    <div className={`${isMaximized ? 'max-w-4xl mx-auto w-full' : 'p-4'} space-y-3`}>
+                {/* Content Body */}
+                <div className={`flex-1 overflow-y-auto ${isMaximized ? 'bg-gray-50' : 'bg-gray-50/50'}`}>
+                    <div className={`${isMaximized ? 'max-w-4xl mx-auto w-full py-6 px-6' : 'p-4'} space-y-3`}>
 
                         {/* 1. Timeline Div */}
                         <div className="timeline bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
@@ -365,7 +366,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                         {/* End Date */}
                                         <span className={`flex items-center group relative ${canEditDates ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-gray-700 block mb-4">End Date</span>
+                                                <span className="text-sm font-semibold text-gray-700 block mb-4">Due Date</span>
                                                 <input
                                                     type="date"
                                                     value={endDate}
@@ -670,6 +671,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 </div>
                             )}
                         </div>
+                        
 
                         {/* 5. Discussion */}
                         <div className="discussion bg-white rounded-xl p-4 border border-gray-100 shadow-sm space-y-3">
