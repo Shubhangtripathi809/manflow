@@ -77,7 +77,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating users.
     """
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
     
     class Meta:
@@ -133,7 +133,7 @@ class VerifyOTPSerializer(serializers.Serializer):
 class SetNewPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     reset_token = serializers.CharField() # Use reset_token instead of otp
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(write_only=True)
 
     def validate(self, data):
@@ -145,7 +145,7 @@ class SetNewPasswordSerializer(serializers.Serializer):
 class AuthenticatedResetPasswordSerializer(serializers.Serializer):
     username = serializers.CharField()
     old_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password = serializers.CharField(write_only=True)
     confirm_new_password = serializers.CharField(write_only=True)
 
     def validate(self, data):

@@ -355,7 +355,20 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 {"detail": "User is not a member"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
+    def update_member_role(self, request, pk=None, user_id=None):
+        """
+        Update the role of an existing project member.
+        """
+        project = self.get_object()
+        new_role = request.data.get("role")
+        
+        try:
+            membership = ProjectMembership.objects.get(project=project, user_id=user_id)
+            membership.role = new_role
+            membership.save()
+            return Response(ProjectMembershipSerializer(membership).data)
+        except ProjectMembership.DoesNotExist:
+            return Response({"detail": "User is not a member"}, status=status.HTTP_404_NOT_FOUND)
 
 class LabelViewSet(viewsets.ModelViewSet):
     """
