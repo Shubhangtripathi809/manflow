@@ -213,7 +213,6 @@ export const projectsApi = {
     return response.data;
   },
 
-  // Add inside projectsApi object:
   createLabel: async (projectId: number, data: { name: string; color: string }) => {
     const response = await api.post(`/projects/${projectId}/labels/`, data);
     return response.data;
@@ -226,6 +225,10 @@ export const projectsApi = {
 
   getLabels: async (projectId: number) => {
     const response = await api.get<PaginatedResponse<Label>>(`/projects/${projectId}/labels/`);
+    return response.data;
+  },
+  addMember: async (projectId: number, data: { user_id: number; role: string }) => {
+    const response = await api.post(`/projects/${projectId}/add-member/`, data);
     return response.data;
   },
 };
