@@ -16,3 +16,4 @@ export { Sidebar } from '../components/layout/Sidebar';
 export { Calendar } from './Calendar/Calendar';
 export { NotificationsPage } from './NotificationsPage';
 export { Profile } from  './Profile'
+export { ResetPassword } from './ResetPassword'

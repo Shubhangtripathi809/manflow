@@ -24,7 +24,8 @@ import {
   TeamPerformance,
   Calendar,
   NotificationsPage,
-  Profile
+  Profile,
+  ResetPassword,
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -123,7 +124,7 @@ function AppRoutes() {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
-
+        <Route path="/resetPassword" element={<ResetPassword />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/new" element={<ProjectCreate />} />
         <Route path="/projects/:id" element={<ProjectDetailWrapper />} />

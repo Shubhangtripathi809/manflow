@@ -146,6 +146,16 @@ export const authApi = {
     const response = await api.post('/auth/set-new-password/', data);
     return response.data;
   },
+
+  resetPassword: async (data: {
+    username: string;
+    old_password: string;
+    new_password: string;
+    confirm_new_password: string;
+  }) => {
+    const response = await api.post('/auth/reset-password/', data);
+    return response.data;
+  },
 };
 
 // Add this to your api.ts file

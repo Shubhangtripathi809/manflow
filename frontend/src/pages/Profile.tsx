@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Upload, Edit2, X, Plus, Download, Lock, Mail, Building2, Briefcase } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth'
 import { projectsApi } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 
 export function Profile() {
   // Sample initial data - replace with actual data from your backend
   const [userData, setUserData] = useState({
-    jobTitle: 'Senior Developer',
+    jobTitle: 'Developer',
     department: 'Engineering',
     profileImage: null,
     projects: ['E-Commerce Platform', 'Mobile App Redesign', 'CRM System'],
@@ -16,6 +17,7 @@ export function Profile() {
       { id: 2, name: 'React Advanced Certification.pdf', uploadDate: '2023-11-20' }
     ]
   });
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,7 +171,7 @@ export function Profile() {
                 </div>
 
                 <button
-                  onClick={handleResetPassword}
+                  onClick={() => navigate('/resetPassword')}
                   className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 text-gray-800 rounded-xl hover:bg-indigo-700 transition shadow-sm"
                 >
                   <Lock className="w-4 h-4" />
