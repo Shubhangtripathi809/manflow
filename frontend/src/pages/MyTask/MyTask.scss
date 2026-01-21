@@ -62,6 +62,106 @@
     }
 }
 
+// Taskboard Flex Layout
+.taskboard-layout {
+    display: flex;
+    flex-direction: column;
+}
+
+.taskboard-flex-container {
+    display: flex;
+    gap: 0;
+    position: relative;
+}
+
+// Main content area
+.taskboard-main-content {
+    flex: 1;
+    min-width: 0;
+    margin-right: 280px; // Space for fixed sidebar
+}
+
+// Right Sidebar for Stats - Fixed to right edge
+.stats-right-sidebar {
+    width: 280px;
+    min-width: 280px;
+    background-color: #ffffff;
+    border-left: 1px solid #e5e7eb;
+    padding: 1.5rem 1.25rem;
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 10;
+
+    .stats-sidebar-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0 0 1.25rem 0;
+    }
+
+    .stat-cards-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+// Horizontal stat card style (matching the reference design)
+.stat-card-horizontal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1rem;
+    border-radius: 0.625rem;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+
+    .stat-card-left {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+    }
+
+    .stat-card-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+    .stat-card-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .stat-card-value {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    &:hover {
+        border-color: rgba(0, 0, 0, 0.08);
+    }
+}
+
+// Responsive: Hide sidebar on smaller screens
+@media (max-width: 1024px) {
+    .taskboard-flex-container {
+        flex-direction: column;
+    }
+    
+    .stats-right-sidebar {
+        display: none;
+    }
+    
+    .taskboard-main-content {
+        margin-right: 0;
+    }
+}
+
 // Card Backgrounds
 .card-pending,
 .card-backlog,

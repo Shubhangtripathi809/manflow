@@ -19,6 +19,30 @@ const formatDate = (dateString: string) => {
         return dateString;
     }
 };
+
+const formatRelativeTime = (dateString?: string) => {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+
+        const now = new Date();
+        const diffInSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+
+        if (diffInSeconds < 60) return 'Updated just now';
+
+        const minutes = Math.floor(diffInSeconds / 60);
+        if (minutes < 60) return `Updated ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `Updated ${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+
+        const days = Math.floor(hours / 24);
+        return `Updated ${days} ${days === 1 ? 'day' : 'days'} ago`;
+    } catch {
+        return '';
+    }
+};
 interface TaskDetailModalProps {
     task: Task;
     onClose: () => void;
@@ -170,7 +194,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
             if (startDate !== originalStart) updates.start_date = startDate ? `${startDate}T09:00:00Z` : null;
             if (endDate !== originalEnd) updates.end_date = endDate ? `${endDate}T18:00:00Z` : null;
-           const remoteTask = fullTaskDetails?.task || fullTaskDetails;
+            const remoteTask = fullTaskDetails?.task || fullTaskDetails;
             const baselineLinks = remoteTask?.links || task.links;
             const originalLinks = getInitialLinks(baselineLinks);
             if (JSON.stringify(links) !== JSON.stringify(originalLinks)) {
@@ -302,18 +326,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
     return (
         <div
-            className={`fixed inset-0 z-50 ${isMaximized ? 'bg-gray-50 flex' : 'flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'}onClick={handleBackdropClick}`}
+            className={`fixed inset-0 z-[100] ${isMaximized ? 'bg-gray-50' : 'flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'}`}
             onClick={handleBackdropClick}
         >
-            {isMaximized && (
-                <div className="h-screen sticky top-0">
-                    <Sidebar />
-                </div>
-            )}
-
-            <div className={`bg-white shadow-2xl transform transition-all overflow-hidden flex flex-col ${isMaximized ? 'flex-1 h-screen overflow-y-auto rounded-none border-l' : 'rounded-xl w-full max-w-2xl'}`} role="dialog">
+            <div
+                className={`bg-white shadow-2xl transform transition-all flex flex-col ${isMaximized
+                        ? 'w-full h-full rounded-none fixed inset-0'
+                        : 'rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden'
+                    }`}
+                role="dialog"
+            >
                 {/* Header */}
-                <div className={`${isMaximized ? 'max-w-4xl mx-auto w-full px-6' : 'px-8'} py-5 border-b bg-white flex items-center justify-between sticky top-0 z-20 w-full`}>
+                <div className={`${isMaximized ? 'px-4 max-w-4xl mx-auto w-full' : 'px-'} py-5 border-b bg-white flex items-center justify-between sticky top-0 z-20`}>
                     <div className="flex items-center gap-4">
                         <div className="p-2 bg-purple-50 rounded-lg"><Edit3 className="w-5 h-5 text-purple-600" /></div>
                         <h2 className="text-xl font-bold text-gray-900">
@@ -321,6 +345,21 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                         </h2>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleSaveStatus}
+                            disabled={isSaving || !hasUnsavedChanges}
+                            className={`flex items-center px-2 py-2 text-sm font-bold rounded-lg transition-all shadow-sm ${isSaving || !hasUnsavedChanges
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-green-600 text-white hover:bg-green-500 active:scale-95 shadow-green-100'
+                                }`}
+                        >
+                            {isSaving ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                                <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Save Changes
+                        </button>
                         <button onClick={toggleMaximize} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                             {isMaximized ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                         </button>
@@ -333,9 +372,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className={`flex-1 ${isMaximized ? 'bg-gray-50 py-6 px-6' : 'overflow-y-auto bg-gray-50/50 max-h-[85vh]'}`}>
-                    <div className={`${isMaximized ? 'max-w-4xl mx-auto w-full' : 'p-4'} space-y-3`}>
+                {/* Content Body */}
+                <div className={`flex-1 overflow-y-auto ${isMaximized ? 'bg-gray-50' : 'bg-gray-50/50'}`}>
+                    <div className={`${isMaximized ? 'max-w-4xl mx-auto w-full py-6 px-6' : 'p-4'} space-y-3`}>
 
                         {/* 1. Timeline Div */}
                         <div className="timeline bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
@@ -365,7 +404,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                         {/* End Date */}
                                         <span className={`flex items-center group relative ${canEditDates ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}>
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-gray-700 block mb-4">End Date</span>
+                                                <span className="text-sm font-semibold text-gray-700 block mb-4">Due Date</span>
                                                 <input
                                                     type="date"
                                                     value={endDate}
@@ -671,6 +710,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                             )}
                         </div>
 
+
                         {/* 5. Discussion */}
                         <div className="discussion bg-white rounded-xl p-4 border border-gray-100 shadow-sm space-y-3">
                             <label className="text-sm font-semibold text-gray-700 block mb-4">Discussion ({comments.length})</label>
@@ -704,7 +744,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                             </div>
                         </div>
 
-                        {/* 6. Save Changes Button */}
+                        {/* 6. Save Changes Button
                         <div className="flex justify-start pt-4 pb-6">
                             <button
                                 onClick={handleSaveStatus}
@@ -721,7 +761,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 )}
                                 Save Changes
                             </button>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>

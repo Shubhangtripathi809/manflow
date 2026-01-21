@@ -6,10 +6,11 @@ import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { taskApi, projectsApi } from '@/services/api';
 import './MyTask.scss';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskDetailModal } from './TaskDetailModal';
 import { AITask } from './AITask';
 import { Task } from '@/types';
+import { formatRelativeTime } from '@/lib/utils';
 
 
 const formatDate = (dateString: string) => {
@@ -26,37 +27,85 @@ export const getStatusConfig = (status: Task['status']) => {
     const normalizedStatus = status.toUpperCase();
     switch (normalizedStatus) {
         case 'PENDING':
-            return { bg: 'bg-yellow-50', text: 'text-yellow-800', badge: 'bg-yellow-500', cardClass: 'card-pending', label: 'PENDING', icon: Clock, color: '#f59e0b' };
+            return { bg: 'bg-yellow-50', text: 'text-yellow-800', badge: 'bg-yellow-50 text-yellow-600 border border-yellow-200', cardClass: 'card-pending', label: 'PENDING', icon: Clock, color: '#f59e0b' };
         case 'BACKLOG':
-            return { bg: 'bg-orange-50', text: 'text-orange-800', badge: 'bg-orange-500', cardClass: 'card-backlog', label: 'BACKLOG', icon: ListTodo, color: '#f97316' };
+            return { bg: 'bg-orange-50', text: 'text-orange-800', badge: 'bg-orange-50 text-orange-600 border border-orange-200', cardClass: 'card-backlog', label: 'BACKLOG', icon: ListTodo, color: '#f97316' };
         case 'IN_PROGRESS':
-            return { bg: 'bg-blue-50', text: 'text-blue-800', badge: 'bg-blue-500', cardClass: 'card-in-progress', label: 'IN PROGRESS', icon: PlayCircle, color: '#3b82f6' };
+            return { bg: 'bg-blue-50', text: 'text-blue-800', badge: 'bg-blue-50 text-blue-600 border border-blue-200', cardClass: 'card-in-progress', label: 'IN PROGRESS', icon: PlayCircle, color: '#3b82f6' };
         case 'COMPLETED':
-            return { bg: 'bg-green-50', text: 'text-green-800', badge: 'bg-green-500', cardClass: 'card-completed', label: 'COMPLETED', icon: CheckCircle, color: '#22c55e' };
+            return { bg: 'bg-green-50', text: 'text-green-800', badge: 'bg-green-50 text-green-600 border border-green-200', cardClass: 'card-completed', label: 'COMPLETED', icon: CheckCircle, color: '#22c55e' };
         case 'DEPLOYED':
-            return { bg: 'bg-purple-50', text: 'text-purple-800', badge: 'bg-purple-500', cardClass: 'card-deployed', label: 'DEPLOYED', icon: CheckSquare, color: '#8b5cf6' };
+            return { bg: 'bg-purple-50', text: 'text-purple-800', badge: 'bg-purple-50 text-purple-600 border border-purple-200', cardClass: 'card-deployed', label: 'DEPLOYED', icon: CheckSquare, color: '#8b5cf6' };
         case 'DEFERRED':
-            return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', cardClass: 'card-deferred', label: 'DEFERRED', icon: Pause, color: '#6b7280' };
+            return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-100 text-gray-600 border border-gray-200', cardClass: 'card-deferred', label: 'DEFERRED', icon: Pause, color: '#6b7280' };
         default:
-            return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-500', cardClass: 'card-gray', label: normalizedStatus, icon: AlertCircle, color: '#9ca3af' };
+            return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-100 text-gray-600 border border-gray-200', cardClass: 'card-gray', label: normalizedStatus, icon: AlertCircle, color: '#9ca3af' };
     }
 };
 
 export const TaskCard: React.FC<{ task: Task; onTaskClick: (task: Task) => void }> = ({ task, onTaskClick }) => {
     const statusConfig = getStatusConfig(task.status);
     return (
-        <div onClick={() => onTaskClick(task)} className={`${statusConfig.cardClass} rounded-xl p-4 transition-all duration-300 cursor-pointer text-gray-800 hover:shadow-lg hover:-translate-y-0.5 border border-[#d0d5dd]
-`}>
-            <div className="flex items-start justify-between mb-2">
-                <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${statusConfig.badge} text-white`}>{statusConfig.label}</span>
+        <div
+            onClick={() => onTaskClick(task)}
+            className={`${statusConfig.cardClass} rounded-xl p-4 transition-all duration-300 cursor-pointer text-gray-800 hover:shadow-lg hover:-translate-y-0.5 border border-[#d0d5dd] relative hover:z-50`}
+        >
+            <div className="flex justify-between items-start gap-2 mb-3">
+                <div className="pr-2 flex flex-col">
+                    <span className="text-sm font-bold text-gray-900 line-clamp-1 mb-0.5">
+                        {task.project_details?.name || task.project_name || 'No Project'}
+                    </span>
+                    <span className="text-xs font-medium text-gray-600 line-clamp-2">
+                        {task.heading || 'No Task'}
+                    </span>
+                </div>
+                {task.updated_at && (
+                    <div className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
+                        {formatRelativeTime(task.updated_at)}
+                    </div>
+                )}
             </div>
-            <div className="text-xs font-bold text-black-600 mb-1">
-                {task.heading || 'No Task'}
+
+            {/* Task Details */}
+            <div className="space-y-1 text-xs text-gray-500 mb-2">
+                <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">Due:</span><span className="ml-1">{formatDate(task.end_date)}</span></div>
+
+                {/* Assigned */}
+                <div
+                    className="flex items-center relative group cursor-pointer hover:text-blue-600 transition-colors w-max"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <Users className="w-3 h-3 mr-1" />
+                    <span className="font-medium">Assigned:</span>
+                    <span className="ml-1 font-bold">{task.assigned_to.length}</span>
+
+                    {/* Hover/Click Dropdown */}
+                    <div className="absolute top-full left-0 mt-1 hidden group-hover:block z-50 min-w-[160px] bg-white border border-gray-200 rounded-lg shadow-xl p-2 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="flex flex-col gap-1 max-h-[150px] overflow-y-auto">
+                            {task.assigned_to_user_details && task.assigned_to_user_details.length > 0 ? (
+                                task.assigned_to_user_details.map((u) => (
+                                    <div key={u.id} className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded">
+                                        <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[9px] font-bold text-blue-700 shrink-0">
+                                            {u.first_name[0]}{u.last_name?.[0]}
+                                        </div>
+                                        <span className="text-[11px] font-medium text-gray-700 truncate">
+                                            {u.first_name} {u.last_name}
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <span className="text-[11px] text-gray-400 px-1 italic">No users assigned</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div className="space-y-1 text-xs text-gray-500">
-                <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">Start:</span><span className="ml-1">{formatDate(task.start_date)}</span></div>
-                <div className="flex items-center"><Calendar className="w-3 h-3 mr-1" /><span className="font-medium">End:</span><span className="ml-1">{formatDate(task.end_date)}</span></div>
-                <div className="flex items-center"><Users className="w-3 h-3 mr-1" /><span className="font-medium">Assigned:</span><span className="ml-1">{task.assigned_to.length}</span></div>
+
+            {/* Status Badge */}
+            <div className="absolute bottom-3 right-3">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${statusConfig.badge}`}>
+                    {statusConfig.label}
+                </span>
             </div>
         </div>
     );
@@ -83,7 +132,36 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
     const [activePriorityId, setActivePriorityId] = useState<number | null>(null);
     const [activeLabelDropdown, setActiveLabelDropdown] = useState<number | null>(null);
     const [projectLabelsMap, setProjectLabelsMap] = useState<Record<string, any[]>>({});
+
     const [loadingLabels, setLoadingLabels] = useState(false);
+    const [showProjectSearch, setShowProjectSearch] = useState(false);
+    const [projectFilter, setProjectFilter] = useState('');
+    const [showTitleSearch, setShowTitleSearch] = useState(false);
+    const [titleFilter, setTitleFilter] = useState('');
+    const [showPrioritySearch, setShowPrioritySearch] = useState(false);
+    const [priorityFilter, setPriorityFilter] = useState('');
+
+    const filteredTasks = React.useMemo(() => {
+        return tasks.filter(task => {
+            const projectName = (task.project_details?.name || task.project_name || '').toLowerCase();
+            const taskTitle = (task.heading || '').toLowerCase();
+            const taskPriority = (task.priority || '').toLowerCase();
+
+            // Check Project Filter
+            if (projectFilter && !projectName.startsWith(projectFilter.toLowerCase())) {
+                return false;
+            }
+            // Check Title Filter
+            if (titleFilter && !taskTitle.startsWith(titleFilter.toLowerCase())) {
+                return false;
+            }
+            // Check Priority Filter
+            if (priorityFilter && !taskPriority.startsWith(priorityFilter.toLowerCase())) {
+                return false;
+            }
+            return true;
+        });
+    }, [tasks, projectFilter, titleFilter, priorityFilter]);
 
     // Close label dropdown on outside click
     React.useEffect(() => {
@@ -105,7 +183,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
 
         setActiveLabelDropdown(taskId);
 
-        // Fetch labels for this project if not already cached
+        // Fetch labels 
         if (projectId && !projectLabelsMap[projectId]) {
             setLoadingLabels(true);
             try {
@@ -186,18 +264,86 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
                 <thead>
                     <tr className="bg-[#fafbfc]">
                         <th className="jira-th jira-th-type border-r border-[#dfe1e6]">Type</th>
-                        <th className="jira-th jira-th-project border-r border-[#dfe1e6]">Project</th>
-                        <th className="jira-th jira-th-title border-r border-[#dfe1e6]">Task Title</th>
+
+                        {/* Project Column */}
+                        <th className="jira-th jira-th-project border-r border-[#dfe1e6]">
+                            <div className="flex items-center justify-between gap-1">
+                                <span>Project</span>
+                                <Search
+                                    className="w-3 h-3 cursor-pointer text-gray-400 hover:text-blue-600"
+                                    onClick={(e) => { e.stopPropagation(); setShowProjectSearch(!showProjectSearch); }}
+                                />
+                            </div>
+                            {showProjectSearch && (
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Filter project..."
+                                    className="mt-1 w-full text-[11px] border border-blue-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 font-normal bg-white text-gray-700"
+                                    value={projectFilter}
+                                    onChange={(e) => setProjectFilter(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.key === 'Enter' && setShowProjectSearch(false)}
+                                />
+                            )}
+                        </th>
+
+                        {/* Task Title*/}
+                        <th className="jira-th jira-th-title border-r border-[#dfe1e6]">
+                            <div className="flex items-center justify-between gap-1">
+                                <span>Task Title</span>
+                                <Search
+                                    className="w-3 h-3 cursor-pointer text-gray-400 hover:text-blue-600"
+                                    onClick={(e) => { e.stopPropagation(); setShowTitleSearch(!showTitleSearch); }}
+                                />
+                            </div>
+                            {showTitleSearch && (
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Filter title..."
+                                    className="mt-1 w-full text-[11px] border border-blue-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 font-normal bg-white text-gray-700"
+                                    value={titleFilter}
+                                    onChange={(e) => setTitleFilter(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.key === 'Enter' && setShowTitleSearch(false)}
+                                />
+                            )}
+                        </th>
+
                         <th className="jira-th jira-th-status border-r border-[#dfe1e6]">Status</th>
                         <th className="jira-th jira-th-assignee border-r border-[#dfe1e6]">Assignee</th>
-                        <th className="jira-th jira-th-priority border-r border-[#dfe1e6]">Priority</th>
+
+                        {/* Priority Column with Search */}
+                        <th className="jira-th jira-th-priority border-r border-[#dfe1e6]">
+                            <div className="flex items-center justify-between gap-1">
+                                <span>Priority</span>
+                                <Search
+                                    className="w-3 h-3 cursor-pointer text-gray-400 hover:text-blue-600"
+                                    onClick={(e) => { e.stopPropagation(); setShowPrioritySearch(!showPrioritySearch); }}
+                                />
+                            </div>
+                            {showPrioritySearch && (
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Filter priority..."
+                                    className="mt-1 w-full text-[11px] border border-blue-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 font-normal bg-white text-gray-700"
+                                    value={priorityFilter}
+                                    onChange={(e) => setPriorityFilter(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.key === 'Enter' && setShowPrioritySearch(false)}
+                                />
+                            )}
+                        </th>
+
                         <th className="jira-th jira-th-labels border-r border-[#dfe1e6]">Labels</th>
                         <th className="jira-th jira-th-date border-r border-[#dfe1e6]">Due Date</th>
                         <th className="jira-th jira-th-duration">Duration</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {tasks.map((task) => {
+                    {filteredTasks.map((task) => {
                         const statusConfig = getStatusConfig(task.status);
                         const priorityOption = priorityOptions.find(opt => opt.value === task.priority);
 
@@ -499,84 +645,97 @@ export const MyTask: React.FC = () => {
     }, [queryClient]);
 
     return (
-        <div className="task-main-content-area w-full">
+        <div className="task-main-content-area w-full taskboard-layout">
             {location.pathname.startsWith('/taskboard') && !location.pathname.endsWith('/create') ? (
                 loading ? (
                     <div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-b-2 border-blue-600" /></div>
                 ) : (
                     <>
-                        <div className="mb-8">
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <h1 className="text-3xl font-bold text-gray-900">Task Board</h1>
-                                    <p className="text-lg text-gray-600">Manage and track your tasks efficiently</p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    {['admin', 'manager', 'annotator'].includes(user?.role || '') && (
-                                        <>
-                                            <button
-                                                onClick={() => navigate('/taskboard/create')}
-                                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg"
-                                            >
-                                                <Plus className="w-4 h-4 mr-2" />
-                                                Add New
-                                            </button>
+                        <div className="taskboard-flex-container">
+                            {/* Main Content Area */}
+                            <div className="taskboard-main-content">
+                                <div className="mb-8">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h1 className="text-3xl font-bold text-gray-900">Task Board</h1>
+                                            <p className="text-lg text-gray-600">Manage and track your tasks efficiently</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            {['admin', 'manager', 'annotator'].includes(user?.role || '') && (
+                                                <>
+                                                    <button
+                                                        onClick={() => navigate('/taskboard/create')}
+                                                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg"
+                                                    >
+                                                        <Plus className="w-4 h-4 mr-2" />
+                                                        Add New
+                                                    </button>
 
-                                            <button
-                                                onClick={() => setShowAITaskModal(true)}
-                                                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg"
-                                            >
-                                                Generate Task by AI
-                                            </button>
-                                        </>
-                                    )}
-
-                                </div>
-                            </div>
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6 stat-cards-container">
-                                {[
-                                    { label: 'Total', val: stats.total, color: 'text-gray-900', filter: 'ALL' },
-                                    { label: 'Completed', val: stats.completed, color: 'text-green-600', filter: 'COMPLETED' },
-                                    { label: 'Pending', val: stats.pending, color: 'text-yellow-600', filter: 'PENDING' },
-                                    { label: 'Backlog', val: stats.backlog, color: 'text-orange-600', filter: 'BACKLOG' },
-                                    { label: 'In Progress', val: stats.inProgress, color: 'text-blue-600', filter: 'IN_PROGRESS' },
-                                    { label: 'Deployed', val: stats.deployed, color: 'text-purple-600', filter: 'DEPLOYED' },
-                                    { label: 'Deferred', val: stats.deferred, color: 'text-gray-600', filter: 'DEFERRED' }
-                                ].map(s => (
-                                    <div
-                                        key={s.label}
-                                        onClick={() => navigate(s.filter === 'ALL' ? '/taskboard' : `/taskboard/${s.filter.toLowerCase()}`)}
-                                        className={`p-4 rounded-lg shadow-sm text-center stat-card border cursor-pointer transition-all ${activeFilter === s.filter
-                                            ? 'bg-gray-50 border-blue-500 ring-1 ring-blue-500 shadow-md'
-                                            : 'bg-white border-[#d0d5dd] hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
-                                        <div className="text-sm text-gray-600">{s.label}</div>
+                                                    <button
+                                                        onClick={() => setShowAITaskModal(true)}
+                                                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg"
+                                                    >
+                                                        Generate Task by AI
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                            {/* Controls */}
-                            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                                <div className="relative flex-1 max-w-md">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                                    <input type="text" placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300" />
+                                    {/* Controls */}
+                                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                                        <div className="relative flex-1 max-w-md">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                                            <input type="text" placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300" />
+                                        </div>
+                                        <div className="flex rounded-lg border overflow-hidden">
+                                            <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white'}`}><List className="w-5 h-5" /></button>
+                                            <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white'}`}><Grid3X3 className="w-5 h-5" /></button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex rounded-lg border overflow-hidden">
-                                    <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white'}`}><List className="w-5 h-5" /></button>
-                                    <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white'}`}><Grid3X3 className="w-5 h-5" /></button>
+                                {viewMode === 'grid' ? (
+                                    <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                        {filteredTasks.map((t: Task) => <TaskCard key={t.id} task={t} onTaskClick={handleTaskClick} />)}
+                                    </div>
+                                ) : (
+                                    <TaskListView tasks={filteredTasks} onTaskClick={handleTaskClick} />
+                                )}
+                            </div>
 
+                            {/* Stats Grid - Right Sidebar */}
+                            <div className="stats-right-sidebar">
+                                <h3 className="stats-sidebar-title">FILTER BY STATUS</h3>
+                                <div className="stat-cards-container">
+                                    {[
+                                        { label: 'Total Tasks', val: stats.total, color: 'text-gray-900', bgColor: 'bg-gray-50', iconColor: 'text-gray-400', filter: 'ALL', icon: CheckSquare },
+                                        { label: 'Completed', val: stats.completed, color: 'text-green-600', bgColor: 'bg-green-50', iconColor: 'text-green-500', filter: 'COMPLETED', icon: CheckCircle },
+                                        { label: 'In Progress', val: stats.inProgress, color: 'text-blue-600', bgColor: 'bg-blue-50', iconColor: 'text-blue-500', filter: 'IN_PROGRESS', icon: Clock },
+                                        { label: 'Pending', val: stats.pending, color: 'text-yellow-600', bgColor: 'bg-yellow-50', iconColor: 'text-yellow-500', filter: 'PENDING', icon: AlertCircle },
+                                        { label: 'Backlog', val: stats.backlog, color: 'text-orange-600', bgColor: 'bg-orange-50', iconColor: 'text-orange-400', filter: 'BACKLOG', icon: ListTodo },
+                                        { label: 'Deployed', val: stats.deployed, color: 'text-purple-600', bgColor: 'bg-purple-50', iconColor: 'text-purple-500', filter: 'DEPLOYED', icon: CheckSquare },
+                                        { label: 'Deferred', val: stats.deferred, color: 'text-gray-600', bgColor: 'bg-gray-100', iconColor: 'text-gray-400', filter: 'DEFERRED', icon: Pause }
+                                    ].map(s => {
+                                        const IconComponent = s.icon;
+                                        return (
+                                            <div
+                                                key={s.label}
+                                                onClick={() => navigate(s.filter === 'ALL' ? '/taskboard' : `/taskboard/${s.filter.toLowerCase()}`)}
+                                                className={`stat-card-horizontal cursor-pointer transition-all ${s.bgColor} ${activeFilter === s.filter
+                                                    ? 'ring-2 ring-blue-500 shadow-md'
+                                                    : 'hover:shadow-md'
+                                                    }`}
+                                            >
+                                                <div className="stat-card-left">
+                                                    <IconComponent className={`stat-card-icon ${s.iconColor}`} />
+                                                    <span className="stat-card-label">{s.label}</span>
+                                                </div>
+                                                <div className={`stat-card-value ${s.color}`}>{s.val}</div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
-                        {viewMode === 'grid' ? (
-                            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                {filteredTasks.map((t: Task) => <TaskCard key={t.id} task={t} onTaskClick={handleTaskClick} />)}
-                            </div>
-                        ) : (
-                            <TaskListView tasks={filteredTasks} onTaskClick={handleTaskClick} />
-                        )}
                     </>
                 )
             ) : <Outlet />}

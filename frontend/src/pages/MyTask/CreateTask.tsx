@@ -52,7 +52,11 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
     const [selectedProjects, setSelectedProjects] = useState<number[]>(
-        fixedProjectId ? [fixedProjectId] : []
+        fixedProjectId 
+            ? [fixedProjectId] 
+            : location.state?.projectId 
+                ? [Number(location.state.projectId)] 
+                : []
     );
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
     const [status, setStatus] = useState('pending');

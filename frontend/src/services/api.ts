@@ -7,9 +7,12 @@ import type {
 } from '@/types';
 
 
+
 //const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.6:8000/api/v1';
 //const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
 
+//const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.10:8000/api/v1';
+//const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
 
 //const API_URL = "http://localhost:8000/api/v1"; most latest
 //import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
@@ -446,6 +449,7 @@ export const taskApi = {
 
   get: async (taskId: number) => {
     const response = await api.get(`/tasksite/${taskId}/`);
+    console.log("API Response",response.data)
     return response.data;
   },
 
