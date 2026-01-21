@@ -223,7 +223,7 @@ export function ProjectGridCard({ project, onToggleFavorite }: ProjectGridCardPr
               </div>
             </div>
 
-            {/* Member Names Section */}
+            {/* Member Names Section
             {project.members && project.members.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {project.members.slice(0, 3).map((member) => (
@@ -240,7 +240,7 @@ export function ProjectGridCard({ project, onToggleFavorite }: ProjectGridCardPr
                   </span>
                 )}
               </div>
-            )}
+            )} */}
           </div>
         </CardContent>
       </Card>

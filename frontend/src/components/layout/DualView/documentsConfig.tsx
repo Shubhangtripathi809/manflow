@@ -10,18 +10,28 @@ interface DocumentTableColumnsProps {
   onDeleteClick: (e: React.MouseEvent, doc: Document) => void;
 }
 
-// documentsConfig.tsx updates
-// documentsConfig.tsx
-export const createDocumentsTableColumns = (): TableColumn<Document>[] => [
+export const createDocumentsTableColumns = ({ onDeleteClick }: DocumentTableColumnsProps): TableColumn<Document>[] => [
   {
     key: 'name',
     label: 'Document',
     render: (doc: any) => (
-      <div className="flex items-center gap-2">
-        <FileText className="w-4 h-4 text-blue-600" />
-        <span className="font-medium text-[#172b4d] truncate max-w-[250px]">
-          {doc.name}
-        </span>
+      <div className="flex items-center justify-between w-full group/cell">
+        <div className="flex items-center gap-2 min-w-0 pr-2">
+          <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          <span className="font-medium text-[#172b4d] truncate" title={doc.name}>
+            {doc.name}
+          </span>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteClick(e, doc);
+          }}
+          className="opacity-0 group-hover:opacity-100 transition-all duration-200 p-1.5 hover:bg-red-50 rounded flex-shrink-0"
+          title="Delete Document"
+        >
+          <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-600" />
+        </button>
       </div>
     ),
   },
@@ -74,66 +84,61 @@ interface DocumentGridCardProps {
 }
 
 export function DocumentGridCard({ document: doc, onDeleteClick }: DocumentGridCardProps) {
+  const getStatusStyle = (status: string) => {
+    const s = status.toLowerCase();
+    switch (s) {
+      case 'approved': return 'bg-green-50 text-green-600 border border-green-200';
+      case 'in_review': return 'bg-blue-50 text-blue-600 border border-blue-200';
+      case 'draft': return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
+      case 'archived': return 'bg-gray-100 text-gray-600 border border-gray-200';
+      default: return 'bg-gray-50 text-gray-600 border border-gray-200';
+    }
+  };
+
+  const statusStyle = getStatusStyle(doc.status);
+
   return (
-    <Card className="h-full hover:shadow-md transition-shadow cursor-pointer group">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-base truncate">{doc.name}</h3>
-              {doc.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                  {doc.description}
-                </p>
-              )}
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-            onClick={(e) => onDeleteClick(e, doc)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+    <div
+      onClick={() => window.location.href = `/documents/${doc.id}`}
+      className="bg-white rounded-xl p-4 transition-all duration-300 cursor-pointer text-gray-800 hover:shadow-lg hover:-translate-y-0.5 border border-[#d0d5dd] relative hover:z-50 h-full group"
+    >
+      {/* Header: Name, Project, Updated At */}
+      <div className="flex justify-between items-start gap-2 mb-3">
+        <div className="pr-2 flex flex-col">
+          <span className="text-sm font-bold text-gray-900 line-clamp-1 mb-0.5" title={doc.name}>
+            {doc.name}
+          </span>
+          <span className="text-xs font-medium text-gray-600 line-clamp-2" title={doc.project_name}>
+            {doc.project_name || 'General'}
+          </span>
         </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Project:</span>
-            <Link
-              to={`/projects/${doc.project}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-xs hover:text-primary font-medium truncate"
-            >
-              {doc.project_name || `Project ${doc.project}`}
-            </Link>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Badge variant="outline" className="text-xs">
-              {doc.file_type}
-            </Badge>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(doc.status)}`}
-            >
-              {doc.status.replace('_', ' ')}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-            <span>Updated {formatRelativeTime(doc.updated_at)}</span>
-            <span className="font-medium">
-              {doc.assigned_users && doc.assigned_users.length > 0
-                ? doc.assigned_users[0].full_name || doc.assigned_users[0].username
-                : doc.created_by?.full_name || doc.created_by?.username || 'System'}
-            </span>
-          </div>
+        <div className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
+          {formatRelativeTime(doc.updated_at)}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Middle: Type */}
+      <div className="space-y-1 text-xs text-gray-500 mb-6">
+        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase border border-gray-200">
+          {doc.file_type}
+        </span>
+      </div>
+      
+      {/* Trash Button */}
+      <button
+        onClick={(e) => onDeleteClick(e, doc)}
+        className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-all duration-200 p-1.5 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
+        title="Delete Document"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+
+      {/* Status Badge */}
+      <div className="absolute bottom-3 right-3">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusStyle}`}>
+          {doc.status.replace('_', ' ')}
+        </span>
+      </div>
+    </div>
   );
 }

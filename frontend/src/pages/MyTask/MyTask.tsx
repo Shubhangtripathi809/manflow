@@ -51,11 +51,16 @@ export const TaskCard: React.FC<{ task: Task; onTaskClick: (task: Task) => void 
             className={`${statusConfig.cardClass} rounded-xl p-4 transition-all duration-300 cursor-pointer text-gray-800 hover:shadow-lg hover:-translate-y-0.5 border border-[#d0d5dd] relative hover:z-50`}
         >
             <div className="flex justify-between items-start gap-2 mb-3">
-                <div className="text-xs font-bold text-black-600 pr-2">
-                    {task.heading || 'No Task'}
+                <div className="pr-2 flex flex-col">
+                    <span className="text-sm font-bold text-gray-900 line-clamp-1 mb-0.5">
+                        {task.project_details?.name || task.project_name || 'No Project'}
+                    </span>
+                    <span className="text-xs font-medium text-gray-600 line-clamp-2">
+                        {task.heading || 'No Task'}
+                    </span>
                 </div>
                 {task.updated_at && (
-                    <div className="text-[10px] text-gray-400 whitespace-nowrap">
+                    <div className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
                         {formatRelativeTime(task.updated_at)}
                     </div>
                 )}
@@ -133,11 +138,14 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
     const [projectFilter, setProjectFilter] = useState('');
     const [showTitleSearch, setShowTitleSearch] = useState(false);
     const [titleFilter, setTitleFilter] = useState('');
+    const [showPrioritySearch, setShowPrioritySearch] = useState(false);
+    const [priorityFilter, setPriorityFilter] = useState('');
 
     const filteredTasks = React.useMemo(() => {
         return tasks.filter(task => {
             const projectName = (task.project_details?.name || task.project_name || '').toLowerCase();
             const taskTitle = (task.heading || '').toLowerCase();
+            const taskPriority = (task.priority || '').toLowerCase();
 
             // Check Project Filter
             if (projectFilter && !projectName.startsWith(projectFilter.toLowerCase())) {
@@ -147,9 +155,13 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
             if (titleFilter && !taskTitle.startsWith(titleFilter.toLowerCase())) {
                 return false;
             }
+            // Check Priority Filter
+            if (priorityFilter && !taskPriority.startsWith(priorityFilter.toLowerCase())) {
+                return false;
+            }
             return true;
         });
-    }, [tasks, projectFilter, titleFilter]);
+    }, [tasks, projectFilter, titleFilter, priorityFilter]);
 
     // Close label dropdown on outside click
     React.useEffect(() => {
@@ -301,7 +313,30 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
 
                         <th className="jira-th jira-th-status border-r border-[#dfe1e6]">Status</th>
                         <th className="jira-th jira-th-assignee border-r border-[#dfe1e6]">Assignee</th>
-                        <th className="jira-th jira-th-priority border-r border-[#dfe1e6]">Priority</th>
+
+                        {/* Priority Column with Search */}
+                        <th className="jira-th jira-th-priority border-r border-[#dfe1e6]">
+                            <div className="flex items-center justify-between gap-1">
+                                <span>Priority</span>
+                                <Search
+                                    className="w-3 h-3 cursor-pointer text-gray-400 hover:text-blue-600"
+                                    onClick={(e) => { e.stopPropagation(); setShowPrioritySearch(!showPrioritySearch); }}
+                                />
+                            </div>
+                            {showPrioritySearch && (
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Filter priority..."
+                                    className="mt-1 w-full text-[11px] border border-blue-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 font-normal bg-white text-gray-700"
+                                    value={priorityFilter}
+                                    onChange={(e) => setPriorityFilter(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.key === 'Enter' && setShowPrioritySearch(false)}
+                                />
+                            )}
+                        </th>
+
                         <th className="jira-th jira-th-labels border-r border-[#dfe1e6]">Labels</th>
                         <th className="jira-th jira-th-date border-r border-[#dfe1e6]">Due Date</th>
                         <th className="jira-th jira-th-duration">Duration</th>

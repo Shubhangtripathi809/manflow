@@ -15,9 +15,11 @@ import { notificationsApi } from '@/services/api';
 
 const ADMIN_ROLES = ['admin', 'manager', 'annotator'];
 
-// Helper component for Favourite Projects within the accordion
+// Favourite Projects within the accordion
 const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
   const favProjects = useMemo(() => {
     return projects.filter(p =>
       p.is_favourite && p.members?.some(member => member.user.id === user?.id)
@@ -33,7 +35,7 @@ const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
           key={project.id}
           to={`/projects/${project.id}`}
           className={({ isActive }) =>
-            cn('flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+            cn('flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors group relative pr-8', // Added group, relative, and padding-right
               isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground')
           }
         >
@@ -41,6 +43,20 @@ const FavouriteProjectsAccordion = ({ projects }: { projects: Project[] }) => {
             {project.name.charAt(0)}
           </div>
           <span className="truncate">{project.name}</span>
+
+          {/* Create Task Shortcut Icon */}
+          <div
+            role="button"
+            className="absolute right-2 p-0.5 rounded-md hover:bg-background/50 hover:text-primary text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate('/taskboard/create', { state: { projectId: project.id } });
+            }}
+            title="Create Task"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </div>
         </NavLink>
       ))}
     </div>
@@ -67,11 +83,11 @@ export function Sidebar() {
     queryFn: () => projectsApi.list(),
   });
 
-  // Fetching notification summary here makes it available to the entire Sidebar
+  // Fetching notification
   const { data: notifySummary } = useQuery({
     queryKey: ['notifications-summary'],
     queryFn: () => notificationsApi.getSummary(),
-    refetchInterval: 30000, // Sync every 30 seconds
+    refetchInterval: 30000,
   });
 
   const projects = useMemo(() => {
@@ -92,13 +108,12 @@ export function Sidebar() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Header with "Z" Toggle Button */}
+      {/* "Z" Toggle Button */}
       <div className="flex h-16 items-center px-4 border-b">
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-all",
-            // If NOT collapsed (fixed expanded state), apply specific green color
             !isCollapsed
               ? "bg-indigo-300 text-white"
               : "bg-primary text-primary-foreground hover:opacity-90"
@@ -123,28 +138,20 @@ export function Sidebar() {
               !isExpanded && "justify-center px-0")
           }
         >
-          <LayoutDashboard className="h-6 w-6 shrink-0" />
+          <LayoutDashboard className="h-5 w-5 shrink-0" />
           {isExpanded && <span>Dashboard</span>}
         </NavLink>
 
         {/* Projects Accordion */}
         <div className="space-y-1">
           <div
-            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
               location.pathname.startsWith('/projects') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
-              !isExpanded && "justify-center px-0 cursor-pointer")}
-            onClick={() => !isExpanded && navigate('/projects')}
+              !isExpanded && "justify-center px-0")}
+            onClick={() => navigate('/projects')}
           >
-            <div
-              className={cn("flex items-center gap-3", isExpanded && "flex-1 cursor-pointer")}
-              onClick={(e) => {
-                if (isExpanded) {
-                  e.stopPropagation();
-                  navigate('/projects');
-                }
-              }}
-            >
-              <FolderKanban className="h-6 w-6 shrink-0" />
+            <div className={cn("flex items-center gap-3", isExpanded && "flex-1")}>
+              <FolderKanban className="h-5 w-5 shrink-0" />
               {isExpanded && <span className="flex-1">Projects</span>}
             </div>
 
@@ -156,7 +163,7 @@ export function Sidebar() {
                   setIsProjectsOpen(!isProjectsOpen);
                 }}
               >
-                {isProjectsOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
+                {isProjectsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </div>
             )}
           </div>
@@ -166,21 +173,13 @@ export function Sidebar() {
         {/* Tasks Accordion */}
         <div className="space-y-1">
           <div
-            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+            className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
               location.pathname.startsWith('/taskboard') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
-              !isExpanded && "justify-center px-0 cursor-pointer")}
-            onClick={() => !isExpanded && navigate('/taskboard')}
+              !isExpanded && "justify-center px-0")}
+            onClick={() => navigate('/taskboard')}
           >
-            <div
-              className={cn("flex items-center gap-3", isExpanded && "flex-1 cursor-pointer")}
-              onClick={(e) => {
-                if (isExpanded) {
-                  e.stopPropagation();
-                  navigate('/taskboard');
-                }
-              }}
-            >
-              <CheckSquare className="h-6 w-6 shrink-0" />
+            <div className={cn("flex items-center gap-3", isExpanded && "flex-1")}>
+              <CheckSquare className="h-5 w-5 shrink-0" />
               {isExpanded && <span className="flex-1">My Tasks</span>}
             </div>
             {isExpanded && (
@@ -191,7 +190,7 @@ export function Sidebar() {
                   setIsTasksOpen(!isTasksOpen);
                 }}
               >
-                {isTasksOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
+                {isTasksOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </div>
             )}
           </div>
@@ -206,7 +205,7 @@ export function Sidebar() {
                 { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
                 { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
                 { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
-            ].map((sub) => (
+              ].map((sub) => (
                 <NavLink
                   key={sub.name}
                   to={sub.href}
@@ -220,7 +219,7 @@ export function Sidebar() {
                     )
                   }
                 >
-                  <sub.icon className="h-6 w-6" /> {sub.name}
+                  <sub.icon className="h-3.5 w-3.5" /> {sub.name}
                 </NavLink>
               ))}
             </div>
@@ -243,9 +242,9 @@ export function Sidebar() {
                 !isExpanded && "justify-center px-0")
             }
           >
-            {/* <div className="relative"> */}
+            <div className="relative">
               <item.icon className="h-5 w-5 shrink-0" />
-              {/* {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
+              {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ee6b6e] text-[10px] font-bold text-white">
                   {notifySummary?.unread}
                 </span>
@@ -275,10 +274,10 @@ export function Sidebar() {
             {isExpanded && isAdminOpen && (
               <div className="ml-4 border-l pl-2 space-y-1 animate-in slide-in-from-left-2">
                 <NavLink to="/admin/user-roles" className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary">
-                  <Users className="h-6 w-6" /> Roles
+                  <Users className="h-3.5 w-3.5" /> Roles
                 </NavLink>
                 <NavLink to="/admin/team-performance" className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-primary">
-                  <TrendingUp className="h-6 w-6" /> Performance
+                  <TrendingUp className="h-3.5 w-3.5" /> Performance
                 </NavLink>
               </div>
             )}
