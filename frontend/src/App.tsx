@@ -131,7 +131,7 @@ function AppRoutes() {
         <Route path="/projects/:id/api-testing" element={<APITesting />} />
         <Route path="/projects/:projectId/documents/new" element={<DocumentCreate />} />
         <Route path="/projects/:id/settings" element={<ProjectSettings />} />
-        {/* <Route path="/notifications" element={<NotificationsPage />} /> */}
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/documents/:id" element={<DocumentDetail />} />
         <Route path="/calendar" element={<Calendar />} />

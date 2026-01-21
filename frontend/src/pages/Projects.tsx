@@ -1,23 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, FolderKanban, FileText, Users, UsersIcon } from 'lucide-react';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-} from '@/components/common';
+import { Plus, FolderKanban } from 'lucide-react';
+import { Button, Card, CardContent } from '@/components/common';
 import { projectsApi } from '@/services/api';
-import { formatRelativeTime, getProjectTypeColor } from '@/lib/utils';
 import type { Project } from '@/types';
+import {
+  ViewToggle,
+  DualView,
+  useViewMode,
+} from '@/components/layout/DualView';
+import {
+  projectsTableColumns,
+  ProjectGridCard,
+} from '@/components/layout/DualView/projectsConfig';
 
 export function Projects() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>('');
-  const [openMembersCard, setOpenMembersCard] = useState<number | null>(null);
+  const { viewMode, setViewMode } = useViewMode({
+    defaultMode: 'grid',
+    storageKey: 'projects-view-mode',
+  });
 
   const toggleFavorite = async (e: React.MouseEvent, project: Project) => {
     e.preventDefault();
@@ -25,28 +29,31 @@ export function Projects() {
 
     try {
       await projectsApi.update(project.id, {
-        is_favourite: !project.is_favourite
+        is_favourite: !project.is_favourite,
       });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     } catch (error) {
-      console.error("Failed to toggle favorite:", error);
+      console.error('Failed to toggle favorite:', error);
     }
   };
 
   const { data, isLoading } = useQuery({
-  queryKey: ['projects', filter],
-  queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
-  staleTime: 1000 * 60 * 10, 
-  refetchOnMount: true,
-  refetchOnWindowFocus: false,
-  refetchOnReconnect: false,
-});
+    queryKey: ['projects', filter],
+    queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
+    staleTime: 1000 * 60 * 10,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
   const projects = (() => {
-
     if (!data) return [];
     if (Array.isArray(data)) return data;
-    if (typeof data === 'object' && 'results' in data && Array.isArray(data.results)) {
+    if (
+      typeof data === 'object' &&
+      'results' in data &&
+      Array.isArray(data.results)
+    ) {
       return data.results;
     }
     return [];
@@ -233,7 +240,7 @@ export function Projects() {
                     </div>
 
                     {/* Member Names Section */}
-                    {/* {project.members && project.members.length > 0 && (
+                    {project.members && project.members.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {project.members.slice(0, 3).map((member) => (
                           <Badge
@@ -249,7 +256,7 @@ export function Projects() {
                           </span>
                         )}
                       </div>
-                    )} */}
+                    )}
                   </div>
                 </CardContent>
               </Card>
