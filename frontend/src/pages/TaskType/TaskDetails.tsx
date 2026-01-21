@@ -23,7 +23,7 @@ import type { Task } from '@/types';
 // ).toString();
 
 type TabType = 'tasks' | 'add_documents' | 'gt' | 'api_testing';
-type StatusFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'revision_needed';
+type StatusFilter = 'all' | 'completed' | 'in_progress' | 'pending' | 'backlog' | 'deployed' | 'deferred';
 type GTFileType = 'gt' | 'running_gt';
 
 interface GTFile {
@@ -687,10 +687,17 @@ export function TaskDetails() {
 
     const statusCounts = {
         all: tasks.length,
-        pending: tasks.filter(t => t.status.toLowerCase() === 'pending').length,
-        in_progress: tasks.filter(t => t.status.toLowerCase() === 'in_progress').length,
         completed: tasks.filter(t => t.status.toLowerCase() === 'completed').length,
-        revision_needed: tasks.filter(t => t.status.toLowerCase() === 'revision_needed').length,
+        in_progress: tasks.filter(t => t.status.toLowerCase() === 'in_progress').length,
+        pending: tasks.filter(t => t.status.toLowerCase() === 'pending').length,
+        backlog: tasks.filter(t => t.status.toLowerCase() === 'backlog').length,
+        deployed: tasks.filter(t => t.status.toLowerCase() === 'deployed').length,
+        deferred: tasks.filter(t => t.status.toLowerCase() === 'deferred').length,
+    };
+
+    const getStatusLabel = (status: string) => {
+        if (status === 'all') return 'Total Task';
+        return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
 
     if (isProjectLoading) return <div className="content-creation-loading"><Loader2 className="animate-spin" /></div>;
@@ -713,8 +720,6 @@ export function TaskDetails() {
                         </div>
                     </div>
                 )}
-
-                {/* Only show tabs if comparison view is NOT open */}
                 {!comparisonView.isOpen && (
                     <div className="content-creation__tabs">
                         {(['tasks', 'add_documents', 'gt', 'api_testing'] as TabType[]).map((tab) => (
@@ -723,16 +728,16 @@ export function TaskDetails() {
                                 className={`content-creation__tab ${activeTab === tab ? 'content-creation__tab--active' : ''}`}
                                 onClick={() => setActiveTab(tab)}
                             >
-                                {tab === 'add_documents' ? 'Add Documents' : tab.toUpperCase()}
+                                {tab === 'add_documents' ? 'Documents' : tab.toUpperCase()}
                             </button>
                         ))}
                         <button className="content-creation__tab content-creation__tab--create-task" onClick={() => setIsCreateTaskModalOpen(true)}>
                             <Plus className="h-4 w-4" /> Create Task
                         </button>
 
-                        {/* Project Settings Button Moved Here */}
-                        <button 
-                            onClick={() => navigate(`/projects/${id}/settings`)} 
+                        {/* Project Settings */}
+                        <button
+                            onClick={() => navigate(`/projects/${id}/settings`)}
                             className="p-2 hover:bg-gray-100 rounded-full flex items-center gap-2"
                         >
                             <Settings className="h-5 w-5" />
@@ -992,16 +997,16 @@ export function TaskDetails() {
                 <div className="content-creation__sidebar-section">
                     <h3 className="content-creation__sidebar-title">FILTER BY STATUS</h3>
                     <div className="content-creation__sidebar-filters">
-                        {(['all', 'pending', 'in_progress', 'completed', 'revision_needed'] as StatusFilter[]).map((status) => (
+                        {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred'] as StatusFilter[]).map((status) => (
                             <button
                                 key={status}
                                 className={`content-creation__sidebar-filter ${statusFilter === status ? 'content-creation__sidebar-filter--active' : ''}`}
                                 onClick={() => setStatusFilter(status)}
                             >
                                 <span className="content-creation__sidebar-filter-label">
-                                    {status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1)}
+                                    {getStatusLabel(status)}
                                 </span>
-                                <span className="content-creation__sidebar-filter-count">{statusCounts[status as keyof typeof statusCounts]}</span>
+                                <span className="content-creation__sidebar-filter-count">{statusCounts[status]}</span>
                             </button>
                         ))}
                     </div>

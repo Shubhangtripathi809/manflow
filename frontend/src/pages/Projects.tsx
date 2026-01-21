@@ -233,7 +233,7 @@ export function Projects() {
                     </div>
 
                     {/* Member Names Section */}
-                    {project.members && project.members.length > 0 && (
+                    {/* {project.members && project.members.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {project.members.slice(0, 3).map((member) => (
                           <Badge
@@ -249,7 +249,7 @@ export function Projects() {
                           </span>
                         )}
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </CardContent>
               </Card>

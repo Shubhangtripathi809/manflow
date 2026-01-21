@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskDetailModal } from './TaskDetailModal';
 import { AITask } from './AITask';
 import { Task } from '@/types';
+import { formatRelativeTime } from '@/lib/utils';
 
 
 const formatDate = (dateString: string) => {
@@ -49,8 +50,15 @@ export const TaskCard: React.FC<{ task: Task; onTaskClick: (task: Task) => void 
             onClick={() => onTaskClick(task)}
             className={`${statusConfig.cardClass} rounded-xl p-4 transition-all duration-300 cursor-pointer text-gray-800 hover:shadow-lg hover:-translate-y-0.5 border border-[#d0d5dd] relative hover:z-50`}
         >
-            <div className="text-xs font-bold text-black-600 mb-3 pr-2">
-                {task.heading || 'No Task'}
+            <div className="flex justify-between items-start gap-2 mb-3">
+                <div className="text-xs font-bold text-black-600 pr-2">
+                    {task.heading || 'No Task'}
+                </div>
+                {task.updated_at && (
+                    <div className="text-[10px] text-gray-400 whitespace-nowrap">
+                        {formatRelativeTime(task.updated_at)}
+                    </div>
+                )}
             </div>
 
             {/* Task Details */}
@@ -661,7 +669,7 @@ export const MyTask: React.FC = () => {
 
                             {/* Stats Grid - Right Sidebar */}
                             <div className="stats-right-sidebar">
-                                <h3 className="stats-sidebar-title">Filter By Status</h3>
+                                <h3 className="stats-sidebar-title">FILTER BY STATUS</h3>
                                 <div className="stat-cards-container">
                                     {[
                                         { label: 'Total Tasks', val: stats.total, color: 'text-gray-900', bgColor: 'bg-gray-50', iconColor: 'text-gray-400', filter: 'ALL', icon: CheckSquare },

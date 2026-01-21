@@ -32,7 +32,7 @@ import './ContentCreation.scss';
 // ).toString();
 
 type TabType = 'tasks' | 'calendar' | 'media';
-type StatusFilter = 'all' | 'todo' | 'draft' | 'inProgress' | 'inReview' | 'completed' | 'revisionNeeded';
+type StatusFilter = 'all' | 'completed' | 'in_progress' | 'pending' | 'backlog' | 'deployed' | 'deferred';
 type MediaTag = 'final' | 'draft' | 'rawFootage' | 'approved' | 'wip' | 'reference';
 
 interface Task {
@@ -505,20 +505,17 @@ export function ContentCreation() {
 
     const statusCounts = {
         all: tasks.length,
-        todo: tasks.filter(t => t.status.toLowerCase() === 'pending').length,
-        draft: tasks.filter(t => t.status.toLowerCase() === 'draft').length,
-        inProgress: tasks.filter(t => t.status.toLowerCase() === 'in_progress').length,
-        inReview: tasks.filter(t => t.status.toLowerCase() === 'in_review').length,
         completed: tasks.filter(t => t.status.toLowerCase() === 'completed').length,
-        revisionNeeded: tasks.filter(t => t.status.toLowerCase() === 'revision_needed').length,
+        in_progress: tasks.filter(t => t.status.toLowerCase() === 'in_progress').length,
+        pending: tasks.filter(t => t.status.toLowerCase() === 'pending').length,
+        backlog: tasks.filter(t => t.status.toLowerCase() === 'backlog').length,
+        deployed: tasks.filter(t => t.status.toLowerCase() === 'deployed').length,
+        deferred: tasks.filter(t => t.status.toLowerCase() === 'deferred').length,
     };
 
     const getStatusLabel = (status: StatusFilter): string => {
-        const labels: Record<StatusFilter, string> = {
-            all: 'All', todo: 'Pending', draft: 'Draft', inProgress: 'In Progress',
-            inReview: 'In Review', completed: 'Completed', revisionNeeded: 'Revision Needed'
-        };
-        return labels[status];
+        if (status === 'all') return 'Total Task';
+        return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
 
     const handleTaskCreated = () => {
@@ -612,9 +609,9 @@ export function ContentCreation() {
                                 <div className="flex justify-center p-12">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
                                 </div>
-                            ) : tasks.length > 0 ? (
+                            ) : tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter).length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {tasks.map((task) => (
+                                    {tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter).map((task) => (
                                         <TaskCard
                                             key={task.id}
                                             task={task as any}
@@ -719,7 +716,7 @@ export function ContentCreation() {
                     <div className="content-creation__sidebar-section">
                         <h3 className="content-creation__sidebar-title">Filter by Status</h3>
                         <div className="content-creation__sidebar-filters">
-                            {(['all', 'todo', 'draft', 'inProgress', 'inReview', 'completed', 'revisionNeeded'] as StatusFilter[]).map((status) => (
+                            {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred'] as StatusFilter[]).map((status) => (
                                 <button
                                     key={status}
                                     className={`content-creation__sidebar-filter ${statusFilter === status ? 'content-creation__sidebar-filter--active' : ''}`}
