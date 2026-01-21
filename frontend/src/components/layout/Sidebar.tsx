@@ -68,11 +68,11 @@ export function Sidebar() {
   });
 
   // Fetching notification summary here makes it available to the entire Sidebar
-  // const { data: notifySummary } = useQuery({
-  //   queryKey: ['notifications-summary'],
-  //   queryFn: () => notificationsApi.getSummary(),
-  //   refetchInterval: 30000, // Sync every 30 seconds
-  // });
+  const { data: notifySummary } = useQuery({
+    queryKey: ['notifications-summary'],
+    queryFn: () => notificationsApi.getSummary(),
+    refetchInterval: 30000, // Sync every 30 seconds
+  });
 
   const projects = useMemo(() => {
     if (!projectsData) return [];
@@ -231,7 +231,7 @@ export function Sidebar() {
         {[
           { name: 'Documents', href: '/documents', icon: FileText },
           { name: 'Calendar', href: '/calendar', icon: Calendar },
-          // { name: 'Activity', href: '/notifications', icon: Bell },
+          { name: 'Activity', href: '/notifications', icon: Bell },
           { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
         ].map((item) => (
           <NavLink
@@ -243,14 +243,14 @@ export function Sidebar() {
                 !isExpanded && "justify-center px-0")
             }
           >
-            {/* <div className="relative"> */}
+            <div className="relative">
               <item.icon className="h-5 w-5 shrink-0" />
-              {/* {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
+              {item.name === 'Activity' && (notifySummary?.unread ?? 0) > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#ee6b6e] text-[10px] font-bold text-white">
                   {notifySummary?.unread}
                 </span>
               )}
-            </div> */}
+            </div>
             {isExpanded && <span>{item.name}</span>}
           </NavLink>
         ))}
