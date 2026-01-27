@@ -3,7 +3,7 @@ import type {
   AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
   GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
   APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
-  Label
+  Label, DocumentStatus
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.12:8000/api/v1';
@@ -320,6 +320,12 @@ export const documentsApi = {
 
   update: async (id: string, data: Partial<{ name: string; description: string }>) => {
     const response = await api.patch(`/documents/${id}/`, data);
+    return response.data;
+  },
+
+  // Update document status in documents page 
+  updateStatus: async (id: string, status: DocumentStatus) => {
+    const response = await api.patch(`/documents/${id}/`, { status });
     return response.data;
   },
 

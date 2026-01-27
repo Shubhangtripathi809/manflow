@@ -212,7 +212,7 @@ export function MediaPreviewModal({
                             </pre>
                         </div>
                     ) : pptTypes.includes(fileExtension) || docTypes.includes(fileExtension) || xmlTypes.includes(fileExtension) ? (
-                        // PPT, DOC, XML - Open in new tab/external viewer
+                        // PPT, DOC, XML - Open in new tab viewer
                         <div className="flex flex-col items-center gap-4">
                             <FileText className="h-20 w-20 text-gray-400" />
                             <p className="text-lg font-medium mt-4">
@@ -380,7 +380,7 @@ export function MediaThumbnail({ file, projectId }: { file: any; projectId: numb
                         <PDFDocument file={downloadUrl} loading="">
                             <PDFPage
                                 pageNumber={1}
-                                width={250} // Reduced base width for better scaling
+                                width={250}
                                 renderTextLayer={false}
                                 renderAnnotationLayer={false}
                             />
@@ -489,13 +489,17 @@ export function ContentCreation() {
                 file_type: mappedType,
             });
 
-            // Step 4: Call Get Download URL (Required to verify the flow is complete)
+            // Step 4: Call Get Download URL
             if (confirmResponse.id) {
                 await documentsApi.getDownloadUrl(projectIdNum, { document_id: confirmResponse.id });
             }
 
             // Refresh the media list
             queryClient.invalidateQueries({ queryKey: ['documents', { project: id }] });
+            await queryClient.refetchQueries({
+                queryKey: ['documents'],
+                type: 'active'
+            });
         } catch (err: any) {
             setUploadError(err.message || 'Upload failed');
         } finally {

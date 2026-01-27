@@ -621,6 +621,10 @@ export function TaskDetails() {
             }
 
             queryClient.invalidateQueries({ queryKey: ['documents', { project: id }] });
+            await queryClient.refetchQueries({
+                queryKey: ['documents'],
+                type: 'active'
+            });
         } catch (err: any) {
             setUploadError(err.message || 'Upload failed');
         } finally {
@@ -669,6 +673,10 @@ export function TaskDetails() {
             }
 
             queryClient.invalidateQueries({ queryKey: ['gt-documents', { project: id }] });
+            await queryClient.refetchQueries({
+                queryKey: ['documents'],
+                type: 'active'
+            });
         } catch (err: any) {
             throw new Error(err.message || 'Upload failed');
         }
@@ -998,7 +1006,7 @@ export function TaskDetails() {
                 <div className="content-creation__sidebar-section">
                     <h3 className="content-creation__sidebar-title">FILTER BY STATUS</h3>
                     <div className="content-creation__sidebar-filters">
-                        {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred', 'review' ] as StatusFilter[]).map((status) => (
+                        {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred', 'review'] as StatusFilter[]).map((status) => (
                             <button
                                 key={status}
                                 className={`content-creation__sidebar-filter ${statusFilter === status ? 'content-creation__sidebar-filter--active' : ''}`}

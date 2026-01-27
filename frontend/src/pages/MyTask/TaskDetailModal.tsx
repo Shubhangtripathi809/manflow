@@ -310,6 +310,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             await queryClient.invalidateQueries({ queryKey: ['task-documents', task.id] });
             await queryClient.invalidateQueries({ queryKey: ['tasks'] });
             await queryClient.invalidateQueries({ queryKey: ['task-detail', task.id] });
+            await queryClient.refetchQueries({
+                queryKey: ['documents'],
+                type: 'active'
+            });
 
         } catch (err: any) {
             console.error('Upload failed:', err);
@@ -348,14 +352,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         }
     };
 
-   const handleDeleteAttachment = async (attachmentId: string) => {
+    const handleDeleteAttachment = async (attachmentId: string) => {
         try {
             await documentsApi.delete(attachmentId);
             queryClient.setQueryData(['task-documents', task.id], (oldDocs: any[] | undefined) => {
                 return (oldDocs || []).filter((doc) => doc.id.toString() !== attachmentId);
             });
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            
+
             setDeleteAttachmentConfirm(null);
         } catch (error) {
             console.error('Failed to delete attachment:', error);
