@@ -32,7 +32,7 @@ import './ContentCreation.scss';
 // ).toString();
 
 type TabType = 'tasks' | 'calendar' | 'media';
-type StatusFilter = 'all' | 'completed' | 'in_progress' | 'pending' | 'backlog' | 'deployed' | 'deferred';
+type StatusFilter = 'all' | 'completed' | 'in_progress' | 'pending' | 'backlog' | 'deployed' | 'deferred' | 'review';
 type MediaTag = 'final' | 'draft' | 'rawFootage' | 'approved' | 'wip' | 'reference';
 
 interface Task {
@@ -511,6 +511,7 @@ export function ContentCreation() {
         backlog: tasks.filter(t => t.status.toLowerCase() === 'backlog').length,
         deployed: tasks.filter(t => t.status.toLowerCase() === 'deployed').length,
         deferred: tasks.filter(t => t.status.toLowerCase() === 'deferred').length,
+        review: tasks.filter(t => t.status.toLowerCase() === 'review').length,
     };
 
     const getStatusLabel = (status: StatusFilter): string => {
@@ -716,7 +717,7 @@ export function ContentCreation() {
                     <div className="content-creation__sidebar-section">
                         <h3 className="content-creation__sidebar-title">Filter by Status</h3>
                         <div className="content-creation__sidebar-filters">
-                            {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred'] as StatusFilter[]).map((status) => (
+                            {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred', 'review'] as StatusFilter[]).map((status) => (
                                 <button
                                     key={status}
                                     className={`content-creation__sidebar-filter ${statusFilter === status ? 'content-creation__sidebar-filter--active' : ''}`}

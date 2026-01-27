@@ -145,7 +145,7 @@ export interface Task {
   assigned_to_user_details: User[];
   assigned_by: number;
   assigned_by_user_details?: User;
-  status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | string;
+  status: 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | 'review' | string;
   labels?: Label[];
   links?: TaskLink[];
   attachments?: TaskAttachment[];

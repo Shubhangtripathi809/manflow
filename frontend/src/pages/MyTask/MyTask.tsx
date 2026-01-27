@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-    CheckSquare, Calendar, Clock, Plus, Grid3X3, List, Search, Users, AlertCircle, CheckCircle, PlayCircle, Pause, Bell, ListTodo, X
+    CheckSquare, Calendar, Clock, Plus,Eye, Grid3X3, List, Search, Users, AlertCircle, CheckCircle, PlayCircle, Pause, Bell, ListTodo, X
 } from 'lucide-react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +38,8 @@ export const getStatusConfig = (status: Task['status']) => {
             return { bg: 'bg-purple-50', text: 'text-purple-800', badge: 'bg-purple-50 text-purple-600 border border-purple-200', cardClass: 'card-deployed', label: 'DEPLOYED', icon: CheckSquare, color: '#8b5cf6' };
         case 'DEFERRED':
             return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-100 text-gray-600 border border-gray-200', cardClass: 'card-deferred', label: 'DEFERRED', icon: Pause, color: '#6b7280' };
+        case 'REVIEW':
+            return { bg: 'bg-indigo-50', text: 'text-indigo-800', badge: 'bg-indigo-100 text-indigo-600 border border-indigo-200', cardClass: 'card-review', label: 'REVIEW', icon: Eye, color: '#6366f1' };
         default:
             return { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-100 text-gray-600 border border-gray-200', cardClass: 'card-gray', label: normalizedStatus, icon: AlertCircle, color: '#9ca3af' };
     }
@@ -241,6 +243,8 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
         { value: 'completed', label: 'COMPLETED', icon: CheckCircle },
         { value: 'deployed', label: 'DEPLOYED', icon: CheckSquare },
         { value: 'deferred', label: 'DEFERRED', icon: Pause },
+        { value: 'review', label: 'REVIEW', icon: Eye },
+
     ];
 
     const handleDateChange = async (taskId: number, field: 'start_date' | 'end_date', value: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -638,6 +642,8 @@ export const MyTask: React.FC = () => {
         inProgress: tasks.filter((t: Task) => t.status.toLowerCase() === 'in_progress').length,
         deployed: tasks.filter((t: Task) => t.status.toLowerCase() === 'deployed').length,
         deferred: tasks.filter((t: Task) => t.status.toLowerCase() === 'deferred').length,
+        review: tasks.filter((t: Task) => t.status.toLowerCase() === 'review').length,
+
     };
 
     const handleAITaskGenerate = useCallback(async (projectId: number, description: string) => {
@@ -713,7 +719,8 @@ export const MyTask: React.FC = () => {
                                         { label: 'Pending', val: stats.pending, color: 'text-yellow-600', bgColor: 'bg-yellow-50', iconColor: 'text-yellow-500', filter: 'PENDING', icon: AlertCircle },
                                         { label: 'Backlog', val: stats.backlog, color: 'text-orange-600', bgColor: 'bg-orange-50', iconColor: 'text-orange-400', filter: 'BACKLOG', icon: ListTodo },
                                         { label: 'Deployed', val: stats.deployed, color: 'text-purple-600', bgColor: 'bg-purple-50', iconColor: 'text-purple-500', filter: 'DEPLOYED', icon: CheckSquare },
-                                        { label: 'Deferred', val: stats.deferred, color: 'text-gray-600', bgColor: 'bg-gray-100', iconColor: 'text-gray-400', filter: 'DEFERRED', icon: Pause }
+                                        { label: 'Deferred', val: stats.deferred, color: 'text-gray-600', bgColor: 'bg-gray-100', iconColor: 'text-gray-400', filter: 'DEFERRED', icon: Pause },
+                                        { label: 'Review', val: stats.review, color: 'text-indigo-600', bgColor: 'bg-indigo-100', iconColor: 'text-indigo-400', filter: 'REVIEW', icon: Eye }
                                     ].map(s => {
                                         const IconComponent = s.icon;
                                         return (

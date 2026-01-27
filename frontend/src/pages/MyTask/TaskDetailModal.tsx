@@ -51,8 +51,6 @@ interface TaskDetailModalProps {
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, onDelete, onTaskUpdated }) => {
-    console.log('🔍 [TaskDetailModal] Initial task prop:', task);
-    console.log('🔍 [TaskDetailModal] Initial task.links:', task.links);
     const taskWithLabels = React.useMemo(() => ({
         ...task,
         labels: (task as any).label_details || task.labels || []
@@ -75,15 +73,42 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
     const [showAddUsersDropdown, setShowAddUsersDropdown] = useState(false);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [editableDescription, setEditableDescription] = useState(task.description);
+    const [deleteAttachmentConfirm, setDeleteAttachmentConfirm] = useState<{
+        id: string;
+        name: string;
+    } | null>(null);
     const getInitialLinks = (taskLinks: TaskLink[] | undefined): string[] => {
         if (!taskLinks) return [];
         return taskLinks.map(link => {
             return typeof link === 'object' && link.url ? link.url : String(link);
         });
     };
-    const { data: fullTaskDetails } = useQuery({
+    const { data: fullTaskDetails, refetch: refetchTaskDetails } = useQuery({
         queryKey: ['task-detail', task.id],
         queryFn: () => taskApi.get(task.id),
+        enabled: !!task.id,
+    });
+
+    // Query to fetch documents associated with this task
+    const { data: taskDocuments } = useQuery({
+        queryKey: ['task-documents', task.id],
+        queryFn: async () => {
+            try {
+                const projectId = task.project || (task as any).project_details?.id;
+                if (!projectId) return [];
+
+                const response = await documentsApi.list({ project: projectId });
+                const allDocs = response.results || response.documents || [];
+                const taskDocs = allDocs.filter((doc: any) =>
+                    doc.metadata?.task_id === task.id ||
+                    doc.task_id === task.id
+                );
+                return taskDocs;
+            } catch (error) {
+                console.error('Failed to fetch task documents:', error);
+                return [];
+            }
+        },
         enabled: !!task.id,
     });
 
@@ -129,6 +154,27 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         if (commentsData.results && Array.isArray(commentsData.results)) return commentsData.results;
         return [];
     }, [commentsData]);
+
+    const displayAttachments = React.useMemo(() => {
+        const remoteTask = fullTaskDetails?.task || fullTaskDetails;
+        const apiAttachments = remoteTask?.attachments || task.attachments || [];
+        const documentAttachments = (taskDocuments || []).map((doc: any) => ({
+            id: doc.id,
+            file_name: doc.name || doc.original_file_name || doc.file_name,
+            file_url: doc.source_file_url || doc.file_url,
+            uploaded_at: doc.created_at
+        }));
+        const combined = [...apiAttachments, ...documentAttachments];
+        const uniqueMap = new Map();
+
+        combined.forEach(item => {
+            if (item.id && !uniqueMap.has(item.id)) {
+                uniqueMap.set(item.id, item);
+            }
+        });
+
+        return Array.from(uniqueMap.values());
+    }, [fullTaskDetails, task.attachments, taskDocuments]);
 
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -234,7 +280,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                     continue;
                 }
 
-                // Step 1: get-upload-url/
+                // Step 1: Get upload URL
                 const uploadUrlResponse = await documentsApi.getUploadUrl(projectIdNum, {
                     file_name: file.name,
                     file_type: file.type || 'application/octet-stream',
@@ -242,9 +288,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
 
                 const { url: s3Url, fields: s3Fields, file_key } = uploadUrlResponse;
 
-                // Step 2: (AWS S3 Upload)
+                // Step 2: Upload to S3
                 await documentsApi.uploadFileToS3(s3Url, s3Fields, file);
-
                 const ext = file.name.split('.').pop()?.toLowerCase() || '';
                 let mappedType = 'other';
                 if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext)) mappedType = 'image';
@@ -252,8 +297,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                 else if (ext === 'json') mappedType = 'json';
                 else if (['doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) mappedType = 'document';
 
-                // Step 3: confirm-upload/
-                const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
+                // Step 3: Confirm upload
+                await documentsApi.confirmUpload(projectIdNum, {
                     file_key: file_key,
                     file_name: file.name,
                     file_type: mappedType,
@@ -261,47 +306,61 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                         task_id: task.id
                     }
                 });
-
-                // Step 4: get-download-url/
-                if (confirmResponse && confirmResponse.id) {
-                    await documentsApi.getDownloadUrl(projectIdNum, {
-                        document_id: confirmResponse.id
-                    });
-                }
             }
-
-            // Refresh UI state
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            queryClient.invalidateQueries({ queryKey: ['task-comments', task.id] });
+            await queryClient.invalidateQueries({ queryKey: ['task-documents', task.id] });
+            await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            await queryClient.invalidateQueries({ queryKey: ['task-detail', task.id] });
 
         } catch (err: any) {
-            console.error('Auto-upload failed:', err);
+            console.error('Upload failed:', err);
+            alert('Failed to upload document. Please try again.');
         } finally {
             setUploadingDocs(false);
             setNewDocuments([]);
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            e.target.value = '';
         }
     };
 
     const handleAttachmentClick = async (attachment: TaskAttachment) => {
         try {
+            if (attachment.file_url) {
+                window.open(attachment.file_url, '_blank');
+                return;
+            }
             const projectIdNum = task.project || (task as any).project_details?.id;
             if (!projectIdNum) {
-                console.error("Project ID missing for download");
+                alert('Unable to open attachment: Project information missing.');
                 return;
             }
 
-            // Get download URL
             const downloadResponse = await documentsApi.getDownloadUrl(projectIdNum, {
                 document_id: attachment.id.toString()
             });
 
             if (downloadResponse?.url) {
                 window.open(downloadResponse.url, '_blank');
+            } else {
+                alert('Unable to open attachment: Download URL not available.');
             }
         } catch (error) {
             console.error('Failed to open attachment:', error);
             alert('Failed to open attachment. Please try again.');
+        }
+    };
+
+   const handleDeleteAttachment = async (attachmentId: string) => {
+        try {
+            await documentsApi.delete(attachmentId);
+            queryClient.setQueryData(['task-documents', task.id], (oldDocs: any[] | undefined) => {
+                return (oldDocs || []).filter((doc) => doc.id.toString() !== attachmentId);
+            });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            
+            setDeleteAttachmentConfirm(null);
+        } catch (error) {
+            console.error('Failed to delete attachment:', error);
+            alert('Failed to delete attachment. Please try again.');
+            setDeleteAttachmentConfirm(null);
         }
     };
 
@@ -320,6 +379,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         { status: 'completed', icon: CheckCircle, label: 'Completed' },
         { status: 'deployed', icon: CheckSquare, label: 'Deployed' },
         { status: 'deferred', icon: Pause, label: 'Deferred' },
+        { status: 'review', icon: Pause, label: 'Review' },
     ];
 
     const isSaving = updateTaskMutation.isPending;
@@ -331,8 +391,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         >
             <div
                 className={`bg-white shadow-2xl transform transition-all flex flex-col ${isMaximized
-                        ? 'w-full h-full rounded-none fixed inset-0'
-                        : 'rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden'
+                    ? 'w-full h-full rounded-none fixed inset-0'
+                    : 'rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden'
                     }`}
                 role="dialog"
             >
@@ -676,9 +736,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                             </div>
 
                             {/* Attachment Grid */}
-                            {task.attachments && task.attachments.length > 0 && (
+                            {displayAttachments && displayAttachments.length > 0 && (
                                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {task.attachments.map(doc => (
+                                    {displayAttachments.map((doc: TaskAttachment) => (
                                         <div
                                             key={doc.id}
                                             className="flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow group h-full cursor-pointer"
@@ -691,7 +751,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                                         className="p-1.5 bg-white/90 rounded-md shadow-sm text-gray-600 hover:text-red-600"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            // Add delete functionality here if needed
+                                                            setDeleteAttachmentConfirm({
+                                                                id: doc.id.toString(),
+                                                                name: doc.file_name
+                                                            });
                                                         }}
                                                     >
                                                         <Trash2 className="w-4 h-4" />
@@ -743,25 +806,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                                 </button>
                             </div>
                         </div>
-
-                        {/* 6. Save Changes Button
-                        <div className="flex justify-start pt-4 pb-6">
-                            <button
-                                onClick={handleSaveStatus}
-                                disabled={isSaving || !hasUnsavedChanges}
-                                className={`flex items-center px-8 py-3 text-sm font-bold rounded-xl transition-all shadow-md ${isSaving || !hasUnsavedChanges
-                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                    : 'bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-green-200'
-                                    }`}
-                            >
-                                {isSaving ? (
-                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                ) : (
-                                    <Save className="w-4 h-4 mr-2" />
-                                )}
-                                Save Changes
-                            </button>
-                        </div> */}
                     </div>
                 </div>
             </div>
@@ -775,6 +819,32 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                         <div className="flex justify-end gap-3">
                             <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 rounded-lg bg-gray-200">No</button>
                             <button onClick={() => deleteMutation.mutate(task.id)} className="px-4 py-2 rounded-lg bg-red-600 text-white">Yes, Delete</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ATTACHMENT DELETE CONFIRMATION */}
+            {deleteAttachmentConfirm && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Attachment</h3>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Are you sure you want to delete <b>{deleteAttachmentConfirm.name}</b>?
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setDeleteAttachmentConfirm(null)}
+                                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+                            >
+                                No
+                            </button>
+                            <button
+                                onClick={() => handleDeleteAttachment(deleteAttachmentConfirm.id)}
+                                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                            >
+                                Yes, Delete
+                            </button>
                         </div>
                     </div>
                 </div>

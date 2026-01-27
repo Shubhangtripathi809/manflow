@@ -11,7 +11,7 @@ import {
   useViewMode,
 } from '@/components/layout/DualView';
 import {
-  projectsTableColumns,
+ getProjectsTableColumns,
   ProjectGridCard,
 } from '@/components/layout/DualView/projectsConfig';
 
@@ -36,6 +36,7 @@ export function Projects() {
       console.error('Failed to toggle favorite:', error);
     }
   };
+  const columns = getProjectsTableColumns(toggleFavorite);
 
   const { data, isLoading } = useQuery({
     queryKey: ['projects', filter],
@@ -106,7 +107,7 @@ export function Projects() {
             <ProjectGridCard
               key={project.id}
               project={project}
-              onToggleFavorite={(e) => toggleFavorite(e, project)}
+              onToggleFavorite={toggleFavorite}
             />
           ),
           emptyState,
@@ -114,7 +115,7 @@ export function Projects() {
         }}
         tableProps={{
           data: projects,
-          columns: projectsTableColumns,
+          columns: columns,
           rowKey: (project: any) => project.id,
           onRowClick: (project: any) =>
             (window.location.href = `/projects/${project.id}`),

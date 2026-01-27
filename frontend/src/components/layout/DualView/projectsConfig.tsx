@@ -8,58 +8,64 @@ import type { Project } from '@/types';
 import type { TableColumn } from '../DualView';
 
 // projectsConfig.tsx
-export const projectsTableColumns: TableColumn<Project>[] = [
-  {
-    key: 'name',
-    label: 'Project',
-    render: (project: any) => (
-      <div className="flex items-center gap-3">
-        <div className={`h-7 w-7 rounded-full flex items-center justify-center text-white font-bold text-[11px] ${getProjectTypeColor(project.task_type)}`}>
-          {project.name?.slice(0, 1)?.toUpperCase()}
+export const getProjectsTableColumns = (
+  onToggleFavorite: (e: React.MouseEvent, project: Project) => void
+): TableColumn<Project>[] => [
+    {
+      key: 'name',
+      label: 'Project',
+      render: (project: any) => (
+        <div className="flex items-center gap-2">
+          <div className={`h-6 w-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] ${getProjectTypeColor(project.task_type)}`}>
+            {project.name?.slice(0, 1)?.toUpperCase()}
+          </div>
+          <span className="font-semibold text-[13px] text-[#172b4d]">{project.name}</span>
         </div>
-        <span className="font-semibold text-[#172b4d]">{project.name}</span>
-      </div>
-    ),
-  },
-  {
-    key: 'document_count',
-    label: 'Documents',
-    width: '120px',
-    render: (project: any) => (
-      <span className="text-gray-600 font-medium">{project.document_count || 0} docs</span>
-    ),
-  },
-  {
-    key: 'member_count',
-    label: 'Members',
-    width: '120px',
-    render: (project: any) => (
-      <div className="flex -space-x-2">
-        {/* Mirroring the Task Assignee style */}
-        <span className="text-gray-600 font-medium">{project.member_count || 0} members</span>
-      </div>
-    ),
-  },
-  {
-    key: 'updated_at',
-    label: 'Updated',
-    width: '150px',
-    render: (project: any) => (
-      <span className="text-[#5e6c84]">{formatRelativeTime(project.updated_at)}</span>
-    ),
-  },
-  {
-    key: 'favorite',
-    label: 'Favorite',
-    width: '80px',
-    className: 'text-center',
-    render: (project: any) => (
-      <button className="text-yellow-500 hover:scale-110 transition-transform">
-        {project.is_favourite ? '★' : '☆'}
-      </button>
-    ),
-  },
-];
+      ),
+    },
+    {
+      key: 'document_count',
+      label: 'Documents',
+      width: '120px',
+      render: (project: any) => (
+        <span className="text-gray-700 font-medium text-[13px]">{project.document_count || 0} docs</span>
+      ),
+    },
+    {
+      key: 'member_count',
+      label: 'Members',
+      width: '120px',
+      render: (project: any) => (
+        <span className="text-gray-700 font-medium text-[13px]">{project.member_count || 0} members</span>
+      ),
+    },
+    {
+      key: 'updated_at',
+      label: 'Updated',
+      width: '150px',
+      render: (project: any) => (
+        <span className="text-gray-500 text-[13px]">{formatRelativeTime(project.updated_at)}</span>
+      ),
+    },
+    {
+      key: 'favorite',
+      label: 'Favorite',
+      width: '80px',
+      className: 'text-center',
+      render: (project: any) => (
+        <button
+          onClick={(e) => onToggleFavorite(e, project)}
+          className="hover:scale-110 transition-transform"
+        >
+          {project.is_favourite ? (
+            <span className="text-yellow-500 text-lg">★</span>
+          ) : (
+            <span className="text-gray-300 text-lg hover:text-yellow-400">☆</span>
+          )}
+        </button>
+      ),
+    },
+  ];
 
 interface ProjectGridCardProps {
   project: Project;
@@ -71,179 +77,106 @@ export function ProjectGridCard({ project, onToggleFavorite }: ProjectGridCardPr
 
   return (
     <Link to={`/projects/${project.id}`}>
-      <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold text-lg ${getProjectTypeColor(project.task_type)}`}
-              >
-                {project.name?.slice(0, 1)?.toUpperCase()}
-              </div>
-              <div>
-                <CardTitle className="text-lg">{project.name}</CardTitle>
-              </div>
+      <div className="bg-white rounded-xl p-4 transition-all duration-300 cursor-pointer text-gray-800 hover:shadow-lg hover:-translate-y-0.5 border border-[#d0d5dd] relative hover:z-50 h-full group">
+        {/* Header: Project Name & Favorite */}
+        <div className="flex justify-between items-start gap-2 mb-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`h-8 w-8 rounded-full flex items-center justify-center text-white font-semibold text-xs ${getProjectTypeColor(project.task_type)}`}
+            >
+              {project.name?.slice(0, 1)?.toUpperCase()}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-gray-900 line-clamp-1">{project.name}</span>
+              <span className="text-xs font-medium text-gray-500">
+                {formatRelativeTime(project.updated_at)}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => onToggleFavorite(e, project)}
+            className="text-gray-300 hover:text-yellow-500 transition-colors"
+          >
+            <span className={`text-lg ${project.is_favourite ? 'text-yellow-500' : ''}`}>
+              {project.is_favourite ? '★' : '☆'}
+            </span>
+          </button>
+        </div>
+
+        {/* Details: Docs & Members */}
+        <div className="space-y-1 text-xs text-gray-500 mb-2">
+          <div className="flex items-center">
+            <FileText className="w-3 h-3 mr-1" />
+            <span className="font-medium">Docs:</span>
+            <span className="ml-1">{project.document_count || 0}</span>
+          </div>
+
+          <div className="relative">
+            <div
+              className="flex items-center hover:text-blue-600 transition-colors cursor-pointer w-max"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpenMembersCard(!openMembersCard);
+              }}
+            >
+              <Users className="w-3 h-3 mr-1" />
+              <span className="font-medium">Members:</span>
+              <span className="ml-1">{project.member_count || 0}</span>
             </div>
 
-            {/* Favourite Star Icon */}
-            <button
-              type="button"
-            //   onClick={onToggleFavorite}
-              className="p-2 hover:bg-accent rounded-full transition-colors group/star"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill={project.is_favourite ? "#eab308" : "none"}
-                stroke={project.is_favourite ? "#eab308" : "currentColor"}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-all ${
-                  project.is_favourite
-                    ? "scale-110"
-                    : "text-muted-foreground group-hover/star:text-yellow-500"
-                }`}
-              >
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-            </button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-2 pb-3 px-3">
-          <div className="flex flex-col gap-3 mt-4">
-            <div className="flex items-center gap-4 text-sm text-gray-500 font-medium">
-              <span className="flex items-center gap-1">
-                <FileText className="h-4 w-4" />
-                {project.document_count || 0} docs
-              </span>
-              <p className="text-xs text-muted-foreground">
-                Updated {formatRelativeTime(project.updated_at)}
-              </p>
-              <div className="relative">
-                <button
-                  type="button"
+            {openMembersCard && (
+              <>
+                <div
+                  className="fixed inset-0 z-[100]"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setOpenMembersCard(!openMembersCard);
+                    setOpenMembersCard(false);
                   }}
-                  className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
+                />
+                <div
+                  className="absolute left-0 top-full mt-2 z-[101] w-64 bg-white border border-gray-200 rounded-lg shadow-xl"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                 >
-                  <Users className="h-4 w-4" />
-                  {project.member_count || 0} members
-                </button>
-
-                {openMembersCard && (
-                  <>
-                    {/* Backdrop */}
-                    <div
-                      className="fixed inset-0 z-[100]"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setOpenMembersCard(false);
-                      }}
-                    />
-
-                    {/* Popup */}
-                    <div
-                      className="absolute left-0 top-full mt-2 z-[101] w-72 bg-background border border-border rounded-lg shadow-xl"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    >
-                      <div className="p-3 border-b border-border">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold text-sm flex items-center gap-2">
-                            <UsersIcon className="h-4 w-4" />
-                            Project Members
-                          </h4>
-                          <Badge variant="secondary" className="text-xs">
-                            {project.members?.length || project.member_count || 0}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="max-h-64 overflow-y-auto p-2">
-                        {project.members && project.members.length > 0 ? (
-                          <div className="space-y-1">
-                            {project.members.map((member) => {
-                              const userData = member.user;
-                              const initials = userData.full_name
-                                .split(' ')
-                                .map((n) => n[0])
-                                .join('')
-                                .toUpperCase()
-                                .slice(0, 2);
-
-                              return (
-                                <div
-                                  key={member.id}
-                                  className="flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors"
-                                >
-                                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-                                    {initials}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">
-                                      {userData.full_name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      @{userData.username}
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-col items-end gap-1">
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[10px] px-1.5 py-0 capitalize bg-primary/5"
-                                    >
-                                      {member.role.replace('_', ' ')}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                  <div className="p-2 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                    <span className="text-xs font-semibold text-gray-700">Project Members</span>
+                    <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded text-gray-600">
+                      {project.members?.length || 0}
+                    </span>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto p-1">
+                    {project.members && project.members.length > 0 ? (
+                      project.members.map((member) => (
+                        <div key={member.id} className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded">
+                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 shrink-0">
+                            {member.user.full_name?.charAt(0) || 'U'}
                           </div>
-                        ) : (
-                          <div className="text-center py-8">
-                            <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                            <p className="text-sm text-gray-500 font-medium">
-                              No members assigned
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-medium text-gray-700 truncate">
+                              {member.user.full_name}
+                            </p>
+                            <p className="text-[10px] text-gray-400 truncate capitalize">
+                              {member.role.replace('_', ' ')}
                             </p>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Member Names Section
-            {project.members && project.members.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {project.members.slice(0, 3).map((member) => (
-                  <Badge
-                    key={member.id}
-                    className="text-[10px] px-2 py-0 font-normal bg-muted/30"
-                  >
-                    {member.full_name}
-                  </Badge>
-                ))}
-                {project.members.length > 3 && (
-                  <span className="text-[10px] text-muted-foreground self-center">
-                    +{project.members.length - 3} more
-                  </span>
-                )}
-              </div>
-            )} */}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[11px] text-gray-400 p-2 text-center">No members assigned</p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   );
 }

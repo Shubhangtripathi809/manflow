@@ -6,8 +6,8 @@ import type {
   Label
 } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.10:8000/api/v1';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
+const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.12:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.12:8001/';
 
 
 export const api = axios.create({
@@ -323,6 +323,7 @@ export const documentsApi = {
     return response.data;
   },
 
+  // Document delete on documents page
   delete: async (id: string) => {
     await api.delete(`/documents/${id}/`);
   },
@@ -416,8 +417,16 @@ export const taskApi = {
 
   get: async (taskId: number) => {
     const response = await api.get(`/tasksite/${taskId}/`);
-    console.log("API Response",response.data)
-    return response.data;
+    const data = response.data;
+    const task = data.task || data;
+    return {
+      ...data,
+      task: {
+        ...task,
+        attachments: task.attachments || [],
+        labels: task.label_details || task.labels || []
+      }
+    };
   },
 
   // Create a new task

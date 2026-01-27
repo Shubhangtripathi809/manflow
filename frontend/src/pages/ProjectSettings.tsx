@@ -76,6 +76,8 @@ export function ProjectSettings() {
   const [newLabel, setNewLabel] = useState({ name: '', color: '#3b82f6' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
@@ -178,13 +180,17 @@ export function ProjectSettings() {
     setIsFormDirty(true);
   };
 
-  const handleAddMember = () => {
+ const handleAddMember = () => {
     if (tempUser && tempRole) {
-      if (assignedTo.some(a => a.userId === tempUser)) {
-        setTempUser(null);
-        setTempRole('');
+      const isPending = assignedTo.some(a => a.userId === tempUser);
+      const isExisting = project?.members?.some((m: any) => m.user.id === tempUser);
+
+      if (isPending || isExisting) {
+        setErrorMessage('This user is already added to the project.');
+        setShowErrorModal(true);
         return;
       }
+
       setAssignedTo([...assignedTo, { userId: tempUser, role: tempRole }]);
       setTempUser(null);
       setTempRole('');
@@ -193,9 +199,7 @@ export function ProjectSettings() {
   };
 
  const handleSave = async () => {
-    // Save project details
     await updateMutation.mutateAsync(formData);
-    
     // Add new members
     for (const assignment of assignedTo) {
       await addMemberMutation.mutateAsync({
@@ -679,6 +683,32 @@ export function ProjectSettings() {
             </div>
           </CardContent>
         </Card>
+      )}
+      {/* Error Popup Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+          <div className="bg-background border rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 mx-4">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="p-2 bg-destructive/10 rounded-full">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-semibold">Action Failed</h3>
+            </div>
+            
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {errorMessage}
+            </p>
+            
+            <div className="flex justify-end pt-2">
+              <Button 
+                onClick={() => setShowErrorModal(false)}
+                className="min-w-[100px]"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

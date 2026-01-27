@@ -23,7 +23,7 @@ import type { Task } from '@/types';
 // ).toString();
 
 type TabType = 'tasks' | 'add_documents' | 'gt' | 'api_testing';
-type StatusFilter = 'all' | 'completed' | 'in_progress' | 'pending' | 'backlog' | 'deployed' | 'deferred';
+type StatusFilter = 'all' | 'completed' | 'in_progress' | 'pending' | 'backlog' | 'deployed' | 'deferred' | 'review';
 type GTFileType = 'gt' | 'running_gt';
 
 interface GTFile {
@@ -693,6 +693,7 @@ export function TaskDetails() {
         backlog: tasks.filter(t => t.status.toLowerCase() === 'backlog').length,
         deployed: tasks.filter(t => t.status.toLowerCase() === 'deployed').length,
         deferred: tasks.filter(t => t.status.toLowerCase() === 'deferred').length,
+        review: tasks.filter(t => t.status.toLowerCase() === 'review').length,
     };
 
     const getStatusLabel = (status: string) => {
@@ -997,7 +998,7 @@ export function TaskDetails() {
                 <div className="content-creation__sidebar-section">
                     <h3 className="content-creation__sidebar-title">FILTER BY STATUS</h3>
                     <div className="content-creation__sidebar-filters">
-                        {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred'] as StatusFilter[]).map((status) => (
+                        {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred', 'review' ] as StatusFilter[]).map((status) => (
                             <button
                                 key={status}
                                 className={`content-creation__sidebar-filter ${statusFilter === status ? 'content-creation__sidebar-filter--active' : ''}`}
