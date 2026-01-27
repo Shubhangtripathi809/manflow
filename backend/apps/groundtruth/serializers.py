@@ -110,24 +110,17 @@ class DocumentCommentSerializer(serializers.ModelSerializer):
 
 
 class DocumentSerializer(serializers.ModelSerializer):
-    """
-    Serializer for Document model.
-    """
     created_by = UserMinimalSerializer(read_only=True)
-    current_gt_version = GTVersionSerializer(read_only=True)
-    version_count = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = Document
         fields = [
             "id", "project", "name", "description",
             "source_file", "source_file_url", "file_type", "file_size",
-            "metadata", "status", "current_gt_version", "version_count",
-            "created_by", "created_at", "updated_at"
+            "metadata", "status", "created_by", "created_at", "updated_at"
         ]
         read_only_fields = [
-            "id", "file_size", "current_gt_version",
-            "created_by", "created_at", "updated_at"
+            "id", "file_size", "created_by", "created_at", "updated_at"
         ]
 
 
@@ -148,42 +141,20 @@ class DocumentDetailSerializer(DocumentSerializer):
 
 
 class DocumentCreateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for creating documents.
-    """
-    initial_gt_data = serializers.JSONField(required=False, write_only=True)
-    
     class Meta:
         model = Document
         fields = [
             "project", "name", "description", "source_file",
-            "source_file_url", "file_type", "metadata", "initial_gt_data",
+            "source_file_url", "file_type", "metadata",
         ]
     
     def create(self, validated_data):
-        initial_gt = validated_data.pop("initial_gt_data", None)
         user = self.context["request"].user
-        
-        # Set file size if file uploaded
         source_file = validated_data.get("source_file")
         if source_file:
             validated_data["file_size"] = source_file.size
         
-        document = Document.objects.create(
-            created_by=user,
-            **validated_data,
-        )
-        
-        # Create initial GT version if provided
-        if initial_gt:
-            GTVersion.objects.create(
-                document=document,
-                gt_data=initial_gt,
-                created_by=user,
-                source_type="manual",
-            )
-        
-        return document
+        return Document.objects.create(created_by=user, **validated_data)
 
 
 class DocumentBulkImportSerializer(serializers.Serializer):

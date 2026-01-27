@@ -62,8 +62,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "create":
             return DocumentCreateSerializer
-        if self.action == "retrieve":
-            return DocumentDetailSerializer
         return DocumentSerializer
 
     # --- Standard ViewSet Configurations ---
@@ -253,46 +251,19 @@ class DocumentViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=["post"], url_path="submit-for-review")
     def submit_review(self, request, pk=None):
-        """
-        Submit document for review.
-        """
         document = self.get_object()
-        
-        if not document.latest_version:
-            return Response(
-                {"detail": "Document has no GT versions"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        
-        document = submit_for_review(document, request.user)
+        document.status = Document.Status.IN_REVIEW
+        document.updated_by = request.user
+        document.save()
         return Response(DocumentSerializer(document).data)
     
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
-        """
-        Approve document's latest GT version.
-        """
         document = self.get_object()
-        version_id = request.data.get("version_id")
-        
-        if version_id:
-            try:
-                version = document.versions.get(id=version_id)
-            except GTVersion.DoesNotExist:
-                return Response(
-                    {"detail": "Version not found"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-        else:
-            version = document.latest_version
-            if not version:
-                return Response(
-                    {"detail": "Document has no GT versions"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        
-        version = approve_gt_version(version, request.user)
-        return Response(GTVersionSerializer(version).data)
+        document.status = Document.Status.APPROVED
+        document.updated_by = request.user
+        document.save()
+        return Response(DocumentSerializer(document).data)
     
     @action(detail=True, methods=["get"])
     def history(self, request, pk=None):
