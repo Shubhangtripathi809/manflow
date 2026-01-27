@@ -89,21 +89,26 @@ class TaskAIService:
 
     @staticmethod
     def generate_task_data_with_assignment(project_context, user_description, members_with_skills):
-        """
-        Calls the local Llama 8B model with project context and member skills
-        to generate task data with intelligent assignment.
-        """
-        # Format members data for the AI prompt
+        # Initialize the client using settings.py values explicitly
+        client = boto3.client(
+            "bedrock-runtime",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION
+        )
+        
+        # Use the model ID defined in your .env
+        model_id = settings.BEDROCK_MODEL_ID
+
+        # 2. Format members data for the prompt
         members_summary = []
         for member in members_with_skills:
             skills_text = ", ".join([
-                f"{s['name']} ({s['proficiency']}, {s['category']})" 
-                for s in member['skills']
+                f"{s['name']} ({s['proficiency']})" for s in member['skills']
             ])
             members_summary.append(
                 f"- {member['username']} (Role: {member['role']}, ID: {member['id']}): {skills_text}"
             )
-        
         members_text = "\n".join(members_summary)
         
         prompt = f"""
@@ -148,22 +153,42 @@ Example for a React frontend task:
     "assignment_reasoning": "Selected members with React expertise (Intermediate+)"
 }}
 """
+        user_message = f"""
+        Project Context: {project_context}
+        User Intent: {user_description}
+        Available Members:
+        {members_text}
 
+        Return JSON with: heading, description, end_date (YYYY-MM-DD), priority, assigned_to (list of IDs), required_skills, assignment_reasoning.
+        """
         # Replace with your local Llama endpoint (e.g., Ollama)
-        local_llm_url = "http://localhost:11434/api/generate" 
-        payload = {
-            "model": "llama3:8b",
-            "prompt": prompt,
-            "stream": False,
-            "format": "json"
+        native_request = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 1024,
+            "temperature": 0.1,
+            "system": prompt,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": user_message}],
+                }
+            ],
         }
 
         try:
-            response = requests.post(local_llm_url, json=payload, timeout=30)
-            response.raise_for_status()
-            return response.json().get('response')
+            response = client.invoke_model(
+                modelId=model_id,
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(native_request)
+            )
+            
+            response_body = json.loads(response["body"].read())
+            # Claude 3.5 returns content in a list
+            return response_body["content"][0]["text"]
+            
         except Exception as e:
-            print(f"Error calling AI service: {e}")
+            print(f"Error calling AWS Bedrock: {e}")
             return None
 
     @staticmethod
