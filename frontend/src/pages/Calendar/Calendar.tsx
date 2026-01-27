@@ -571,6 +571,7 @@ export const Calendar: React.FC = () => {
                         { status: 'completed', label: 'Completed' },
                         { status: 'deployed', label: 'Deployed' },
                         { status: 'deferred', label: 'Deferred' },
+                        { status: 'review', label: 'Review' },
                     ].map(({ status, label }) => {
                         const config = getStatusConfig(status);
                         return (

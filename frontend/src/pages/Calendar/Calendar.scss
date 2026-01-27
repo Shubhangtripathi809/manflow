@@ -16,6 +16,7 @@ $status-in-progress: #3b82f6;
 $status-completed: #22c55e;
 $status-deployed: #8b5cf6;
 $status-deferred: #6b7280;
+$starus-review: #6366f1;
 
 // Priority colors
 $priority-high: #ef4444;
@@ -711,6 +712,11 @@ $transition-normal: 200ms ease;
     }
 
     &.status-deferred {
+        background: rgba($status-deferred, 0.1);
+        color: darken($status-deferred, 10%);
+    }
+
+     &.status-review {
         background: rgba($status-deferred, 0.1);
         color: darken($status-deferred, 10%);
     }

@@ -149,6 +149,7 @@ function AppRoutes() {
           <Route path="backlog" element={null} />
           <Route path="deployed" element={null} />
           <Route path="deferred" element={null} />
+          <Route path="review" element={null} />
           <Route
             path="create"
             element={
@@ -159,7 +160,7 @@ function AppRoutes() {
           />
         </Route>
 
-        {/* Admin Accordion Routes (User Management & Team Performance) */}
+        {/* Admin Accordion */}
         <Route path="/admin" element={<AdminDashboard />}>
           <Route path="user-roles" element={<UserManagement />} />
           <Route path="team-performance" element={<TeamPerformance />} />

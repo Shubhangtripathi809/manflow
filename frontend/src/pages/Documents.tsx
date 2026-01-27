@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FileText, Search, Filter, ChevronDown } from 'lucide-react';
 import { Button, Card, CardContent, Input } from '@/components/common';
 import { documentsApi, projectsApi } from '@/services/api';
 import type { Document, Project } from '@/types';
-import {
-  ViewToggle,
-  DualView,
-  useViewMode,
-} from '@/components/layout/DualView';
+import { ViewToggle, DualView, useViewMode, } from '@/components/layout/DualView';
 import { createDocumentsTableColumns, DocumentGridCard } from '@/components/layout/DualView/documentsConfig';
 import { DocumentStatsSidebar } from '../components/layout/DualView/DocumentStatsSidebar';
 
@@ -87,6 +83,7 @@ export function Documents() {
     id: string;
     name: string;
   } | null>(null);
+  const navigate = useNavigate();
   const { viewMode, setViewMode } = useViewMode({
     defaultMode: 'table',
   });
@@ -107,13 +104,21 @@ export function Documents() {
         project: projectFilter ? Number(projectFilter) : undefined,
         file_type: fileTypeFilter || undefined,
       }),
-      enabled: true
+    enabled: true
   });
 
-  const projects = projectsData?.results || projectsData || [];
- const allDocs = allDocumentsData?.results || allDocumentsData || [];
+  const rawProjects = projectsData?.results || projectsData || [];
+  const projects = (Array.isArray(rawProjects) ? rawProjects : []) as Project[];
 
- const displayedDocuments = allDocs.filter((doc: Document) => {
+  const allDocs = allDocumentsData?.results || allDocumentsData || [];
+  const projectLookup = projects.reduce((acc: Record<number, string>, project: Project) => {
+    acc[project.id] = project.name;
+    return acc;
+  }, {});
+  const displayedDocuments = allDocs.map((doc: Document) => ({
+    ...doc,
+    project_name: projectLookup[doc.project] || doc.project_name || 'General'
+  })).filter((doc: Document) => {
     if (statusFilter && doc.status !== statusFilter) return false;
     if (searchTerm && !doc.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
@@ -269,7 +274,7 @@ export function Documents() {
               data: displayedDocuments,
               columns: createDocumentsTableColumns({ onDeleteClick: handleDeleteClick }),
               rowKey: (doc) => doc.id,
-              onRowClick: (doc) => (window.location.href = `/documents/${doc.id}`),
+              onRowClick: (doc) => navigate(`/documents/${doc.id}`),
               emptyState,
               rowClassName: () => 'group',
             }}
@@ -278,7 +283,7 @@ export function Documents() {
       </div>
 
       {/* Right Sidebar */}
-      <DocumentStatsSidebar 
+      <DocumentStatsSidebar
         documents={allDocs}
         currentFilter={statusFilter}
         onFilterChange={handleStatusFilterChange}

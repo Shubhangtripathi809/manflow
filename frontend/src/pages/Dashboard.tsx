@@ -32,7 +32,7 @@ import { getStatusConfig } from '../pages/MyTask/MyTask';
 import { NotificationsPage } from './NotificationsPage';
 
 // Type Definitions
-type TaskStatus = 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred';
+type TaskStatus = 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | 'review';
 
 interface Task {
   id: number;
@@ -179,6 +179,7 @@ export function Dashboard() {
     { value: 'completed', label: 'Completed', color: 'text-green-600' },
     { value: 'deployed', label: 'Deployed', color: 'text-purple-600' },
     { value: 'deferred', label: 'Deferred', color: 'text-gray-600' },
+    { value: 'review', label: 'Review', color: 'text-indigo-600' },
   ];
 
 

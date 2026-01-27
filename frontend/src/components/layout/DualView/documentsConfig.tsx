@@ -84,32 +84,39 @@ interface DocumentGridCardProps {
 }
 
 export function DocumentGridCard({ document: doc, onDeleteClick }: DocumentGridCardProps) {
-  const getStatusStyle = (status: string) => {
+  const getStatusConfig = (status: string) => {
     const s = status.toLowerCase();
     switch (s) {
-      case 'approved': return 'bg-green-50 text-green-600 border border-green-200';
-      case 'in_review': return 'bg-blue-50 text-blue-600 border border-blue-200';
-      case 'draft': return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
-      case 'archived': return 'bg-gray-100 text-gray-600 border border-gray-200';
-      default: return 'bg-gray-50 text-gray-600 border border-gray-200';
+      case 'approved':
+        return { badge: 'bg-green-50 text-green-600 border border-green-200', label: 'APPROVED' };
+      case 'in_review':
+        return { badge: 'bg-blue-50 text-blue-600 border border-blue-200', label: 'IN REVIEW' };
+      case 'draft':
+        return { badge: 'bg-yellow-50 text-yellow-600 border border-yellow-200', label: 'DRAFT' };
+      case 'archived':
+        return { badge: 'bg-gray-100 text-gray-600 border border-gray-200', label: 'ARCHIVED' };
+      default:
+        return { badge: 'bg-gray-50 text-gray-600 border border-gray-200', label: status.toUpperCase().replace('_', ' ') };
     }
   };
 
-  const statusStyle = getStatusStyle(doc.status);
+  const statusConfig = getStatusConfig(doc.status);
 
   return (
     <div
       onClick={() => window.location.href = `/documents/${doc.id}`}
       className="bg-white rounded-xl p-4 transition-all duration-300 cursor-pointer text-gray-800 hover:shadow-lg hover:-translate-y-0.5 border border-[#d0d5dd] relative hover:z-50 h-full group"
     >
-      {/* Header: Name, Project, Updated At */}
+      {/* Header */}
       <div className="flex justify-between items-start gap-2 mb-3">
         <div className="pr-2 flex flex-col">
-          <span className="text-sm font-bold text-gray-900 line-clamp-1 mb-0.5" title={doc.name}>
-            {doc.name}
-          </span>
-          <span className="text-xs font-medium text-gray-600 line-clamp-2" title={doc.project_name}>
+          {/* Project Name */}
+          <span className="text-sm font-bold text-gray-900 line-clamp-1 mb-0.5" title={doc.project_name}>
             {doc.project_name || 'General'}
+          </span>
+          {/* Document Name */}
+          <span className="text-xs font-medium text-gray-600 line-clamp-2" title={doc.name}>
+            {doc.name}
           </span>
         </div>
         <div className="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
@@ -117,13 +124,15 @@ export function DocumentGridCard({ document: doc, onDeleteClick }: DocumentGridC
         </div>
       </div>
 
-      {/* Middle: Type */}
+      {/* Details Section */}
       <div className="space-y-1 text-xs text-gray-500 mb-6">
-        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase border border-gray-200">
-          {doc.file_type}
-        </span>
+        <div className="flex items-center">
+          <FileText className="w-3 h-3 mr-1" />
+          <span className="font-medium">Type:</span>
+          <span className="ml-1 uppercase">{doc.file_type}</span>
+        </div>
       </div>
-      
+
       {/* Trash Button */}
       <button
         onClick={(e) => onDeleteClick(e, doc)}
@@ -135,8 +144,8 @@ export function DocumentGridCard({ document: doc, onDeleteClick }: DocumentGridC
 
       {/* Status Badge */}
       <div className="absolute bottom-3 right-3">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statusStyle}`}>
-          {doc.status.replace('_', ' ')}
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${statusConfig.badge}`}>
+          {statusConfig.label}
         </span>
       </div>
     </div>

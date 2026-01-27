@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, FolderKanban, FileText, TestTube2, Settings, LogOut,
   Users, ChevronDown, ChevronUp, Plus, CheckSquare, CheckCircle,
-  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar, Bell
+  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar, Bell, Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -68,12 +68,12 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // --- Collapsible Logic ---
+  // Collapsible Logic
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const isExpanded = !isCollapsed || isHovered;
 
-  // --- Accordion States ---
+  // Accordion States 
   const [isProjectsOpen, setIsProjectsOpen] = useState(location.pathname.startsWith('/projects'));
   const [isTasksOpen, setIsTasksOpen] = useState(location.pathname.startsWith('/taskboard'));
   const [isAdminOpen, setIsAdminOpen] = useState(location.pathname.startsWith('/admin'));
@@ -148,7 +148,10 @@ export function Sidebar() {
             className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
               location.pathname.startsWith('/projects') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
               !isExpanded && "justify-center px-0")}
-            onClick={() => navigate('/projects')}
+            onClick={() => {
+              navigate('/projects');
+              setIsProjectsOpen(prev => !prev);
+            }}
           >
             <div className={cn("flex items-center gap-3", isExpanded && "flex-1")}>
               <FolderKanban className="h-5 w-5 shrink-0" />
@@ -176,7 +179,10 @@ export function Sidebar() {
             className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer',
               location.pathname.startsWith('/taskboard') ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
               !isExpanded && "justify-center px-0")}
-            onClick={() => navigate('/taskboard')}
+            onClick={() => {
+              navigate('/taskboard');
+              setIsTasksOpen(prev => !prev);
+            }}
           >
             <div className={cn("flex items-center gap-3", isExpanded && "flex-1")}>
               <CheckSquare className="h-5 w-5 shrink-0" />
@@ -205,6 +211,7 @@ export function Sidebar() {
                 { id: 'IN_PROGRESS', name: 'In Progress Tasks', href: '/taskboard/in_progress', icon: PlayCircle },
                 { id: 'DEPLOYED', name: 'Deployed Tasks', href: '/taskboard/deployed', icon: CheckSquare },
                 { id: 'DEFERRED', name: 'Deferred Tasks', href: '/taskboard/deferred', icon: Pause },
+                { id: 'REVIEW', name: 'Review Tasks', href: '/taskboard/review', icon: Eye },
               ].map((sub) => (
                 <NavLink
                   key={sub.name}
@@ -231,7 +238,7 @@ export function Sidebar() {
           { name: 'Documents', href: '/documents', icon: FileText },
           { name: 'Calendar', href: '/calendar', icon: Calendar },
           { name: 'Activity', href: '/notifications', icon: Bell },
-          { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
+          // { name: 'Test Runs', href: '/test-runs', icon: TestTube2 },
         ].map((item) => (
           <NavLink
             key={item.name}

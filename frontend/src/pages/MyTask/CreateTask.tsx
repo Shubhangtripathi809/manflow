@@ -52,10 +52,10 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
     const [selectedProjects, setSelectedProjects] = useState<number[]>(
-        fixedProjectId 
-            ? [fixedProjectId] 
-            : location.state?.projectId 
-                ? [Number(location.state.projectId)] 
+        fixedProjectId
+            ? [fixedProjectId]
+            : location.state?.projectId
+                ? [Number(location.state.projectId)]
                 : []
     );
     const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
@@ -122,6 +122,12 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
         setDuration(val);
     };
+
+    useEffect(() => {
+        if (!fixedProjectId && location.state?.projectId) {
+            setSelectedProjects([Number(location.state.projectId)]);
+        }
+    }, [location.state?.projectId, fixedProjectId]);
 
     useEffect(() => {
         const fetchLabels = async () => {
@@ -219,7 +225,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const { data: projectsData, isLoading: projectsLoading, error: projectsError } = useQuery({
         queryKey: ['projects'],
         queryFn: () => projectsApi.list(),
-        staleTime: Infinity, 
+        staleTime: Infinity,
     });
 
     // Memoize derived data to maintain existing variable names
@@ -241,11 +247,11 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     // Filter users based on search input
     const filteredUserOptions = React.useMemo(() => {
         const availableUsers = allUserOptions.filter((user) => !assignedToList.includes(user.id));
-        
+
         if (!assigneeSearchInput.trim()) {
             return availableUsers;
         }
-        
+
         return availableUsers.filter((user) =>
             user.label.toLowerCase().startsWith(assigneeSearchInput.toLowerCase())
         );
@@ -277,7 +283,6 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     useEffect(() => {
         const aiGeneratedTask = location.state?.aiGeneratedTask as AITaskSuggestionResponse;
         if (aiGeneratedTask) {
-            console.log('🤖 AI Task Data Received:', aiGeneratedTask);
 
             // Set all form fields
             setHeading(aiGeneratedTask.heading || '');
@@ -294,15 +299,12 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             // Handle description for contentEditable div
             if (aiGeneratedTask.description) {
                 const desc = aiGeneratedTask.description;
-                console.log('📝 Setting description:', desc);
                 setDescription(desc);
                 const updateEditor = (attempt = 0) => {
                     if (editorRef.current) {
-                        console.log('✅ Editor ref found, updating content');
                         editorRef.current.innerHTML = desc;
                         editorRef.current.dispatchEvent(new Event('input', { bubbles: true }));
                     } else if (attempt < 5) {
-                        console.log(`⏳ Editor ref not ready, retry ${attempt + 1}/5`);
                         setTimeout(() => updateEditor(attempt + 1), 100);
                     } else {
                         console.error('❌ Failed to update editor after 5 attempts');
@@ -379,6 +381,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             }, 1500);
 
         } catch (err: any) {
+            console.error('❌ [CreateTask] Upload failed:', err);
+            console.error('❌ [CreateTask] Error details:', err.response?.data);
             console.error('Error creating task:', err);
             setError(err.response?.data?.message || 'Failed to create task. Please check your inputs.');
             setLoading(false);
@@ -387,7 +391,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
     if (showSuccessView) {
         return (
-           <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center">
                 <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg text-base font-medium w-fit">
                     Task created successfully
                 </div>
@@ -888,13 +892,13 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
                             {/* Assignees and Labels Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               {/* Assignees */}
+                                {/* Assignees */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                                         <User className="w-4 h-4" />
                                         Assignees <span className="text-red-500">*</span>
                                     </label>
-                                   <div className="relative">
+                                    <div className="relative">
                                         {/* Main input field - shows selected users + allows typing */}
                                         <div className="w-full p-2.5 rounded border border-gray-300 hover:border-gray-400 bg-white flex flex-wrap gap-2 min-h-[42px] transition-colors">
                                             {usersLoading ? (
@@ -924,7 +928,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                                             </span>
                                                         );
                                                     })}
-                                                    
+
                                                     {/* Search input - integrated into the main field */}
                                                     <input
                                                         type="text"
@@ -941,7 +945,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                                         onKeyDown={(e) => {
                                                             if (e.key === 'ArrowDown') {
                                                                 e.preventDefault();
-                                                                setHighlightedUserIndex((prev) => 
+                                                                setHighlightedUserIndex((prev) =>
                                                                     Math.min(prev + 1, filteredUserOptions.length - 1)
                                                                 );
                                                             } else if (e.key === 'ArrowUp') {
@@ -969,18 +973,17 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                                 </>
                                             )}
                                         </div>
-                                        
+
                                         {/* Dropdown with filtered users */}
                                         {dropdownOpen && !usersLoading && filteredUserOptions.length > 0 && (
                                             <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
                                                 {filteredUserOptions.map((user, index) => (
                                                     <div
                                                         key={user.id}
-                                                        className={`px-4 py-2.5 cursor-pointer text-sm ${
-                                                            index === highlightedUserIndex 
-                                                                ? 'bg-blue-50 text-blue-700' 
-                                                                : 'hover:bg-gray-50'
-                                                        }`}
+                                                        className={`px-4 py-2.5 cursor-pointer text-sm ${index === highlightedUserIndex
+                                                            ? 'bg-blue-50 text-blue-700'
+                                                            : 'hover:bg-gray-50'
+                                                            }`}
                                                         onClick={() => {
                                                             setAssignedToList([...assignedToList, user.id]);
                                                             setAssigneeSearchInput('');
