@@ -67,6 +67,8 @@ export function Dashboard() {
   const [isActivityOpen, setIsActivityOpen] = React.useState(false);
   const [openTaskDropdownId, setOpenTaskDropdownId] = React.useState<number | null>(null);
   const [dropdownPos, setDropdownPos] = React.useState<{ top: number; left: number } | null>(null);
+  const [openDocDropdownId, setOpenDocDropdownId] = React.useState<string | null>(null);
+  const [docDropdownPos, setDocDropdownPos] = React.useState<{ top: number; left: number } | null>(null);
 
   // Data Fetching
   const { data: projectsData, isLoading: projectsLoading } = useQuery({
@@ -213,8 +215,8 @@ export function Dashboard() {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Welcome Header */}
-      <div className={`flex-1 overflow-y-auto p-6 transition-all duration-300 ${isActivityOpen ? 'mr-0' : ''}`}>
-        <div className="flex items-center justify-between mb-8">
+      <div className={`flex-1 overflow-y-auto w-full p-8 space-y-8 transition-all duration-300 ${isActivityOpen ? 'mr-0' : ''}`}>
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">
               Welcome back{user?.first_name ? `, ${user.first_name}` : ''}!
@@ -246,7 +248,7 @@ export function Dashboard() {
 
             <Link to="/projects/new">
               <Button>
-                 New Project
+                New Project
               </Button>
             </Link>
           </div>
@@ -363,7 +365,7 @@ export function Dashboard() {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 setDropdownPos({
                                   top: rect.bottom + 4,
-                                  left: rect.right - 192 // 192px is the width of w-48 (12rem), aligning right edges
+                                  left: rect.right - 192
                                 });
                                 setOpenTaskDropdownId(openTaskDropdownId === task.id ? null : task.id);
                               }}
@@ -421,10 +423,7 @@ export function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                  <FileText className="h-4 w-4 text-primary" />
-                </div>
-                <span>Recent Documents</span>
+                <h2 className="text-xl font-bold">Recent Documents</h2>
               </CardTitle>
               <Link to="/documents">
                 <Button variant="ghost" size="sm">
@@ -457,9 +456,6 @@ export function Dashboard() {
                       >
                         {/* Left Section: Document Info */}
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                            <FileText className="h-4 w-4 text-primary" />
-                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{doc.name}</div>
                             <div className="text-sm text-muted-foreground truncate">
@@ -474,19 +470,81 @@ export function Dashboard() {
                             <Clock className="h-3 w-3" />
                             <span>{formatRelativeTime(doc.updated_at)}</span>
                           </div>
-                          <div className="relative" onClick={(e) => e.stopPropagation()}>
-                            <select
+                          <div
+                            className="relative"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                          >
+                            <button
+                              type="button"
                               disabled={updatingDocId === doc.id}
-                              value={doc.status}
-                              onChange={(e) => handleDocStatusUpdate(doc.id, e.target.value, e)}
-                              className={`appearance-none px-2 py-1 rounded-full text-xs font-medium cursor-pointer border-none focus:ring-2 focus:ring-primary/20 ${statusColorClass} ${updatingDocId === doc.id ? 'opacity-50' : ''}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setDocDropdownPos({
+                                  top: rect.bottom + 4,
+                                  left: rect.right - 144 
+                                });
+                                setOpenDocDropdownId(openDocDropdownId === doc.id ? null : doc.id);
+                              }}
+                              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-2 focus:ring-primary/20 transition-all ${statusColorClass} ${updatingDocId === doc.id ? 'opacity-50' : 'hover:brightness-95'}`}
                             >
-                              {['draft', 'in_review', 'approved', 'archived'].map((status) => (
-                                <option key={status} value={status} className="bg-white text-gray-900">
-                                  {status.replace('_', ' ').toUpperCase()}
-                                </option>
-                              ))}
-                            </select>
+                              <span>{doc.status.replace('_', ' ').toUpperCase()}</span>
+                              <ChevronDown className="h-3 w-3 opacity-70" />
+                            </button>
+
+                            {openDocDropdownId === doc.id && docDropdownPos && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setOpenDocDropdownId(null);
+                                  }}
+                                />
+                                <div
+                                  style={{ top: docDropdownPos.top, left: docDropdownPos.left }}
+                                  className="fixed w-36 bg-white rounded-lg shadow-xl border border-gray-100 z-50 py-1 animate-in fade-in zoom-in-95 duration-100"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  {['draft', 'in_review', 'approved', 'archived'].map((status) => (
+                                    <button
+                                      key={status}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        handleDocStatusUpdate(doc.id, status, e as any);
+                                        setOpenDocDropdownId(null);
+                                      }}
+                                      className={`w-full px-4 py-2 text-left text-xs font-medium hover:bg-gray-50 transition-colors flex items-center justify-between gap-2 ${doc.status === status ? 'bg-gray-50' : ''}`}
+                                    >
+                                      <span className={
+                                        status === 'approved' ? 'text-green-600' :
+                                          status === 'in_review' ? 'text-yellow-600' :
+                                            status === 'archived' ? 'text-gray-500' : 'text-gray-600'
+                                      }>
+                                        {status.replace('_', ' ').toUpperCase()}
+                                      </span>
+                                      {doc.status === status && (
+                                        <CheckCircle className="h-3 w-3 text-primary" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+
+                            {updatingDocId === doc.id && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-white/10 rounded-full pointer-events-none">
+                                <div className="h-2 w-2 animate-ping bg-current rounded-full" />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </Link>

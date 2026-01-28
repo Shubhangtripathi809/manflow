@@ -118,7 +118,7 @@ interface TaskListViewProps {
     onTaskClick: (task: Task) => void;
 }
 
-const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
+export const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -398,18 +398,20 @@ const TaskListView: React.FC<TaskListViewProps> = ({ tasks, onTaskClick }) => {
                                             >
                                                 {statusOptions.map((option) => {
                                                     const optionConfig = getStatusConfig(option.value);
+                                                    const textColor = optionConfig.badge.split(' ').find(cls => cls.startsWith('text-')) || optionConfig.text;
+
                                                     return (
                                                         <div
                                                             key={option.value}
                                                             className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-[12px] flex items-center gap-2"
                                                             onClick={() => handleStatusChange(task.id, option.value)}
                                                         >
-                                                            {React.createElement(option.icon, { className: `w-3.5 h-3.5 ${optionConfig.text}` })}
-                                                            <span className={task.status === option.value ? "font-bold text-blue-600" : ""}>
+                                                            {React.createElement(option.icon, { className: `w-3.5 h-3.5 ${textColor}` })}
+                                                            <span className={`${task.status === option.value ? "font-bold" : "font-medium"} ${textColor}`}>
                                                                 {option.label}
                                                             </span>
                                                             {task.status === option.value && (
-                                                                <svg className="w-3.5 h-3.5 text-blue-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                                                <svg className={`w-3.5 h-3.5 ml-auto ${textColor}`} fill="currentColor" viewBox="0 0 20 20">
                                                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                                 </svg>
                                                             )}
@@ -651,97 +653,81 @@ export const MyTask: React.FC = () => {
     }, [queryClient]);
 
     return (
-        <div className="task-main-content-area w-full taskboard-layout">
+        <div className="w-full p-8 space-y-8">
             {location.pathname.startsWith('/taskboard') && !location.pathname.endsWith('/create') ? (
                 loading ? (
                     <div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-b-2 border-blue-600" /></div>
                 ) : (
                     <>
-                        <div className="taskboard-flex-container">
-                            {/* Main Content Area */}
-                            <div className="taskboard-main-content">
-                                <div className="mb-8">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h1 className="text-3xl font-bold text-gray-900">Task Board</h1>
-                                            <p className="text-lg text-gray-600">Manage and track your tasks efficiently</p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            {['admin', 'manager', 'annotator'].includes(user?.role || '') && (
-                                                <>
-                                                    <button
-                                                        onClick={() => navigate('/taskboard/create')}
-                                                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg"
-                                                    >
-                                                        <Plus className="w-4 h-4 mr-2" />
-                                                        Add New
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => setShowAITaskModal(true)}
-                                                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg"
-                                                    >
-                                                        Generate Task by AI
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {/* Controls */}
-                                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                                        <div className="relative flex-1 max-w-md">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-                                            <input type="text" placeholder="Search tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300" />
-                                        </div>
-                                        <div className="flex rounded-lg border overflow-hidden">
-                                            <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white'}`}><List className="w-5 h-5" /></button>
-                                            <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white'}`}><Grid3X3 className="w-5 h-5" /></button>
-                                        </div>
-                                    </div>
+                        <div className="flex flex-col gap-6">
+                            {/* Header Section */}
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-gray-900">Task Board</h1>
+                                    <p className="text-lg text-muted-foreground mt-1">Manage and track your tasks efficiently</p>
                                 </div>
-                                {viewMode === 'grid' ? (
-                                    <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                        {filteredTasks.map((t: Task) => <TaskCard key={t.id} task={t} onTaskClick={handleTaskClick} />)}
-                                    </div>
-                                ) : (
-                                    <TaskListView tasks={filteredTasks} onTaskClick={handleTaskClick} />
-                                )}
-                            </div>
-
-                            {/* Stats Grid - Right Sidebar */}
-                            <div className="stats-right-sidebar">
-                                <h3 className="stats-sidebar-title">FILTER BY STATUS</h3>
-                                <div className="stat-cards-container">
-                                    {[
-                                        { label: 'Total Tasks', val: stats.total, color: 'text-gray-900', bgColor: 'bg-gray-50', iconColor: 'text-gray-400', filter: 'ALL', icon: CheckSquare },
-                                        { label: 'Completed', val: stats.completed, color: 'text-green-600', bgColor: 'bg-green-50', iconColor: 'text-green-500', filter: 'COMPLETED', icon: CheckCircle },
-                                        { label: 'In Progress', val: stats.inProgress, color: 'text-blue-600', bgColor: 'bg-blue-50', iconColor: 'text-blue-500', filter: 'IN_PROGRESS', icon: Clock },
-                                        { label: 'Pending', val: stats.pending, color: 'text-yellow-600', bgColor: 'bg-yellow-50', iconColor: 'text-yellow-500', filter: 'PENDING', icon: AlertCircle },
-                                        { label: 'Backlog', val: stats.backlog, color: 'text-orange-600', bgColor: 'bg-orange-50', iconColor: 'text-orange-400', filter: 'BACKLOG', icon: ListTodo },
-                                        { label: 'Deployed', val: stats.deployed, color: 'text-purple-600', bgColor: 'bg-purple-50', iconColor: 'text-purple-500', filter: 'DEPLOYED', icon: CheckSquare },
-                                        { label: 'Deferred', val: stats.deferred, color: 'text-gray-600', bgColor: 'bg-gray-100', iconColor: 'text-gray-400', filter: 'DEFERRED', icon: Pause },
-                                        { label: 'Review', val: stats.review, color: 'text-indigo-600', bgColor: 'bg-indigo-100', iconColor: 'text-indigo-400', filter: 'REVIEW', icon: Eye }
-                                    ].map(s => {
-                                        const IconComponent = s.icon;
-                                        return (
-                                            <div
-                                                key={s.label}
-                                                onClick={() => navigate(s.filter === 'ALL' ? '/taskboard' : `/taskboard/${s.filter.toLowerCase()}`)}
-                                                className={`stat-card-horizontal cursor-pointer transition-all ${s.bgColor} ${activeFilter === s.filter
-                                                    ? 'ring-2 ring-blue-500 shadow-md'
-                                                    : 'hover:shadow-md'
-                                                    }`}
+                                <div className="flex items-center gap-3">
+                                    {['admin', 'manager', 'annotator'].includes(user?.role || '') && (
+                                        <>
+                                            <button
+                                                onClick={() => navigate('/taskboard/create')}
+                                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
                                             >
-                                                <div className="stat-card-left">
-                                                    <IconComponent className={`stat-card-icon ${s.iconColor}`} />
-                                                    <span className="stat-card-label">{s.label}</span>
-                                                </div>
-                                                <div className={`stat-card-value ${s.color}`}>{s.val}</div>
-                                            </div>
-                                        );
-                                    })}
+                                                <Plus className="w-4 h-4 mr-2" />
+                                                Add New
+                                            </button>
+
+                                            <button
+                                                onClick={() => setShowAITaskModal(true)}
+                                                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 transition-colors shadow-sm"
+                                            >
+                                                Generate Task by AI
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
+
+                            {/* Controls Section */}
+                            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                                <div className="relative flex-1 max-w-sm">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search tasks..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                    />
+                                </div>
+                                <div className="flex items-center border border-gray-200 rounded-md bg-white p-1 gap-1">
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        title="List View"
+                                    >
+                                        <List className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        title="Grid View"
+                                    >
+                                        <Grid3X3 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Content Section - Full Width & Height */}
+                        <div className="flex-1 min-h-0">
+                            {viewMode === 'grid' ? (
+                                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {filteredTasks.map((t: Task) => <TaskCard key={t.id} task={t} onTaskClick={handleTaskClick} />)}
+                                </div>
+                            ) : (
+                                <TaskListView tasks={filteredTasks} onTaskClick={handleTaskClick} />
+                            )}
                         </div>
                     </>
                 )

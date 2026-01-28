@@ -8,6 +8,7 @@ import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
 import { TaskDetails } from '@/pages/TaskType/TaskDetails';
 import { APITesting } from '@/pages/TaskType/APITesting';
+import { TeamChatModern } from '@/pages/TeamsChat/TeamChatModern';
 
 import {
   Dashboard,
@@ -88,7 +89,7 @@ function ProjectDetailWrapper() {
     return <ContentCreation />;
   }
 
-  // 2. Extraction & OCR -
+  // 2. Extraction & OCR
   const taskDetailsTypes = ['client', 'internal', 'Content Creation', 'ideas'];
   if (taskDetailsTypes.includes(project.task_type)) {
     return <TaskDetails />;
@@ -135,6 +136,7 @@ function AppRoutes() {
         <Route path="/documents" element={<Documents />} />
         <Route path="/documents/:id" element={<DocumentDetail />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/team-chat" element={<TeamChatModern />} />
 
         <Route path="/test-runs" element={<div>Test Runs (Phase 2)</div>} />
         <Route path="/test-runs/:id" element={<div>Test Run Detail (Phase 2)</div>} />

@@ -4,10 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft, Plus, Search, Settings, Loader2,
     Upload, Database, FileText, CheckCircle2,
-    X, Download, Film, FileJson, ChevronLeft, ChevronRight, Trash2
+    X, Download, Film, FileJson, ChevronLeft, ChevronRight, Trash2, List, Grid3X3
 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
-import { TaskCard } from '@/pages/MyTask/MyTask';
+import { TaskCard, TaskListView } from '@/pages/MyTask/MyTask';
 import { TaskDetailModal } from '../MyTask/TaskDetailModal';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
 import { MediaPreviewModal, MediaThumbnail } from './ContentCreation';
@@ -418,6 +418,7 @@ export function TaskDetails() {
     const queryClient = useQueryClient();
 
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any | null>(null);
@@ -757,14 +758,45 @@ export function TaskDetails() {
                 <div className="content-creation__content">
                     {activeTab === 'tasks' && (
                         <div className="content-creation__tasks">
+                            {/* View Toggle Controls */}
+                            <div className="flex justify-end mb-2">
+                                <div className="flex items-center border border-gray-200 rounded-md bg-white p-1 gap-1">
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        title="List View"
+                                    >
+                                        <List className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                                        title="Grid View"
+                                    >
+                                        <Grid3X3 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
                             {isLoadingTasks ? (
                                 <div className="flex justify-center p-12"><Loader2 className="animate-spin h-8 w-8" /></div>
                             ) : tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter).length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter).map(task => (
-                                        <TaskCard key={task.id} task={task} onTaskClick={setSelectedTask} />
-                                    ))}
-                                </div>
+                                <>
+                                    {viewMode === 'list' ? (
+                                        <div className="bg-white rounded-lg shadow-sm">
+                                            <TaskListView
+                                                tasks={tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter)}
+                                                onTaskClick={setSelectedTask}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter).map(task => (
+                                                <TaskCard key={task.id} task={task} onTaskClick={setSelectedTask} />
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
                             ) : (
                                 <div className="content-creation__tasks-empty">
                                     <div className="content-creation__empty-icon">📋</div>

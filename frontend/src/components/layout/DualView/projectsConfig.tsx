@@ -32,11 +32,32 @@ export const getProjectsTableColumns = (
       ),
     },
     {
-      key: 'member_count',
+      key: 'members',
       label: 'Members',
       width: '120px',
       render: (project: any) => (
-        <span className="text-gray-700 font-medium text-[13px]">{project.member_count || 0} members</span>
+        <div className="flex -space-x-1.5 items-center">
+          {project.members && project.members.length > 0 ? (
+            <>
+              {project.members.slice(0, 3).map((member: any) => (
+                <div
+                  key={member.id}
+                  className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 ring-1 ring-white z-10"
+                  title={member.user?.full_name || 'User'}
+                >
+                  {member.user?.full_name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              ))}
+              {project.members.length > 3 && (
+                <div className="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-[10px] font-bold text-white ring-1 ring-white z-0">
+                  +{project.members.length - 3}
+                </div>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-400 text-[11px] pl-1">—</span>
+          )}
+        </div>
       ),
     },
     {

@@ -7,7 +7,7 @@ import { documentsApi, projectsApi } from '@/services/api';
 import type { Document, Project } from '@/types';
 import { ViewToggle, DualView, useViewMode, } from '@/components/layout/DualView';
 import { createDocumentsTableColumns, DocumentGridCard } from '@/components/layout/DualView/documentsConfig';
-import { DocumentStatsSidebar } from '../components/layout/DualView/DocumentStatsSidebar';
+import { DocumentStatsSidebar } from '@/components/layout/DualView/DocumentStatsSidebar';
 
 
 const FILE_TYPE_OPTIONS = [

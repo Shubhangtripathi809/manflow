@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, FolderKanban, FileText, TestTube2, Settings, LogOut,
   Users, ChevronDown, ChevronUp, Plus, CheckSquare, CheckCircle,
-  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar, Bell, Eye
+  Clock, PlayCircle, Pause, Crown, TrendingUp, ListTodo, Calendar, Bell, Eye, MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -290,6 +290,18 @@ export function Sidebar() {
             )}
           </div>
         )}
+        {/* Team Chat */}
+        <NavLink
+          to="/team-chat"
+          className={({ isActive }) =>
+            cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              !isExpanded && "justify-center px-0")
+          }
+        >
+          <MessageSquare className="h-5 w-5 shrink-0" />
+          {isExpanded && <span>Team Chat</span>}
+        </NavLink>
       </nav>
 
       {/* Profile & Footer */}
@@ -303,7 +315,7 @@ export function Sidebar() {
           </div>
           {isExpanded && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{user?.username}</p>
+              <p className="truncate text-sm font-medium">{user?.first_name} {user?.last_name}</p>
               <p className="truncate text-xs text-muted-foreground capitalize">{user?.role}</p>
             </div>
           )}

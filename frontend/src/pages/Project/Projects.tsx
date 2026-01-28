@@ -19,7 +19,7 @@ export function Projects() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>('');
   const { viewMode, setViewMode } = useViewMode({
-    defaultMode: 'grid',
+    defaultMode: 'table',
     storageKey: 'projects-view-mode',
   });
 
@@ -91,7 +91,6 @@ export function Projects() {
           <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
           <Link to="/projects/new">
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
               New Project
             </Button>
           </Link>

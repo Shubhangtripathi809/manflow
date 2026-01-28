@@ -741,3 +741,93 @@ export interface CalendarEvent {
   end_date: string;
   type: 'task' | 'event' | 'meeting';
 }
+
+// Team Chat types
+export interface ChatUserMinimal {
+  id: number;
+  username: string;
+  full_name: string;
+  email: string;
+}
+
+export interface ChatRoomMembership {
+  id: string; 
+  user: ChatUserMinimal;
+  joined_at: string;
+  last_read_at: string | null;
+  is_muted: boolean;
+  room_role: 'owner' | 'admin' | 'member';
+}
+
+export interface ChatRoom {
+  id: string;
+  name: string;
+  room_type: 'private' | 'group';
+  slug: string;
+  project: number | null;
+  participants: ChatUserMinimal[];
+  created_by: ChatUserMinimal;
+  memberships: ChatRoomMembership[];
+  current_user_membership?: ChatRoomMembership;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
+// Based on standard message patterns 
+export interface ChatMessage {
+  id: string | number;
+  room: string;
+  sender: ChatUserMinimal;
+  content: string;
+  timestamp: string;
+  is_read: boolean;
+  attachments?: any[]; 
+}
+
+export interface ChatRoomMessagesResponse {
+  messages: ChatMessage[];
+  count: number;
+  has_more: boolean;
+}
+
+// Payload for creating a private room
+export interface CreatePrivateChatPayload {
+  user_id: number;
+}
+
+// Payload sent TO the server
+export interface WebSocketSendMessagePayload {
+  type: 'chat_message';
+  content: string;
+}
+
+// Payload received FROM the server
+export interface WebSocketIncomingMessage {
+  type: 'chat_message' | 'connection_established';
+  message?: ChatMessage; // The actual message object
+  room_id?: string;
+  sender?: ChatUserMinimal;
+}
+
+// Global WebSocket types for cross-room messaging
+export interface UnreadCount {
+  room_id: string;
+  count: number;
+}
+
+export interface WebSocketGlobalMessage {
+  type: 'chat_message' | 'user_joined' | 'user_left' | 'typing' | 'unread_update';
+  message?: ChatMessage; 
+  room_id: string;
+  sender?: ChatUserMinimal;
+  unread_counts?: UnreadCount[];
+}
+
+export interface ToastNotification {
+  id: string;
+  room_id: string;
+  sender_name: string;
+  message_preview: string;
+  timestamp: string;
+}
