@@ -2,14 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Upload, File, X } from 'lucide-react';
-import {
-  Button,
-  Input,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from '@/components/common';
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, } from '@/components/common';
 import { documentsApi, projectsApi } from '@/services/api';
 
 const FILE_TYPES = [

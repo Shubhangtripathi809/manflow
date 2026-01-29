@@ -195,7 +195,6 @@ export interface Document {
   file_size?: number;
   metadata: Record<string, unknown>;
   status: DocumentStatus;
-  current_gt_version?: GTVersion;
   assigned_users?: UserMinimal[];
   created_by: UserMinimal;
   created_at: string;
@@ -207,35 +206,17 @@ export interface Document {
 export type FileType = 'pdf' | 'image' | 'json' | 'text' | 'video' | 'other';
 export type DocumentStatus = 'draft' | 'in_review' | 'approved' | 'archived';
 
-export interface GTVersion {
-  id: string;
-  version_number: number;
-  gt_data: Record<string, unknown>;
-  change_summary: string;
-  changes_from_previous: {
-    added?: string[];
-    removed?: string[];
-    modified?: string[];
-  };
-  is_approved: boolean;
-  approved_at?: string;
-  approved_by?: UserMinimal;
-  source_type: string;
-  source_reference: string;
-  created_by: UserMinimal;
-  created_at: string;
-}
 
-export interface DocumentComment {
-  id: number;
-  content: string;
-  field_reference?: string;
-  parent?: number;
-  is_resolved: boolean;
-  created_by: UserMinimal;
-  created_at: string;
-  replies?: DocumentComment[];
-}
+// export interface DocumentComment {
+//   id: number;
+//   content: string;
+//   field_reference?: string;
+//   parent?: number;
+//   is_resolved: boolean;
+//   created_by: UserMinimal;
+//   created_at: string;
+//   replies?: DocumentComment[];
+// }
 
 // Test types
 export interface TestRun {
@@ -266,7 +247,6 @@ export interface TestResult {
   id: string;
   test_run: string;
   document: string;
-  gt_version?: string;
   status: TestResultStatus;
   extracted_data: Record<string, unknown>;
   metrics: Record<string, unknown>;
@@ -319,7 +299,6 @@ export type IssueType =
   | 'bug'
   | 'task'
   | 'improvement'
-  | 'gt_correction'
   | 'auto_generated';
 
 // API types
@@ -367,56 +346,9 @@ export interface Highlight {
   height: number;
 }
 
-export interface GroundTruthEntry {
-  id: string;
-  docName?: string;
-  pageNumber: number;
-  issueType: string;
-  location: string;
-  description: string;
-}
-
 export interface DocumentDetailResponse {
   pdf_base64: string;
   html_url: string;
-}
-
-export interface GroundTruthApiResponse {
-  pageNumber: number;
-  issueType: string;
-  location: string;
-  description: string;
-}
-
-// Corresponds to the entry in the dropdown list
-export interface JsonViewerFile {
-  fileName: string;
-  owner: string;
-}
-
-// Type for the nested metadata inside GetTableCellsResponse
-export interface TableCellMetadata {
-  owner: string;
-  date_created: string;
-  description: string;
-  validation_description: string;
-  validated_by: string;
-  date_time_last_modified: string;
-  date_time_completed: string;
-  validation_status: string;
-  excel: boolean;
-  PDF: string[];
-}
-
-// Structure of the response from the /get_table_cells endpoint
-export interface GetTableCellsResponse {
-  ok: boolean;
-  error: string;
-  columns: any[];
-  data: {
-    myTableCells: Array<Record<string, TableCellMetadata>>;
-  };
-  payload: Record<string, any>;
 }
 
 // Base for selectable elements (Text, Table, Cell)
@@ -455,53 +387,11 @@ export interface SelectableCellElement extends SelectableBaseElement {
 
 export type SelectableElement = SelectableTextElement | SelectableTableElement | SelectableCellElement;
 
-// Response structure for /get_page_content
-export interface PageContentResponse {
-  ok: true;
-  error: string;
-  columns: any;
-  data: {
-    [pageKey: string]: {
-      page?: Array<{
-        id: string;
-        PDF: string;
-        page: number;
-        width: number;
-        height: number;
-        page_pdf: string;
-        page_json?: string;
-      }>;
-      text?: Array<SelectableTextElement>;
-      table?: Array<SelectableTableElement>;
-      image?: any[];
-      cell?: Array<SelectableCellElement>;
-      entity?: any[];
-      key_value?: any[];
-      table_np?: any[];
-    };
-  };
-}
-
 export interface PageContentErrorResponse {
   ok: boolean;
   error: string;
   payload?: any;
   data?: null;
-}
-
-// Data structure used internally by the PDFJsonViewer component
-export interface ProcessedPageData {
-  page_num: number;
-  page_b64: string;
-  json_metadata: Record<string, any>;
-  selectable_elements: SelectableElement[];
-}
-
-// Updated interface to hold ANY selected element data
-export interface SelectedElementData {
-  id: string;
-  type: SelectableElement['type'];
-  data: Omit<SelectableElement, 'type'>;
 }
 
 export interface GetUploadUrlPayload {
@@ -516,15 +406,15 @@ export interface GetUploadUrlResponse {
 }
 
 //3rd API call Confirm Upload
-export interface ConfirmUploadPayload {
-  file_key: string;
-  file_name: string;
-  file_type: string;
-  metadata?: {
-    gt_category?: 'gt' | 'running_gt';
-    [key: string]: any;
-  };
-}
+// export interface ConfirmUploadPayload {
+//   file_key: string;
+//   file_name: string;
+//   file_type: string;
+//   metadata?: {
+//     gt_category?: 'gt' | 'running_gt';
+//     [key: string]: any;
+//   };
+// }
 
 export interface ConfirmUploadResponse {
   id: string;
@@ -775,13 +665,22 @@ export interface ChatRoom {
 }
 
 // Based on standard message patterns 
+// NEW - Matches actual API response
 export interface ChatMessage {
   id: string | number;
   room: string;
   sender: ChatUserMinimal;
   content: string;
-  timestamp: string;
-  is_read: boolean;
+  created_at: string; 
+  is_own_message: boolean;
+  message_type: string;
+  attachment: string | null;
+  attachment_name: string;
+  reply_to: string | null;
+  reply_to_preview: string | null;
+  updated_at: string;
+  is_deleted: boolean;
+  is_read?: boolean;
   attachments?: any[]; 
 }
 

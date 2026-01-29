@@ -28,8 +28,9 @@ import { projectsApi, documentsApi, taskApi, notificationsApi, } from '@/service
 import { formatRelativeTime, getStatusColor } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import type { Project, Document } from '@/types';
-import { getStatusConfig } from '../pages/MyTask/MyTask';
+import { getStatusConfig } from '@/components/layout/DualView/taskConfig';
 import { NotificationsPage } from './NotificationsPage';
+import { ProjectGridCard } from '@/components/layout/DualView/projectsConfig';
 
 // Type Definitions
 type TaskStatus = 'pending' | 'backlog' | 'in_progress' | 'completed' | 'deployed' | 'deferred' | 'review';
@@ -210,6 +211,22 @@ export function Dashboard() {
       });
     } catch {
       return dateString;
+    }
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent, project: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      await projectsApi.update(project.id, {
+        is_favourite: !project.is_favourite,
+      });
+      // Invalidate both lists to ensure UI sync
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
     }
   };
   return (
@@ -434,13 +451,13 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               {recentDocuments.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <div className="text-center py-10">
+                  <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground mb-2">No documents yet</p>
                   <Link to="/projects">
-                    <Button variant="outline" size="sm" className="mt-2">
+                    {/* <Button variant="outline" size="sm" className="mt-2">
                       Create Document
-                    </Button>
+                    </Button> */}
                   </Link>
                 </div>
               ) : (
@@ -486,7 +503,7 @@ export function Dashboard() {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 setDocDropdownPos({
                                   top: rect.bottom + 4,
-                                  left: rect.right - 144 
+                                  left: rect.right - 144
                                 });
                                 setOpenDocDropdownId(openDocDropdownId === doc.id ? null : doc.id);
                               }}
@@ -560,8 +577,7 @@ export function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <FolderKanban className="h-5 w-5" />
-              Recent Projects
+              <h2 className="text-xl font-bold">Recent Projects</h2>
             </CardTitle>
             <Link to="/projects">
               <Button variant="ghost" size="sm">
@@ -574,27 +590,11 @@ export function Dashboard() {
             {recentProjects.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {recentProjects.map((project: Project) => (
-                  <Link
+                  <ProjectGridCard
                     key={project.id}
-                    to={`/projects/${project.id}`}
-                    className="p-4 border rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <FolderKanban className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="font-medium truncate">{project.name}</div>
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {project.task_type.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{project.document_count || 0} documents</span>
-                      <span>{formatRelativeTime(project.updated_at)}</span>
-                    </div>
-                  </Link>
+                    project={project}
+                    onToggleFavorite={toggleFavorite}
+                  />
                 ))}
               </div>
             ) : (
@@ -602,9 +602,9 @@ export function Dashboard() {
                 <FolderKanban className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">No projects yet</p>
                 <Link to="/projects/new">
-                  <Button variant="outline" size="sm" className="mt-2">
+                  {/* <Button variant="outline" size="sm" className="mt-2">
                     Create Project
-                  </Button>
+                  </Button> */}
                 </Link>
               </div>
             )}
@@ -615,8 +615,7 @@ export function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Quick Actions
+              <h2 className="text-xl font-bold">Quick Actions</h2>
             </CardTitle>
           </CardHeader>
           <CardContent>

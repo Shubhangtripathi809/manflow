@@ -35,6 +35,7 @@ export function TeamChatModern() {
   const [roomUserMap, setRoomUserMap] = useState<Map<string, number>>(new Map());
   const [userRoomMap, setUserRoomMap] = useState<Map<number, string>>(new Map());
   const [lastMessages, setLastMessages] = useState<Map<number, { content: string; timestamp: string }>>(new Map());
+  const [chatListVersion, setChatListVersion] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +43,7 @@ export function TeamChatModern() {
   const socketRef = useRef<ChatWebSocketService | null>(null);
   const globalSocketRef = useRef<GlobalChatWebSocketService | null>(null);
   const isGlobalSocketInitialized = useRef(false);
+  const activeRoomRef = useRef<ChatRoom | null>(null);
 
   // 1. Fetch Users List
   const { data: usersData, isLoading: isLoadingUsers } = useQuery({
@@ -62,89 +64,64 @@ export function TeamChatModern() {
     globalSocket.connect();
     globalSocketRef.current = globalSocket;
 
-    // Listen to ALL incoming messages across all rooms
+    // Replace the existing logic inside globalSocket.onMessage with this:
     globalSocket.onMessage((data: WebSocketGlobalMessage) => {
       const { type, message, room_id } = data;
+      const actualRoomId = room_id || message?.room;
 
-      console.log('📩 Global WebSocket received:', type, 'from room:', room_id);
+      if (type === 'chat_message' && message && actualRoomId) {
+        const isOwnMessage = message.sender.id === currentUser?.id;
 
-      if (type === 'chat_message' && message) {
-        console.log('💬 Message from:', message.sender.username, 'Content:', message.content);
+        // 1. Update last messages for the sidebar
+        let chatListUserId: number | null = null;
+        if (isOwnMessage) {
+          const roomData = queryClient.getQueryData<ChatRoom>(['chat-room', actualRoomId]);
+          chatListUserId = roomData?.participants?.find(p => p.id !== currentUser?.id)?.id || null;
+        } else {
+          chatListUserId = message.sender.id;
+        }
 
-        // Update last message for this user
-        const senderId = message.sender.id;
-        if (senderId !== currentUser.id) {
+        if (chatListUserId) {
           setLastMessages(prev => {
             const newMap = new Map(prev);
-            newMap.set(senderId, {
-              content: message.content,
-              timestamp: message.timestamp
-            });
-            return newMap;
-          });
-
-          // Map user to room for tracking
-          setUserRoomMap(prev => {
-            const newMap = new Map(prev);
-            newMap.set(senderId, room_id);
+            newMap.set(chatListUserId!, { content: message.content, timestamp: message.created_at });
+            setChatListVersion(v => v + 1);
             return newMap;
           });
         }
 
-        // ALWAYS update the cache
-        queryClient.setQueryData(['chat-messages', room_id], (oldData: ChatRoomMessagesResponse | undefined) => {
-          if (!oldData) {
-            console.log('📝 Creating new message cache for room:', room_id);
-            return { messages: [message], count: 1, has_more: false };
-          }
+        // 2. CRITICAL: Update the specific room's message cache
+        queryClient.setQueryData(['chat-messages', actualRoomId], (oldData: ChatRoomMessagesResponse | undefined) => {
+          const existingMessages = oldData?.messages || [];
+          if (existingMessages.some(m => m.id === message.id)) return oldData;
 
-          // Avoid duplicates
-          const exists = oldData.messages.some(m => m.id === message.id);
-          if (exists) {
-            console.log('⚠️ Duplicate message detected, skipping:', message.id);
-            return oldData;
-          }
-
-          console.log('✅ Adding message to cache for room:', room_id);
-
-          // Add message and sort by timestamp (oldest first)
-          const updatedMessages = [...oldData.messages, message].sort((a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          const updatedMessages = [...existingMessages, message].sort((a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
 
-          return {
-            ...oldData,
-            messages: updatedMessages,
-            count: updatedMessages.length
-          };
+          return { ...oldData, messages: updatedMessages, count: updatedMessages.length, has_more: oldData?.has_more ?? false };
         });
 
-        // If message is from a different room, show notification
-        if (room_id !== activeRoom?.id) {
-          console.log('🔔 Showing notification for message from different room');
-
-          // Increment unread count
+        // 3. Trigger immediate UI update if it's the active room
+        if (actualRoomId === activeRoomRef.current?.id) {
+          // This forces React Query to notify observers and re-render the message list
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', actualRoomId], refetchType: 'none' });
+        } else {
+          // Handle notifications for other rooms
           setUnreadCounts(prev => {
             const newMap = new Map(prev);
-            newMap.set(room_id, (newMap.get(room_id) || 0) + 1);
+            newMap.set(actualRoomId, (newMap.get(actualRoomId) || 0) + 1);
             return newMap;
           });
 
-          // Show toast notification
           const toast: ToastNotification = {
-            id: `${Date.now()}-${Math.random()}`,
-            room_id,
+            id: `${Date.now()}`,
+            room_id: actualRoomId,
             sender_name: message.sender.full_name || message.sender.username,
-            message_preview: message.content.substring(0, 60) + (message.content.length > 60 ? '...' : ''),
-            timestamp: message.timestamp
+            message_preview: message.content,
+            timestamp: message.created_at
           };
-
           setToastNotifications(prev => [...prev, toast]);
-
-          // Auto-remove toast after 5 seconds
-          setTimeout(() => {
-            setToastNotifications(prev => prev.filter(t => t.id !== toast.id));
-          }, 5000);
         }
       }
     });
@@ -155,7 +132,7 @@ export function TeamChatModern() {
       globalSocket.disconnect();
       isGlobalSocketInitialized.current = false;
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, queryClient]);
 
   // 3. Mutation: Create or Get Private Room
   const createRoomMutation = useMutation({
@@ -163,6 +140,11 @@ export function TeamChatModern() {
     onSuccess: (roomData, userId) => {
       console.log('✅ Room created/retrieved:', roomData.id);
       setActiveRoom(roomData);
+      activeRoomRef.current = roomData;
+
+      // ✅ ADD THIS: Cache the room data for later participant lookup
+      queryClient.setQueryData(['chat-room', roomData.id], roomData);
+
 
       // Map room ID to user ID
       setRoomUserMap(prev => {
@@ -183,51 +165,19 @@ export function TeamChatModern() {
     }
   });
 
-  // 4. Query: Fetch HISTORY Messages
+  // Replace the useQuery configuration for ['chat-messages', activeRoom?.id]
   const { data: messagesData, isLoading: isLoadingMessages } = useQuery({
     queryKey: ['chat-messages', activeRoom?.id],
     queryFn: async () => {
       if (!activeRoom?.id) return { messages: [], count: 0, has_more: false };
-
-      // CRITICAL: Get existing messages from cache BEFORE making API call
-      const existingData = queryClient.getQueryData<ChatRoomMessagesResponse>(['chat-messages', activeRoom.id]);
-
-      // Fetch historical messages from API
       const response = await chatApi.getRoomMessages(activeRoom.id);
-
-      // If we have WebSocket messages in cache, preserve them
-      if (existingData && existingData.messages.length > 0) {
-        console.log('🔄 Merging WebSocket messages with API messages');
-
-        // Create a Set of existing message IDs (from WebSocket)
-        const existingIds = new Set(existingData.messages.map(m => m.id));
-
-        // Add only NEW messages from API that aren't already in cache
-        const newMessagesFromAPI = response.messages.filter(m => !existingIds.has(m.id));
-
-        // Combine: existing WebSocket messages + new API messages
-        const allMessages = [...existingData.messages, ...newMessagesFromAPI].sort((a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-
-        console.log(`✅ Merged: ${existingData.messages.length} cached + ${newMessagesFromAPI.length} new from API = ${allMessages.length} total`);
-
-        return {
-          messages: allMessages,
-          count: allMessages.length,
-          has_more: response.has_more
-        };
-      }
-
-      // No existing cache - return API response as-is
-      console.log('📥 No cached messages, using API response');
       return response;
     },
     enabled: !!activeRoom?.id,
-    // CRITICAL: Don't refetch on mount/focus - WebSocket handles real-time updates
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
+    // Change these to ensure the UI responds to setQueryData updates immediately
+    staleTime: 0,
+    gcTime: 1000 * 60 * 30, // Keep in memory for 30 mins
+    refetchOnMount: 'always',
   });
 
   // 5. Room-specific WebSocket
@@ -247,34 +197,24 @@ export function TeamChatModern() {
       return newMap;
     });
 
-    // Listen for messages
-    socket.onMessage((newMessage) => {
-      console.log('📩 Room WebSocket received message:', newMessage.content);
-
-      queryClient.setQueryData(['chat-messages', activeRoom.id], (oldData: ChatRoomMessagesResponse | undefined) => {
-        if (!oldData) {
-          return { messages: [newMessage], count: 1, has_more: false };
-        }
-
-        // Check if message already exists (could be from Global WebSocket)
-        const exists = oldData.messages.some(m => m.id === newMessage.id);
-        if (exists) {
-          console.log('⚠️ Message already in cache (from Global WS), skipping');
-          return oldData;
-        }
-
-        // Add message and sort by timestamp (oldest first)
-        const updatedMessages = [...oldData.messages, newMessage].sort((a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-
-        return {
-          ...oldData,
-          messages: updatedMessages,
-          count: updatedMessages.length
-        };
-      });
-    });
+    // Replace the socket.onMessage logic inside the room-specific useEffect
+socket.onMessage((newMessage) => {
+  queryClient.setQueryData(['chat-messages', activeRoom.id], (old: ChatRoomMessagesResponse | undefined) => {
+    if (!old) return { messages: [newMessage], count: 1, has_more: false };
+    if (old.messages.some(m => m.id === newMessage.id)) return old;
+    
+    return {
+      ...old,
+      messages: [...old.messages, newMessage].sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ),
+      count: old.messages.length + 1
+    };
+  });
+  
+  // Explicitly notify the query to re-render
+  queryClient.invalidateQueries({ queryKey: ['chat-messages', activeRoom.id], refetchType: 'none' });
+});
 
     return () => {
       console.log('🧹 Disconnecting from room WebSocket:', activeRoom.id);
@@ -287,7 +227,7 @@ export function TeamChatModern() {
 
     // Always sort messages by timestamp (oldest first)
     return [...messagesData.messages].sort((a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
   }, [messagesData?.messages]);
 
@@ -335,7 +275,7 @@ export function TeamChatModern() {
       const nameB = b.first_name || b.username;
       return nameA.localeCompare(nameB);
     });
-  }, [usersWithActivity, unreadCounts, userRoomMap]);
+  }, [usersWithActivity, unreadCounts, userRoomMap, chatListVersion]);
 
   const filteredUsers = useMemo(() => {
     if (!searchQuery) return sortedUsers;
@@ -372,17 +312,31 @@ export function TeamChatModern() {
     console.log('👤 User selected:', userId);
     setSelectedUserId(userId);
     setActiveRoom(null);
+    activeRoomRef.current = null;  // ✅ ADD THIS LINE
     createRoomMutation.mutate(userId);
   };
 
   // Send Message
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !activeRoom || !socketRef.current) return;
+    if (!messageInput.trim() || !activeRoom || !socketRef.current || !selectedUser) return;
 
     console.log('📤 Sending message:', messageInput);
 
+    const messageContent = messageInput.trim();
+
     // Send via WebSocket
-    socketRef.current.sendMessage(messageInput);
+    socketRef.current.sendMessage(messageContent);
+
+    // ✅ UPDATE CHAT LIST: Update last message for the selected user
+    setLastMessages(prev => {
+      const newMap = new Map(prev);
+      newMap.set(selectedUser.id, {
+        content: messageContent,
+        timestamp: new Date().toISOString()
+      });
+      setChatListVersion(v => v + 1);
+      return newMap;
+    });
 
     // Clear input immediately
     setMessageInput('');
@@ -519,7 +473,7 @@ export function TeamChatModern() {
                     <div className="flex items-baseline justify-between mb-0.5">
                       <span className={cn(
                         "text-sm truncate",
-                        hasUnread || user.lastMessageTime ? "font-bold text-gray-900" : "font-medium text-gray-900"
+                        (hasUnread || user.lastMessageContent) ? "font-bold text-gray-900" : "font-medium text-gray-900"
                       )}>
                         {user.first_name || user.last_name
                           ? `${user.first_name} ${user.last_name}`.trim()
@@ -619,12 +573,18 @@ export function TeamChatModern() {
               ) : (
                 <div className="space-y-4">
                   {messages.map((msg: ChatMessage) => {
-                    // Compare by both ID and username for safety
-                    const isMe = msg.sender.id === currentUser?.id || msg.sender.username === currentUser?.username;
+                    // Use is_own_message from API for reliable detection
+                    const isMe = msg.is_own_message ?? (msg.sender.id === currentUser?.id);
 
                     return (
-                      <div key={msg.id} className={cn("flex items-start gap-2", isMe ? "justify-end" : "justify-start")}>
-                        {/* Show avatar for receiver messages only */}
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          "flex items-start gap-2",
+                          isMe ? "justify-end" : "justify-start"
+                        )}
+                      >
+                        {/* Avatar on left for receiver, right for sender */}
                         {!isMe && (
                           <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center font-semibold text-gray-700 text-xs flex-shrink-0 mt-1">
                             {msg.sender.username.charAt(0).toUpperCase()}
@@ -647,11 +607,11 @@ export function TeamChatModern() {
                             "text-[10px] block mt-1",
                             isMe ? "text-blue-100 text-right" : "text-gray-500 text-left"
                           )}>
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
 
-                        {/* Show avatar for sender messages only */}
+                        {/* Avatar on right for sender */}
                         {isMe && (
                           <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center font-semibold text-white text-xs flex-shrink-0 mt-1">
                             {currentUser?.username.charAt(0).toUpperCase()}

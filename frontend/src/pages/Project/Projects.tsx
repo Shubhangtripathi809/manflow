@@ -5,11 +5,7 @@ import { Plus, FolderKanban } from 'lucide-react';
 import { Button, Card, CardContent } from '@/components/common';
 import { projectsApi } from '@/services/api';
 import type { Project } from '@/types';
-import {
-  ViewToggle,
-  DualView,
-  useViewMode,
-} from '@/components/layout/DualView';
+import { ViewToggle, DualView, useViewMode, } from '@/components/layout/DualView';
 import {
  getProjectsTableColumns,
   ProjectGridCard,

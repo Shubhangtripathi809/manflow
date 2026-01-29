@@ -1,22 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-    ArrowLeft,
-    Plus,
-    Upload,
-    Search,
-    Film,
-    Loader2,
-    X,
-    Download,
-    ChevronLeft,
-    ChevronRight,
-    FileText,
-    FileJson,
-    Settings,
-    Maximize2, List, Grid3X3
-} from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Search, Film, Loader2, X, Download, ChevronLeft, ChevronRight, FileText, FileJson, Settings, Maximize2, List, Grid3X3 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
 import { TaskCard, TaskListView } from '../MyTask/MyTask';
@@ -32,7 +17,6 @@ import './ContentCreation.scss';
 // ).toString();
 
 type TabType = 'tasks' | 'calendar' | 'media';
-type StatusFilter = 'all' | 'completed' | 'in_progress' | 'pending' | 'backlog' | 'deployed' | 'deferred' | 'review';
 type MediaTag = 'final' | 'draft' | 'rawFootage' | 'approved' | 'wip' | 'reference';
 
 interface Task {
@@ -205,7 +189,7 @@ export function MediaPreviewModal({
                             </button>
                         </div>
                     ) : pythonTypes.includes(fileExtension) ? (
-                        // Python files
+                        // Code files
                         <div className="w-full h-[70vh] overflow-auto bg-gray-900 rounded-lg p-4">
                             <pre className="text-sm text-gray-100 font-mono whitespace-pre-wrap">
                                 <code>{pythonContent || 'Loading...'}</code>
@@ -280,7 +264,7 @@ export function MediaPreviewModal({
                     ) : doc.file_type === 'image' ? (
                         <img src={downloadUrl} alt="Preview" className="max-h-[70vh] rounded-lg shadow-md" />
                     ) : (doc.file_type === 'video' || videoTypes.includes(fileExtension)) ? (
-                        // Video files - Check both file_type and extension
+                        // Video files 
                         <div className="flex flex-col items-center gap-4">
                             <Film className="h-20 w-20 text-blue-500" />
                             <p className="text-lg font-medium mt-4">Video File</p>
@@ -400,7 +384,6 @@ export function ContentCreation() {
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -507,23 +490,6 @@ export function ContentCreation() {
             setIsUploading(false);
         }
     };
-
-    const statusCounts = {
-        all: tasks.length,
-        completed: tasks.filter(t => t.status.toLowerCase() === 'completed').length,
-        in_progress: tasks.filter(t => t.status.toLowerCase() === 'in_progress').length,
-        pending: tasks.filter(t => t.status.toLowerCase() === 'pending').length,
-        backlog: tasks.filter(t => t.status.toLowerCase() === 'backlog').length,
-        deployed: tasks.filter(t => t.status.toLowerCase() === 'deployed').length,
-        deferred: tasks.filter(t => t.status.toLowerCase() === 'deferred').length,
-        review: tasks.filter(t => t.status.toLowerCase() === 'review').length,
-    };
-
-    const getStatusLabel = (status: StatusFilter): string => {
-        if (status === 'all') return 'Total Task';
-        return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    };
-
     const handleTaskCreated = () => {
         setIsCreateTaskModalOpen(false);
         fetchTasks();
@@ -635,18 +601,18 @@ export function ContentCreation() {
                                 <div className="flex justify-center p-12">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
                                 </div>
-                            ) : tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter).length > 0 ? (
+                            ) : tasks.length > 0 ? (
                                 <>
                                     {viewMode === 'list' ? (
                                         <div className="bg-white rounded-lg shadow-sm">
                                             <TaskListView
-                                                tasks={tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter)}
+                                                tasks={tasks}
                                                 onTaskClick={(t) => setSelectedTask(t as unknown as Task)}
                                             />
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {tasks.filter(t => statusFilter === 'all' || t.status.toLowerCase() === statusFilter).map((task) => (
+                                            {tasks.map((task) => (
                                                 <TaskCard
                                                     key={task.id}
                                                     task={task as any}
@@ -746,26 +712,6 @@ export function ContentCreation() {
                         </div>
                     )}
                 </div>
-            </div>
-
-            <div className="content-creation__sidebar">
-                {activeTab === 'tasks' && (
-                    <div className="content-creation__sidebar-section">
-                        <h3 className="content-creation__sidebar-title">Filter by Status</h3>
-                        <div className="content-creation__sidebar-filters">
-                            {(['all', 'completed', 'in_progress', 'pending', 'backlog', 'deployed', 'deferred', 'review'] as StatusFilter[]).map((status) => (
-                                <button
-                                    key={status}
-                                    className={`content-creation__sidebar-filter ${statusFilter === status ? 'content-creation__sidebar-filter--active' : ''}`}
-                                    onClick={() => setStatusFilter(status)}
-                                >
-                                    <span className="content-creation__sidebar-filter-label">{getStatusLabel(status)}</span>
-                                    <span className="content-creation__sidebar-filter-count">{statusCounts[status]}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Modal for PDF/Image/Video Preview */}

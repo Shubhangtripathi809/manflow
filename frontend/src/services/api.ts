@@ -332,48 +332,48 @@ export const documentsApi = {
     await api.delete(`/documents/${id}/`);
   },
 
-  uploadSource: async (id: string, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post(`/documents/${id}/upload-source/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  },
+  // uploadSource: async (id: string, file: File) => {
+  //   const formData = new FormData();
+  //   formData.append('file', file);
+  //   const response = await api.post(`/documents/${id}/upload-source/`, formData, {
+  //     headers: { 'Content-Type': 'multipart/form-data' },
+  //   });
+  //   return response.data;
+  // },
 
-  getVersions: async (id: string) => {
-    const response = await api.get(`/documents/${id}/versions/`);
-    return response.data;
-  },
+  // getVersions: async (id: string) => {
+  //   const response = await api.get(`/documents/${id}/versions/`);
+  //   return response.data;
+  // },
 
-  createVersion: async (id: string, data: { gt_data: Record<string, unknown>; change_summary?: string }) => {
-    const response = await api.post(`/documents/${id}/versions/`, data);
-    return response.data;
-  },
+  // createVersion: async (id: string, data: { gt_data: Record<string, unknown>; change_summary?: string }) => {
+  //   const response = await api.post(`/documents/${id}/versions/`, data);
+  //   return response.data;
+  // },
 
-  getVersionDiff: async (id: string, v1: string | number, v2: string | number) => {
-    const response = await api.get(`/documents/${id}/versions/diff/`, {
-      params: { v1, v2 },
-    });
-    return response.data;
-  },
+  // getVersionDiff: async (id: string, v1: string | number, v2: string | number) => {
+  //   const response = await api.get(`/documents/${id}/versions/diff/`, {
+  //     params: { v1, v2 },
+  //   });
+  //   return response.data;
+  // },
 
-  submitForReview: async (id: string) => {
-    const response = await api.post(`/documents/${id}/submit-for-review/`);
-    return response.data;
-  },
+  // submitForReview: async (id: string) => {
+  //   const response = await api.post(`/documents/${id}/submit-for-review/`);
+  //   return response.data;
+  // },
 
-  approve: async (id: string, versionId?: string) => {
-    const response = await api.post(`/documents/${id}/approve/`, {
-      version_id: versionId,
-    });
-    return response.data;
-  },
-  // Add inside documentsApi object:
-  addLabel: async (documentId: string, labelId: number) => {
-    const response = await api.post(`/documents/${documentId}/labels/`, { label_id: labelId });
-    return response.data;
-  },
+  // approve: async (id: string, versionId?: string) => {
+  //   const response = await api.post(`/documents/${id}/approve/`, {
+  //     version_id: versionId,
+  //   });
+  //   return response.data;
+  // },
+  // // Add inside documentsApi object:
+  // addLabel: async (documentId: string, labelId: number) => {
+  //   const response = await api.post(`/documents/${documentId}/labels/`, { label_id: labelId });
+  //   return response.data;
+  // },
 
   removeLabel: async (documentId: string, labelId: number) => {
     const response = await api.delete(`/documents/${documentId}/labels/${labelId}/`);
