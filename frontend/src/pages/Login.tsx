@@ -37,7 +37,7 @@ export function Login() {
     try {
       const data = await authApi.verifyOTP(forgotEmail, otp);
       setResetToken(data.reset_token);
-      alert("OTP verified successfully!"); // Pop-up 2
+      alert("OTP verified successfully!");
       setStep(2);
       setStep(2);
     } catch (err) {

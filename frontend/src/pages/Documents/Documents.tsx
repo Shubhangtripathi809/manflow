@@ -7,7 +7,6 @@ import { documentsApi, projectsApi } from '@/services/api';
 import type { Document, Project } from '@/types';
 import { ViewToggle, DualView, useViewMode, } from '@/components/layout/DualView';
 import { createDocumentsTableColumns, DocumentGridCard } from '@/components/layout/DualView/documentsConfig';
-import { DocumentStatsSidebar } from '../components/layout/DualView/DocumentStatsSidebar';
 
 
 const FILE_TYPE_OPTIONS = [
@@ -134,10 +133,6 @@ export function Documents() {
     setSearchParams(newParams);
   };
 
-  const handleStatusFilterChange = (status: string) => {
-    updateFilter('status', status);
-  };
-
   const clearFilters = () => {
     setSearchParams({});
     setSearchTerm('');
@@ -170,7 +165,7 @@ export function Documents() {
 
   return (
     <div className="flex w-full min-h-screen">
-      <div className="flex-1 min-w-0 p-8 lg:mr-[280px]">
+      <div className="flex-1 min-w-0 p-8">
         <div className="space-y-8">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -281,13 +276,6 @@ export function Documents() {
           />
         </div>
       </div>
-
-      {/* Right Sidebar */}
-      <DocumentStatsSidebar
-        documents={allDocs}
-        currentFilter={statusFilter}
-        onFilterChange={handleStatusFilterChange}
-      />
 
       <ConfirmationModal
         isOpen={!!deleteConfirm}

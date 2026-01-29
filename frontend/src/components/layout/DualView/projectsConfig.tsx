@@ -7,6 +7,79 @@ import { projectsApi } from '@/services/api';
 import type { Project } from '@/types';
 import type { TableColumn } from '../DualView';
 
+const ProjectMembersList = ({ project }: { project: Project }) => {
+  const [openMembersCard, setOpenMembersCard] = React.useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <div
+        className="flex -space-x-1.5 items-center cursor-pointer hover:opacity-80"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpenMembersCard(!openMembersCard);
+        }}
+      >
+        {project.members && project.members.length > 0 ? (
+          <>
+            {project.members.slice(0, 3).map((member: any) => (
+              <div
+                key={member.id}
+                className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 ring-1 ring-white z-10"
+                title={member.user?.full_name || 'User'}
+              >
+                {member.user?.full_name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            ))}
+            {project.members.length > 3 && (
+              <div className="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-[10px] font-bold text-white ring-1 ring-white z-0">
+                +{project.members.length - 3}
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="text-gray-400 text-[11px] pl-1">—</span>
+        )}
+      </div>
+
+      {openMembersCard && (
+        <>
+          <div
+            className="fixed inset-0 z-[100]"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              setOpenMembersCard(false);
+            }}
+          />
+          <div className="absolute left-0 top-full mt-2 z-[999] w-64 bg-white border border-gray-200 rounded-lg shadow-xl text-left">
+            <div className="p-2 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-lg">
+              <span className="text-xs font-semibold text-gray-700">Project Members</span>
+              <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded text-gray-600">
+                {project.members?.length || 0}
+              </span>
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1">
+              {project.members?.map((member) => (
+                <div key={member.id} className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 shrink-0">
+                    {member.user.full_name?.charAt(0) || 'U'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-gray-700 truncate">{member.user.full_name}</p>
+                    <p className="text-[10px] text-gray-400 truncate capitalize">{member.role.replace('_', ' ')}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // projectsConfig.tsx
 export const getProjectsTableColumns = (
   onToggleFavorite: (e: React.MouseEvent, project: Project) => void
@@ -32,12 +105,10 @@ export const getProjectsTableColumns = (
       ),
     },
     {
-      key: 'member_count',
+      key: 'members',
       label: 'Members',
       width: '120px',
-      render: (project: any) => (
-        <span className="text-gray-700 font-medium text-[13px]">{project.member_count || 0} members</span>
-      ),
+      render: (project: Project) => <ProjectMembersList project={project} />,
     },
     {
       key: 'updated_at',
@@ -113,67 +184,8 @@ export function ProjectGridCard({ project, onToggleFavorite }: ProjectGridCardPr
             <span className="ml-1">{project.document_count || 0}</span>
           </div>
 
-          <div className="relative">
-            <div
-              className="flex items-center hover:text-blue-600 transition-colors cursor-pointer w-max"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpenMembersCard(!openMembersCard);
-              }}
-            >
-              <Users className="w-3 h-3 mr-1" />
-              <span className="font-medium">Members:</span>
-              <span className="ml-1">{project.member_count || 0}</span>
-            </div>
-
-            {openMembersCard && (
-              <>
-                <div
-                  className="fixed inset-0 z-[100]"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setOpenMembersCard(false);
-                  }}
-                />
-                <div
-                  className="absolute left-0 top-full mt-2 z-[101] w-64 bg-white border border-gray-200 rounded-lg shadow-xl"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  <div className="p-2 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-lg">
-                    <span className="text-xs font-semibold text-gray-700">Project Members</span>
-                    <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded text-gray-600">
-                      {project.members?.length || 0}
-                    </span>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto p-1">
-                    {project.members && project.members.length > 0 ? (
-                      project.members.map((member) => (
-                        <div key={member.id} className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded">
-                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 shrink-0">
-                            {member.user.full_name?.charAt(0) || 'U'}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-medium text-gray-700 truncate">
-                              {member.user.full_name}
-                            </p>
-                            <p className="text-[10px] text-gray-400 truncate capitalize">
-                              {member.role.replace('_', ' ')}
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-[11px] text-gray-400 p-2 text-center">No members assigned</p>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+          <div className="flex items-center">
+            <ProjectMembersList project={project} />
           </div>
         </div>
       </div>

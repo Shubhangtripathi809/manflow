@@ -1,9 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
-  AuthTokens, User as AppUser, Skill, PaginatedResponse, ToolDocumentListPayload, DocumentDetailResponse, GroundTruthApiResponse, GroundTruthEntry, PageContentResponse, PageContentErrorResponse, GetTableCellsResponse, ProjectMinimal, PaginatedProjectsResponse,
-  GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload,
-  APICollection, APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
-  Label
+  AuthTokens, User as AppUser, Skill, PaginatedResponse, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, 
+  ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload, APICollection, 
+  APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
+  Label, DocumentStatus, ChatMessage, ChatRoom, ChatRoomMessagesResponse, CreatePrivateChatPayload, WebSocketSendMessagePayload, WebSocketGlobalMessage
 } from '@/types';
 
 //const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.10:8000/api/v1';
@@ -186,19 +186,18 @@ export const authApi = {
   },
 };
 
-// Add this to your api.ts file
+// Notification
 export const notificationsApi = {
-  // Fetch paginated notifications
   list: async (params?: { limit?: number; offset?: number }) => {
     const response = await api.get('/notification/', { params });
-    return response.data; // Matches the screenshot structure: { notifications: [], total: x, ... }
+    return response.data; 
   },
 
   getSummary: async () => {
     const response = await api.get('/notification/');
     return {
       total: response.data.total,
-      unread: response.data.unread_count // Based on your Postman screenshot
+      unread: response.data.unread_count 
     };
   },
 
@@ -213,7 +212,6 @@ export const notificationsApi = {
     await api.delete(`/notification/${id}/`);
   },
 
-  // Optional: Archive or Clear all (Update these if your backend supports them)
   clearAll: async () => {
     await api.post('/notification/clear_all/');
   }
@@ -351,53 +349,59 @@ export const documentsApi = {
     return response.data;
   },
 
+  // Update document status in documents page 
+  updateStatus: async (id: string, status: DocumentStatus) => {
+    const response = await api.patch(`/documents/${id}/`, { status });
+    return response.data;
+  },
+
   // Document delete on documents page
   delete: async (id: string) => {
     await api.delete(`/documents/${id}/`);
   },
 
-  uploadSource: async (id: string, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post(`/documents/${id}/upload-source/`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  },
+  // uploadSource: async (id: string, file: File) => {
+  //   const formData = new FormData();
+  //   formData.append('file', file);
+  //   const response = await api.post(`/documents/${id}/upload-source/`, formData, {
+  //     headers: { 'Content-Type': 'multipart/form-data' },
+  //   });
+  //   return response.data;
+  // },
 
-  getVersions: async (id: string) => {
-    const response = await api.get(`/documents/${id}/versions/`);
-    return response.data;
-  },
+  // getVersions: async (id: string) => {
+  //   const response = await api.get(`/documents/${id}/versions/`);
+  //   return response.data;
+  // },
 
-  createVersion: async (id: string, data: { gt_data: Record<string, unknown>; change_summary?: string }) => {
-    const response = await api.post(`/documents/${id}/versions/`, data);
-    return response.data;
-  },
+  // createVersion: async (id: string, data: { gt_data: Record<string, unknown>; change_summary?: string }) => {
+  //   const response = await api.post(`/documents/${id}/versions/`, data);
+  //   return response.data;
+  // },
 
-  getVersionDiff: async (id: string, v1: string | number, v2: string | number) => {
-    const response = await api.get(`/documents/${id}/versions/diff/`, {
-      params: { v1, v2 },
-    });
-    return response.data;
-  },
+  // getVersionDiff: async (id: string, v1: string | number, v2: string | number) => {
+  //   const response = await api.get(`/documents/${id}/versions/diff/`, {
+  //     params: { v1, v2 },
+  //   });
+  //   return response.data;
+  // },
 
-  submitForReview: async (id: string) => {
-    const response = await api.post(`/documents/${id}/submit-for-review/`);
-    return response.data;
-  },
+  // submitForReview: async (id: string) => {
+  //   const response = await api.post(`/documents/${id}/submit-for-review/`);
+  //   return response.data;
+  // },
 
-  approve: async (id: string, versionId?: string) => {
-    const response = await api.post(`/documents/${id}/approve/`, {
-      version_id: versionId,
-    });
-    return response.data;
-  },
-  // Add inside documentsApi object:
-  addLabel: async (documentId: string, labelId: number) => {
-    const response = await api.post(`/documents/${documentId}/labels/`, { label_id: labelId });
-    return response.data;
-  },
+  // approve: async (id: string, versionId?: string) => {
+  //   const response = await api.post(`/documents/${id}/approve/`, {
+  //     version_id: versionId,
+  //   });
+  //   return response.data;
+  // },
+  // // Add inside documentsApi object:
+  // addLabel: async (documentId: string, labelId: number) => {
+  //   const response = await api.post(`/documents/${documentId}/labels/`, { label_id: labelId });
+  //   return response.data;
+  // },
 
   removeLabel: async (documentId: string, labelId: number) => {
     const response = await api.delete(`/documents/${documentId}/labels/${labelId}/`);
@@ -587,73 +591,266 @@ export const usersApi = {
   },
 };
 
-// Tools PdfVsHtml API
-export const toolApi = {
-  getProjectFolders: async () => {
-    const res = await fileApi.get<ToolDocumentListPayload>("/documents/");
-    return res.data.documents || [];
-  },
-  getDocumentsInProject: async (projectName: string) => {
-    const res = await fileApi.get<ToolDocumentListPayload>(`/documents/${projectName}/`);
-    return res.data.documents || [];
-  },
-
-  getDocumentDetail: async (projectName: string, docName: string) => {
-    const res = await fileApi.get<DocumentDetailResponse>(`/documents/${projectName}/${docName}/`);
-    return res.data;
+// Team Chat API
+export const chatApi = {
+  // 1. Create or Get Private Chat Room
+  createPrivateRoom: async (userId: number) => {
+    const response = await api.post<ChatRoom>('/chat/rooms/private/', {
+      user_id: userId
+    } as CreatePrivateChatPayload);
+    return response.data;
   },
 
-  getAllGroundTruth: async () => {
-    const res = await fileApi.get<{ documents: Omit<GroundTruthEntry, 'id'>[] }>("/ground_truth/all");
-    return res.data.documents.map((entry: any, index: number) => ({
-      ...entry,
-      id: `gt-server-${Date.now()}-${index}`,
-      docName: entry.docName || entry.document
-    })) as GroundTruthEntry[];
+  // 2. Fetch Messages for a specific Room
+  getRoomMessages: async (roomId: string, params?: { limit?: number; offset?: number }) => {
+    const response = await api.get<ChatRoomMessagesResponse>(`/chat/rooms/${roomId}/messages/`, { params });
+    return response.data;
   },
 
-  // New function to submit a new ground truth entry
-  submitGroundTruth: async (docName: string, entry: Omit<GroundTruthApiResponse, 'id' | 'docName'>) => {
-    const res = await fileApi.post(`/ground_truth/${docName}/`, entry);
-    return res.data;
-  },
+  // Send a message 
+  sendMessage: async (roomId: string, data: { content: string; attachment?: File }) => {
+    const formData = new FormData();
+    formData.append('content', data.content);
+    if (data.attachment) {
+      formData.append('attachment', data.attachment);
+    }
 
-
-  // Tools JSONViewer API
-  getTableCellsFileNames: async () => {
-    const res = await fileApi.post<GetTableCellsResponse>("/backend/get_table_cells", { load_json: [] }, {
+    const response = await api.post(`/chat/rooms/${roomId}/messages/`, formData, {
       headers: {
-        "Content-Type": "application/json"
-      }
+        'Content-Type': 'multipart/form-data',
+      },
     });
-    return res.data;
-  },
-  fetchPageContentJson: async (fileName: string) => {
-    const data = {
-      elastic_indx: "10k",
-      select_fields: [
-        "page",
-        "table",
-        "image",
-        "text",
-        "cell",
-        "entity",
-        "key_value",
-        "table_np",
-      ],
-      PDF: [
-        fileName,
-      ],
-      highlight_words: [],
-    };
-    const res = await fileApi.post<PageContentResponse | PageContentErrorResponse>("/backend/get_page_content", data, {
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
-    return res.data;
+    return response.data;
   },
 };
+
+// WebSocket Service for Real-time Chat
+export class ChatWebSocketService {
+  private ws: WebSocket | null = null;
+  private messageCallback: ((msg: ChatMessage) => void) | null = null;
+
+  connect(roomId: string) {
+    const tokens = getTokens();
+    if (!tokens?.access) {
+      console.error("No access token available for WebSocket");
+      return;
+    }
+
+    // Construct WS URL with Token
+    const wsUrl = `ws://192.168.1.12:8000/ws/chat/${roomId}/?token=${tokens.access}`;
+
+    this.ws = new WebSocket(wsUrl);
+
+    this.ws.onopen = () => {
+      console.log(`Connected to Chat Room: ${roomId}`);
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle incoming chat message
+        if (data.type === 'chat_message' && data.message && this.messageCallback) {
+            this.messageCallback(data.message);
+        }
+      } catch (err) {
+        console.error('WS Message Parse Error', err);
+      }
+    };
+
+    this.ws.onerror = (error) => {
+      console.error('WebSocket Error', error);
+    };
+
+    this.ws.onclose = () => {
+      console.log('Disconnected from Chat WS');
+    };
+  }
+
+  // Send message via WebSocket
+  sendMessage(content: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      const payload: WebSocketSendMessagePayload = {
+        type: 'chat_message',
+        content: content
+      };
+      this.ws.send(JSON.stringify(payload));
+    } else {
+      console.error("WebSocket is not open. Cannot send message.");
+    }
+  }
+
+  // Register callback for UI updates
+  onMessage(callback: (msg: ChatMessage) => void) {
+    this.messageCallback = callback;
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+      this.messageCallback = null;
+    }
+  }
+}
+
+// Add this new class after the ChatWebSocketService class (after line 667 in api.ts)
+
+// Global WebSocket Service - Receives all messages across all rooms
+export class GlobalChatWebSocketService {
+  private ws: WebSocket | null = null;
+  private messageCallback: ((msg: WebSocketGlobalMessage) => void) | null = null;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+
+  connect() {
+    const tokens = getTokens();
+    if (!tokens?.access) {
+      console.error("No access token available for Global WebSocket");
+      return;
+    }
+
+    // Global WebSocket URL - listens to ALL rooms for this user
+    const wsUrl = `ws://192.168.1.12:8000/ws/chat/global/?token=${tokens.access}`;
+
+    this.ws = new WebSocket(wsUrl);
+
+    this.ws.onopen = () => {
+      console.log('🌍 Connected to Global Chat WebSocket');
+      this.reconnectAttempts = 0;
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const data: WebSocketGlobalMessage = JSON.parse(event.data);
+        
+        if (this.messageCallback) {
+          this.messageCallback(data);
+        }
+      } catch (err) {
+        console.error('Global WS Message Parse Error', err);
+      }
+    };
+
+    this.ws.onerror = (error) => {
+      console.error('Global WebSocket Error', error);
+    };
+
+    this.ws.onclose = () => {
+      console.log('❌ Global WebSocket Disconnected');
+      this.attemptReconnect();
+    };
+  }
+
+  private attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached for Global WebSocket');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    
+    console.log(`Reconnecting Global WebSocket in ${delay}ms... (Attempt ${this.reconnectAttempts})`);
+    
+    this.reconnectTimeout = setTimeout(() => {
+      this.connect();
+    }, delay);
+  }
+
+  onMessage(callback: (msg: WebSocketGlobalMessage) => void) {
+    this.messageCallback = callback;
+  }
+
+  disconnect() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+    
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+      this.messageCallback = null;
+    }
+  }
+
+  isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+}
+
+// Export singleton instance for global use (optional)
+export const globalChatSocket = new GlobalChatWebSocketService();
+
+
+// // Tools PdfVsHtml API
+// export const toolApi = {
+//   getProjectFolders: async () => {
+//     const res = await fileApi.get<ToolDocumentListPayload>("/documents/");
+//     return res.data.documents || [];
+//   },
+//   getDocumentsInProject: async (projectName: string) => {
+//     const res = await fileApi.get<ToolDocumentListPayload>(`/documents/${projectName}/`);
+//     return res.data.documents || [];
+//   },
+
+//   getDocumentDetail: async (projectName: string, docName: string) => {
+//     const res = await fileApi.get<DocumentDetailResponse>(`/documents/${projectName}/${docName}/`);
+//     return res.data;
+//   },
+
+//   getAllGroundTruth: async () => {
+//     const res = await fileApi.get<{ documents: Omit<GroundTruthEntry, 'id'>[] }>("/ground_truth/all");
+//     return res.data.documents.map((entry: any, index: number) => ({
+//       ...entry,
+//       id: `gt-server-${Date.now()}-${index}`,
+//       docName: entry.docName || entry.document
+//     })) as GroundTruthEntry[];
+//   },
+
+//   // New function to submit a new ground truth entry
+//   submitGroundTruth: async (docName: string, entry: Omit<GroundTruthApiResponse, 'id' | 'docName'>) => {
+//     const res = await fileApi.post(`/ground_truth/${docName}/`, entry);
+//     return res.data;
+//   },
+
+
+//   // Tools JSONViewer API
+//   getTableCellsFileNames: async () => {
+//     const res = await fileApi.post<GetTableCellsResponse>("/backend/get_table_cells", { load_json: [] }, {
+//       headers: {
+//         "Content-Type": "application/json"
+//       }
+//     });
+//     return res.data;
+//   },
+//   fetchPageContentJson: async (fileName: string) => {
+//     const data = {
+//       elastic_indx: "10k",
+//       select_fields: [
+//         "page",
+//         "table",
+//         "image",
+//         "text",
+//         "cell",
+//         "entity",
+//         "key_value",
+//         "table_np",
+//       ],
+//       PDF: [
+//         fileName,
+//       ],
+//       highlight_words: [],
+//     };
+//     const res = await fileApi.post<PageContentResponse | PageContentErrorResponse>("/backend/get_page_content", data, {
+//       headers: {
+//         "Content-Type": "application/json"
+//       }
+//     });
+//     return res.data;
+//   },
+// };
 
 // API Testing Platform API
 export const apiTestingApi = {

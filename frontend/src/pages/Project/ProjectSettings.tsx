@@ -1,29 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Save, Trash2, Plus, X, Users, Tags, Settings, AlertTriangle, } from 'lucide-react';
 import {
-  ArrowLeft,
-  Save,
-  Trash2,
-  Plus,
-  X,
-  Users,
-  Tags,
-  Settings,
-  AlertTriangle,
-} from 'lucide-react';
-import {
-  Button,
-  Input,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Badge,
+  Button, Input, Card, CardHeader, CardTitle, CardContent, Badge,
 } from '@/components/common';
-import { projectsApi, usersApi  } from '@/services/api';
+import { projectsApi, usersApi } from '@/services/api';
 import { cn, getProjectTypeColor } from '@/lib/utils';
-import type { Project, Label, TaskType, User as AppUser  } from '@/types';
+import type { Project, Label, TaskType, User as AppUser } from '@/types';
 
 const TASK_TYPES = [
   { value: 'client', label: 'Client' },
@@ -84,7 +68,7 @@ export function ProjectSettings() {
     queryFn: () => projectsApi.get(Number(id)),
     enabled: !!id,
   });
-  
+
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['allUsers'],
     queryFn: usersApi.listAll,
@@ -108,7 +92,7 @@ export function ProjectSettings() {
     setIsProjectDataLoaded(true);
   }
 
- useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setUserDropdownOpen(false);
@@ -180,7 +164,7 @@ export function ProjectSettings() {
     setIsFormDirty(true);
   };
 
- const handleAddMember = () => {
+  const handleAddMember = () => {
     if (tempUser && tempRole) {
       const isPending = assignedTo.some(a => a.userId === tempUser);
       const isExisting = project?.members?.some((m: any) => m.user.id === tempUser);
@@ -198,7 +182,7 @@ export function ProjectSettings() {
     }
   };
 
- const handleSave = async () => {
+  const handleSave = async () => {
     await updateMutation.mutateAsync(formData);
     // Add new members
     for (const assignment of assignedTo) {
@@ -207,11 +191,11 @@ export function ProjectSettings() {
         role: assignment.role,
       });
     }
-    
+
     // Clear assignedTo after saving
     setAssignedTo([]);
     setIsFormDirty(false);
-    
+
     // Navigate back to projects
     navigate('/projects');
   };
@@ -248,18 +232,22 @@ export function ProjectSettings() {
   const labels = project.labels || [];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mb-8">
         <Link
           to={`/projects/${id}`}
-          className="p-2 hover:bg-accent rounded-lg transition-colors"
+          className="p-3 bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.1)] hover:bg-slate-50 hover:shadow-md hover:-translate-x-0.5 transition-all duration-200 text-black flex items-center justify-center"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Project Settings</h1>
-          <p className="text-muted-foreground">{project?.name}</p>
+          <h1 className="text-[1.3rem] font-bold text-black leading-tight tracking-tight">
+            Project Settings
+          </h1>
+          <p className="text-base text-slate-500 mt-0.5">
+            {project?.name}
+          </p>
         </div>
       </div>
 
@@ -301,21 +289,59 @@ export function ProjectSettings() {
       {activeTab === 'general' && (
         <Card>
           <CardHeader>
-            <CardTitle>Project Details</CardTitle>
+            <CardTitle className="text-[1.3rem] font-bold text-black leading-tight tracking-tight">
+              Project Details
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Project Name <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="name"
-                name="name"
-                type="text"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter project name"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium">
+                  Project Name <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Enter project name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Members
+                </label>
+                <div className="min-h-[40px] w-full rounded-md border border-input bg-muted/20 px-3 py-2">
+                  {project.members && project.members.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {project.members.map((member: any) => {
+                        // Fallback logic: Try direct full_name, then nested user.full_name, then username
+                        const displayName =
+                          member.full_name ||
+                          member.user?.full_name ||
+                          member.user?.username ||
+                          member.user?.first_name + ' ' + member.user?.last_name;
+
+                        return (
+                          <Badge
+                            key={member.id}
+                            variant="secondary"
+                            className="font-normal"
+                          >
+                            {displayName}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground h-full flex items-center">
+                      No members assigned
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -355,7 +381,10 @@ export function ProjectSettings() {
                   {userDropdownOpen && (
                     <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
                       {usersData
-                        ?.filter((user) => !assignedTo.some((a) => a.userId === user.value))
+                        ?.filter((user) =>
+                          !assignedTo.some((a) => a.userId === user.value) &&
+                          !project.members?.some((m: any) => m.user.id === user.value)
+                        )
                         .map((user) => (
                           <div
                             key={user.value}
@@ -372,7 +401,7 @@ export function ProjectSettings() {
                   )}
                 </div>
 
-                {/* Right: Role Select + Add Button (50%) */}
+                {/* Right: Role Select + Add Button */}
                 <div className="flex flex-1 gap-2">
                   <div className="relative flex-1" ref={roleDropdownRef}>
                     <div
@@ -416,7 +445,7 @@ export function ProjectSettings() {
                 </div>
               </div>
 
-              {/* Rendered List Below */}
+              {/* Rendered List  */}
               {assignedTo.length > 0 && (
                 <div className="space-y-2 mt-2 max-w-md">
                   {assignedTo.map((assignment) => {
@@ -694,13 +723,13 @@ export function ProjectSettings() {
               </div>
               <h3 className="text-lg font-semibold">Action Failed</h3>
             </div>
-            
+
             <p className="text-muted-foreground text-sm leading-relaxed">
               {errorMessage}
             </p>
-            
+
             <div className="flex justify-end pt-2">
-              <Button 
+              <Button
                 onClick={() => setShowErrorModal(false)}
                 className="min-w-[100px]"
               >

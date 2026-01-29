@@ -310,6 +310,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
             await queryClient.invalidateQueries({ queryKey: ['task-documents', task.id] });
             await queryClient.invalidateQueries({ queryKey: ['tasks'] });
             await queryClient.invalidateQueries({ queryKey: ['task-detail', task.id] });
+            await queryClient.refetchQueries({
+                queryKey: ['documents'],
+                type: 'active'
+            });
 
         } catch (err: any) {
             console.error('Upload failed:', err);
@@ -348,14 +352,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
         }
     };
 
-   const handleDeleteAttachment = async (attachmentId: string) => {
+    const handleDeleteAttachment = async (attachmentId: string) => {
         try {
             await documentsApi.delete(attachmentId);
             queryClient.setQueryData(['task-documents', task.id], (oldDocs: any[] | undefined) => {
                 return (oldDocs || []).filter((doc) => doc.id.toString() !== attachmentId);
             });
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            
+
             setDeleteAttachmentConfirm(null);
         } catch (error) {
             console.error('Failed to delete attachment:', error);
@@ -400,9 +404,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose,
                 <div className={`${isMaximized ? 'px-4 max-w-4xl mx-auto w-full' : 'px-'} py-5 border-b bg-white flex items-center justify-between sticky top-0 z-20`}>
                     <div className="flex items-center gap-4">
                         <div className="p-2 bg-purple-50 rounded-lg"><Edit3 className="w-5 h-5 text-purple-600" /></div>
-                        <h2 className="text-xl font-bold text-gray-900">
-                            {task.project_details?.name || task.project_name || 'No Project'}
-                        </h2>
+                        <div className="pr-2 flex flex-col">
+                            <span className="text-sm font-bold text-gray-900 line-clamp-1 mb-0.5">
+                                {task.heading || 'No Task'}
+                            </span>
+                            <span className="text-xs font-medium text-gray-600 line-clamp-2">
+                                {task.project_details?.name || task.project_name || 'No Project'}
+                            </span>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
