@@ -34,7 +34,28 @@ User = get_user_model()
 # =============================================================================
 # ROOM VIEWS
 # =============================================================================
+class UserListView(APIView):
+    """
+    List all users for chat sidebar.
+    Returns all active users except the current user.
+    """
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        users = User.objects.filter(
+            is_active=True
+        ).exclude(
+            id=request.user.id
+        ).values(
+            'id', 
+            'username', 
+            'email', 
+            'first_name', 
+            'last_name'
+        )
+        
+        return Response(list(users))
+    
 class ChatRoomListView(APIView):
     """
     List all chat rooms for the current user.

@@ -25,6 +25,7 @@ urlpatterns = [
         path('task-ai/', include('apps.task_ai.urls')),
         path('api-testing/', include('apps.api_testing.urls')),
         path("notification/", include("apps.notification.urls")),
+        path("chat/", include("apps.chat.urls")),
     ])),
     
     # API Documentation
