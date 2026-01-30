@@ -8,7 +8,6 @@ import { useParams } from 'react-router-dom';
 import { projectsApi } from '@/services/api';
 import { TaskDetails } from '@/pages/TaskType/TaskDetails';
 import { APITesting } from '@/pages/TaskType/APITesting';
-import { TeamChatModern } from '@/pages/TeamsChat/TeamChatModern';
 
 import {
   Dashboard,
@@ -27,6 +26,7 @@ import {
   NotificationsPage,
   Profile,
   ResetPassword,
+  TeamChatModern,
 } from '@/pages';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {

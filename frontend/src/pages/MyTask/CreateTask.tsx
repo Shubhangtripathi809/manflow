@@ -1,21 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-    X,
-    Calendar,
-    CheckCircle,
-    AlertCircle,
-    ArrowLeft,
-    Briefcase,
-    User,
-    Flag,
-    Paperclip,
-    Type,
-    Sparkles,
-    Plus,
-    Link,
-    Trash2
-} from 'lucide-react';
+import { X, Calendar, CheckCircle, AlertCircle, ArrowLeft, Briefcase, User, Flag, Paperclip, Type, Sparkles, Plus, Link, Trash2} from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
 import { ProjectMinimal, AITaskSuggestionResponse, Label } from '@/types';
@@ -180,7 +165,14 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const newFiles = Array.from(e.target.files);
+            const MAX_FILE_SIZE = 500 * 1024 * 1024;
+            const newFiles = Array.from(e.target.files).filter(file => {
+                if (file.size > MAX_FILE_SIZE) {
+                    setError(`File ${file.name} exceeds the 500 MB limit.`);
+                    return false;
+                }
+                return true;
+            });
             setAttachments(prev => [...prev, ...newFiles]);
         }
     };
@@ -1116,14 +1108,14 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                         multiple
                                         onChange={handleFileChange}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        accept=".pdf,image/*,.ppt,.pptx,.xml,.json,.html"
+                                        accept="*"
                                     />
                                     <div className="text-center">
                                         <Paperclip className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                                         <p className="text-sm text-gray-600">
                                             <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
                                         </p>
-                                        <p className="text-xs text-gray-500 mt-1">PDF, Images, Documents (Max 10MB each)</p>
+                                        <p className="text-xs text-gray-500 mt-1">Videos, images, archives, code, PDFs (Max 500MB)</p>
                                     </div>
                                 </div>
 

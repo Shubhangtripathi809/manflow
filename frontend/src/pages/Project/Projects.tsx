@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus, FolderKanban } from 'lucide-react';
@@ -7,9 +7,11 @@ import { projectsApi } from '@/services/api';
 import type { Project } from '@/types';
 import { ViewToggle, DualView, useViewMode, } from '@/components/layout/DualView';
 import {
- getProjectsTableColumns,
+  getProjectsTableColumns,
   ProjectGridCard,
 } from '@/components/layout/DualView/projectsConfig';
+import { useTableFilters, ColumnFilterConfig } from '@/hooks/useTableFilters';
+import { SearchFilter, FilterHeaderWrapper } from '@/components/layout/DualView/FilterComponents';
 
 export function Projects() {
   const queryClient = useQueryClient();
@@ -34,6 +36,8 @@ export function Projects() {
   };
   const columns = getProjectsTableColumns(toggleFavorite);
 
+
+
   const { data, isLoading } = useQuery({
     queryKey: ['projects', filter],
     queryFn: () => projectsApi.list(filter ? { task_type: filter } : undefined),
@@ -55,6 +59,32 @@ export function Projects() {
     }
     return [];
   })() as Project[];
+
+  // Filter configuration - only for Project column
+  const filterConfig: ColumnFilterConfig[] = [
+    { key: 'name', type: 'search' },
+  ];
+
+  // Initialize filter hook
+  const {
+    filteredData: filteredProjects,
+    handleSort,
+    columnFilters,
+    setColumnFilters,
+    clearFilter,
+    activeFilterKey,
+    setActiveFilterKey,
+    filterContainerRef,
+  } = useTableFilters<Project>({
+    data: projects,
+    columns: filterConfig,
+    globalSearchFields: ['name'],
+  });
+
+  // Handle filter toggle
+  const handleFilter = useCallback((key: string) => {
+    setActiveFilterKey(prev => prev === key ? null : key);
+  }, [setActiveFilterKey]);
 
   const emptyState = (
     <Card>
@@ -97,7 +127,7 @@ export function Projects() {
         viewMode={viewMode}
         isLoading={isLoading}
         gridProps={{
-          data: projects,
+          data: filteredProjects,
           renderCard: (project: any) => (
             <ProjectGridCard
               key={project.id}
@@ -109,13 +139,41 @@ export function Projects() {
           gridClassName: 'grid gap-4 md:grid-cols-2 lg:grid-cols-3',
         }}
         tableProps={{
-          data: projects,
-          columns: columns,
+          data: filteredProjects,
+          activeFilterKey: activeFilterKey,
+          columns: columns.map(col => ({
+            ...col,
+            headerClassName: `relative ${activeFilterKey === col.key ? 'z-[100]' : ''}`,
+            label: col.key === 'name' ? (
+              <div ref={activeFilterKey === col.key ? filterContainerRef : null}>
+                <FilterHeaderWrapper
+                  columnLabel="Project"
+                  filterType="search"
+                  isActive={activeFilterKey === col.key}
+                >
+                  <SearchFilter
+                    columnKey={col.key}
+                    placeholder="Search..."
+                    value={columnFilters[col.key] || ''}
+                    onChange={(value) => setColumnFilters(prev => ({ ...prev, [col.key]: value }))}
+                    isActive={activeFilterKey === col.key}
+                  />
+                </FilterHeaderWrapper>
+              </div>
+            ) : col.label
+          })),
           rowKey: (project: any) => project.id,
           onRowClick: (project: any) =>
             (window.location.href = `/projects/${project.id}`),
           emptyState,
           rowClassName: () => 'group',
+          onSort: handleSort,
+          onFilter: (key: string) => {
+            // Only allow filter on 'name' column
+            if (key === 'name') {
+              handleFilter(key);
+            }
+          },
         }}
       />
     </div>

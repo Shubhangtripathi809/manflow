@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, FileText, Download, Calendar, User, Loader2, File, Image as ImageIcon, FileJson,
-  Film, FileCode, ChevronLeft, ChevronRight, Info, X, } from 'lucide-react';
+import {
+  ArrowLeft, FileText, Download, Calendar, User, Loader2, File, Image as ImageIcon, FileJson,
+  Film, FileCode, ChevronLeft, ChevronRight, Info, X,
+} from 'lucide-react';
 import { Button, Badge } from '@/components/common';
 import { documentsApi } from '@/services/api';
 import { formatDate, getStatusColor } from '@/lib/utils';
@@ -156,6 +158,40 @@ function DocumentViewer({ doc, downloadUrl }: { doc: Document; downloadUrl: stri
     );
   }
 
+  // Check for office documents or other external opening types
+  const fileExtension = (doc.original_file_name || doc.name).split('.').pop()?.toLowerCase() || '';
+  const officeTypes = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
+
+  if (officeTypes.includes(fileExtension) || doc.file_type === 'other') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <FileText className="h-20 w-20 text-blue-500/40 mb-4" />
+        <p className="text-xl font-semibold text-muted-foreground">
+          {officeTypes.includes(fileExtension) ? 'Office Document' : 'External File'}
+        </p>
+        <p className="text-sm text-muted-foreground mt-2 mb-6 text-center">
+          This file type cannot be previewed directly but can be opened in a new tab.
+        </p>
+        <Button
+          onClick={() => {
+            if (downloadUrl) {
+              if (['doc', 'docx', 'ppt', 'pptx'].includes(fileExtension)) {
+                const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(downloadUrl)}`;
+                window.open(officeViewerUrl, '_blank');
+              } else {
+                window.open(downloadUrl, '_blank');
+              }
+            }
+          }}
+          className="gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          Open File in New Tab
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center h-full">
       <FileText className="h-20 w-20 text-muted-foreground/30 mb-4" />
@@ -183,6 +219,19 @@ export function DocumentDetail() {
     document?.id
   );
 
+  React.useEffect(() => {
+    if (document && downloadUrl && !isLoading && !isUrlLoading) {
+      const fileName = document.original_file_name || document.name || '';
+      const fileExtension = fileName.split('.').pop()?.toLowerCase();
+      if (fileExtension === 'docx') {
+        const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(downloadUrl)}`;
+        window.open(officeViewerUrl, '_blank');
+        navigate('/documents');
+      }
+    }
+  }, [document, downloadUrl, isLoading, isUrlLoading, navigate]);
+
+
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
       case 'pdf':
@@ -201,24 +250,24 @@ export function DocumentDetail() {
   };
 
   const handleDownload = async () => {
-  if (!downloadUrl) return;
+    if (!downloadUrl) return;
 
-  try {
-    const response = await fetch(downloadUrl);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = window.document.createElement('a');
-    link.href = url;
-    link.download = document?.original_file_name || document?.name || 'download';
-    window.document.body.appendChild(link);
-    link.click();
-    window.document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Download failed:', error);
-    window.open(downloadUrl, '_blank');
-  }
-};
+    try {
+      const response = await fetch(downloadUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = document?.original_file_name || document?.name || 'download';
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      window.open(downloadUrl, '_blank');
+    }
+  };
 
   if (isLoading || isUrlLoading) {
     return (
