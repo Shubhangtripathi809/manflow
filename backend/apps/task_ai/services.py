@@ -43,16 +43,15 @@ class TaskAIService:
     @staticmethod
     def get_project_members_with_skills(project):
         """
-        Get all project members (excluding admins) with their skills metadata.
-        Returns a list of dicts with user info and skills.
+        Get all project members including admins/managers/users with their skills metadata.
         """
         members_data = []
         
         # Get all members from the project
         for member in project.members.all():
-            # Skip admin users - they should never be assigned tasks
-            if member.role == 'admin':
-                continue
+            # REMOVED: The check that skipped admin users
+            # if member.role == 'admin':
+            #    continue
                 
             member_info = {
                 'id': member.id,
@@ -65,16 +64,13 @@ class TaskAIService:
             # Get skills for this member
             if hasattr(member, 'skills') and member.skills:
                 if isinstance(member.skills, str):
-                    # If skills is stored as JSON string
                     try:
                         member_info['skills'] = json.loads(member.skills)
                     except json.JSONDecodeError:
                         member_info['skills'] = []
                 elif isinstance(member.skills, list):
-                    # If skills is already a list (JSONField)
                     member_info['skills'] = member.skills
                 else:
-                    # If skills is a queryset (related model)
                     member_info['skills'] = [
                         {
                             'name': skill.name,
@@ -119,16 +115,18 @@ Project Context: {project_context}
 User Task Intent: {user_description}
 Today's Date: {date.today().isoformat()}
 
-Available Team Members (NEVER assign to admin):
+Available Team Members:
 {members_text}
 
 ASSIGNMENT RULES (CRITICAL):
-1. Analyze the task description to identify required skills (frontend, backend, management, etc.)
-2. Match team members based on their skills and proficiency levels
-3. Priority order: Regular users FIRST, then managers
-4. NEVER assign tasks to admin role members
-5. Assign to 1-3 members maximum who best match the required skills
-6. Consider proficiency levels: Expert > Advanced > Intermediate > Beginner
+1. Analyze the task description to identify required skills.
+2. MONITORING REQUIREMENT (MANDATORY):
+   - If a member with Role 'admin' exists in the list, they MUST be assigned (for monitoring purposes).
+   - If NO 'admin' exists, you MUST assign a member with Role 'manager'.
+3. WORKFORCE ASSIGNMENT:
+   - In addition to the Admin/Manager, assign 1-2 'user' role members who best match the required skills.
+   - Consider proficiency levels: Expert > Advanced > Intermediate > Beginner.
+4. Total assigned members should be the Monitor (Admin/Manager) + Workers (Users).
 
 Return ONLY a FLAT JSON object with this exact schema:
 
@@ -137,20 +135,9 @@ Return ONLY a FLAT JSON object with this exact schema:
     "description": "String (Detailed plain text explanation of the task)",
     "end_date": "YYYY-MM-DD (realistic completion date based on task complexity)",
     "priority": "low | medium | high | critical",
-    "assigned_to": [list of user IDs who match the skills needed],
+    "assigned_to": [list of user IDs including the mandatory Admin or Manager],
     "required_skills": ["skill1", "skill2"],
     "assignment_reasoning": "Brief explanation of why these members were chosen"
-}}
-
-Example for a React frontend task:
-{{
-    "heading": "Build User Dashboard Component",
-    "description": "Create a responsive user dashboard using React with real-time data updates...",
-    "end_date": "2025-01-15",
-    "priority": "high",
-    "assigned_to": [5, 8],
-    "required_skills": ["React", "JavaScript", "CSS"],
-    "assignment_reasoning": "Selected members with React expertise (Intermediate+)"
 }}
 """
         user_message = f"""
@@ -201,31 +188,37 @@ Example for a React frontend task:
     def fallback_assignment(members_with_skills, task_category='general'):
         """
         Fallback logic if AI assignment fails.
-        Prioritizes users over managers, excludes admins.
+        Enforces Admin -> Manager hierarchy for mandatory assignment.
         """
-        # Separate users and managers
         users = [m for m in members_with_skills if m['role'] == 'user']
         managers = [m for m in members_with_skills if m['role'] == 'manager']
+        admins = [m for m in members_with_skills if m['role'] == 'admin']
         
-        # Try to find matching skills
         matching_members = []
         
+        # 1. Mandatory Monitor Assignment
+        if admins:
+            # If admin exists, they are mandatory
+            matching_members.append(admins[0]['id'])
+        elif managers:
+            # If no admin, manager is mandatory
+            matching_members.append(managers[0]['id'])
+            
+        # 2. Assign Worker (User) based on skills
         if task_category in ['frontend', 'backend']:
-            for member in users + managers:
+            for member in users:
                 has_skill = any(
                     skill['category'].lower() == task_category.lower()
                     for skill in member['skills']
                 )
                 if has_skill:
                     matching_members.append(member['id'])
-                    if len(matching_members) >= 2:
+                    # We just need one or two workers + the monitor
+                    if len(matching_members) >= 3:
                         break
         
-        # If no skill match or general task, assign first available user, then manager
-        if not matching_members:
-            if users:
-                matching_members.append(users[0]['id'])
-            elif managers:
-                matching_members.append(managers[0]['id'])
+        # 3. If no skilled user found, pick first available user
+        if len(matching_members) == 1 and users:
+             matching_members.append(users[0]['id'])
         
         return matching_members if matching_members else []
