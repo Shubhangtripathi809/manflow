@@ -1,12 +1,5 @@
 """
 WebSocket consumers for real-time chat.
-
-Handles:
-- Connection authentication
-- Room joining/leaving
-- Message broadcasting
-- Typing indicators
-- Read receipts
 """
 import json
 import logging
@@ -16,7 +9,6 @@ from uuid import UUID
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
 
 from .models import ChatRoom, ChatMessage, ChatRoomMembership
 from .services import ChatRoomService, ChatMessageService, ChatPermissionService
@@ -28,50 +20,31 @@ User = get_user_model()
 class ChatConsumer(AsyncWebsocketConsumer):
     """
     Main WebSocket consumer for chat functionality.
-    
-    Supports multiple room types:
-    - Global chat: All authenticated users
-    - Project chat: Project team members
-    - Private chat: One-to-one messaging
-    
-    Message types:
-    - chat_message: Regular chat message
-    - typing: Typing indicator
-    - read: Read receipt
-    - user_joined: User joined room
-    - user_left: User left room
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.room_slug: Optional[str] = None
+        self.room_id: Optional[str] = None
         self.room_group_name: Optional[str] = None
         self.room: Optional[ChatRoom] = None
         self.user = None
 
     async def connect(self):
-        """
-        Handle WebSocket connection.
-        
-        1. Authenticate user via JWT middleware
-        2. Validate room access
-        3. Join channel layer group
-        4. Accept connection
-        """
-        # Get user from scope (set by JWTAuthMiddleware)
+        """Handle WebSocket connection."""
+        # Get user from scope
         self.user = self.scope.get('user')
         
         # Require authentication
         if not self.user or not self.user.is_authenticated:
             logger.warning("WebSocket connection rejected: Not authenticated")
-            await self.close(code=4001)  # Custom close code for auth failure
+            await self.close(code=4001)
             return
         
-        # Get room slug from URL route
-        self.room_slug = self.scope['url_route']['kwargs'].get('room_slug')
+        # Get room_id from URL
+        self.room_id = self.scope['url_route']['kwargs'].get('room_id')
         
-        if not self.room_slug:
-            logger.warning("WebSocket connection rejected: No room slug provided")
+        if not self.room_id:
+            logger.warning("WebSocket connection rejected: No room_id provided")
             await self.close(code=4002)
             return
         
@@ -79,7 +52,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room = await self.get_room()
         
         if not self.room:
-            logger.warning(f"WebSocket connection rejected: Room not found - {self.room_slug}")
+            logger.warning(f"WebSocket connection rejected: Room not found - {self.room_id}")
             await self.close(code=4003)
             return
         
@@ -91,7 +64,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         
         # Set channel group name
-        self.room_group_name = self.room.channel_group_name
+        self.room_group_name = f"chat_{self.room_id}"
         
         # Join room group
         await self.channel_layer.group_add(
@@ -102,7 +75,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Accept the WebSocket connection
         await self.accept()
         
-        logger.info(f"User {self.user.username} connected to room {self.room_slug}")
+        logger.info(f"User {self.user.username} connected to room {self.room_id}")
         
         # Broadcast user joined event
         await self.channel_layer.group_send(
@@ -118,18 +91,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'connection_established',
             'room_id': str(self.room.id),
-            'room_slug': self.room_slug,
             'room_name': self.room.name,
             'room_type': self.room.room_type,
         }))
 
     async def disconnect(self, close_code):
-        """
-        Handle WebSocket disconnection.
-        
-        1. Leave channel layer group
-        2. Broadcast user left event
-        """
+        """Handle WebSocket disconnection."""
         if self.room_group_name:
             # Broadcast user left event
             if self.user and self.user.is_authenticated:
@@ -148,18 +115,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
         
-        logger.info(f"User disconnected from room {self.room_slug}, code: {close_code}")
+        logger.info(f"User disconnected from room {self.room_id}, code: {close_code}")
 
     async def receive(self, text_data):
-        """
-        Handle incoming WebSocket messages.
-        
-        Routes messages based on type:
-        - chat_message: Send new message
-        - typing: Broadcast typing indicator
-        - read: Mark messages as read
-        - delete: Delete message
-        """
+        """Handle incoming WebSocket messages."""
         try:
             data = json.loads(text_data)
             message_type = data.get('type', 'chat_message')
@@ -184,25 +143,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send_error("Internal server error")
 
     async def handle_chat_message(self, data: Dict[str, Any]):
-        """
-        Handle incoming chat message.
-        
-        1. Validate message content
-        2. Save to database
-        3. Broadcast to room group
-        """
+        """Handle incoming chat message."""
         content = data.get('content', '').strip()
         message_type = data.get('message_type', 'text')
         reply_to_id = data.get('reply_to')
         
         if not content and message_type == 'text':
             await self.send_error("Message content is required")
-            return
-        
-        # Check permission
-        can_send = await self.check_send_permission()
-        if not can_send:
-            await self.send_error("You don't have permission to send messages")
             return
         
         # Save message to database
@@ -226,10 +173,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def handle_typing(self, data: Dict[str, Any]):
-        """
-        Handle typing indicator.
-        Broadcasts to all other users in room.
-        """
+        """Handle typing indicator."""
         is_typing = data.get('is_typing', True)
         
         await self.channel_layer.group_send(
@@ -243,16 +187,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def handle_read(self, data: Dict[str, Any]):
-        """
-        Handle read receipt.
-        Marks messages as read and broadcasts to room.
-        """
+        """Handle read receipt."""
         message_id = data.get('message_id')
-        
-        # Mark all messages as read up to this point
         count = await self.mark_messages_read()
         
-        # Broadcast read receipt
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -265,9 +203,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def handle_delete(self, data: Dict[str, Any]):
-        """
-        Handle message deletion request.
-        """
+        """Handle message deletion request."""
         message_id = data.get('message_id')
         
         if not message_id:
@@ -277,7 +213,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         success = await self.delete_message(message_id)
         
         if success:
-            # Broadcast deletion to room
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -287,11 +222,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
         else:
-            await self.send_error("Failed to delete message or permission denied")
+            await self.send_error("Failed to delete message")
 
-    # ==================== Group Message Handlers ====================
-    # These methods handle messages sent to the channel layer group
-
+    # Group message handlers
     async def chat_message_broadcast(self, event):
         """Send chat message to WebSocket."""
         await self.send(text_data=json.dumps({
@@ -301,7 +234,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def typing_broadcast(self, event):
         """Send typing indicator to WebSocket."""
-        # Don't send typing indicator to the user who is typing
         if event['user_id'] != self.user.id:
             await self.send(text_data=json.dumps({
                 'type': 'typing',
@@ -320,7 +252,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
 
     async def message_deleted_broadcast(self, event):
-        """Send message deletion notification to WebSocket."""
+        """Send message deletion notification."""
         await self.send(text_data=json.dumps({
             'type': 'message_deleted',
             'message_id': event['message_id'],
@@ -328,8 +260,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
 
     async def user_joined(self, event):
-        """Send user joined notification to WebSocket."""
-        # Don't notify the user who just joined
+        """Send user joined notification."""
         if event['user_id'] != self.user.id:
             await self.send(text_data=json.dumps({
                 'type': 'user_joined',
@@ -338,14 +269,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }))
 
     async def user_left(self, event):
-        """Send user left notification to WebSocket."""
+        """Send user left notification."""
         await self.send(text_data=json.dumps({
             'type': 'user_left',
             'user_id': event['user_id'],
             'username': event['username'],
         }))
-
-    # ==================== Utility Methods ====================
 
     async def send_error(self, message: str):
         """Send error message to client."""
@@ -354,15 +283,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message': message,
         }))
 
-    # ==================== Database Operations ====================
-    # Using database_sync_to_async for all database operations
-
+    # Database operations
     @database_sync_to_async
-    def get_room(self) -> Optional[ChatRoom]:
-        """Get room by slug from database."""
+    def get_room(self):
+        """Get room by ID from database."""
         try:
             return ChatRoom.objects.select_related('project').get(
-                slug=self.room_slug,
+                id=self.room_id,
                 is_active=True
             )
         except ChatRoom.DoesNotExist:
@@ -374,21 +301,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return ChatRoomService.check_room_access(self.room, self.user)
 
     @database_sync_to_async
-    def check_send_permission(self) -> bool:
-        """Check if user can send messages."""
-        return ChatPermissionService.can_send_message(self.user, self.room)
-
-    @database_sync_to_async
-    def save_message(
-        self,
-        content: str,
-        message_type: str = 'text',
-        reply_to_id: Optional[str] = None
-    ) -> Optional[ChatMessage]:
+    def save_message(self, content: str, message_type: str = 'text', reply_to_id: Optional[str] = None):
         """Save message to database."""
         try:
             reply_to_uuid = UUID(reply_to_id) if reply_to_id else None
-            
             return ChatMessageService.create_message(
                 room=self.room,
                 sender=self.user,
@@ -416,12 +332,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
 class NotificationConsumer(AsyncWebsocketConsumer):
-    """
-    WebSocket consumer for user-specific notifications.
-    
-    Each user connects to their personal notification channel
-    to receive real-time updates about new messages across all rooms.
-    """
+    """WebSocket consumer for user notifications."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -429,17 +340,12 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         self.notification_group_name: Optional[str] = None
 
     async def connect(self):
-        """
-        Handle WebSocket connection for notifications.
-        User connects to their personal notification channel.
-        """
         self.user = self.scope.get('user')
         
         if not self.user or not self.user.is_authenticated:
             await self.close(code=4001)
             return
         
-        # Each user gets their own notification group
         self.notification_group_name = f"notifications_{self.user.id}"
         
         await self.channel_layer.group_add(
@@ -448,11 +354,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         )
         
         await self.accept()
-        
         logger.info(f"User {self.user.username} connected to notifications")
 
     async def disconnect(self, close_code):
-        """Handle WebSocket disconnection."""
         if self.notification_group_name:
             await self.channel_layer.group_discard(
                 self.notification_group_name,
@@ -460,23 +364,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             )
 
     async def receive(self, text_data):
-        """
-        Handle incoming messages (e.g., marking notifications as read).
-        """
-        try:
-            data = json.loads(text_data)
-            message_type = data.get('type')
-            
-            if message_type == 'mark_read':
-                # Handle marking notification as read
-                notification_id = data.get('notification_id')
-                await self.mark_notification_read(notification_id)
-                
-        except json.JSONDecodeError:
-            pass
+        pass
 
     async def new_message_notification(self, event):
-        """Send new message notification to user."""
         await self.send(text_data=json.dumps({
             'type': 'new_message',
             'room_id': event['room_id'],
@@ -485,32 +375,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             'message_preview': event['message_preview'],
         }))
 
-    async def notification_update(self, event):
-        """Send general notification update."""
-        await self.send(text_data=json.dumps({
-            'type': 'notification',
-            'data': event['data'],
-        }))
-
-    @database_sync_to_async
-    def mark_notification_read(self, notification_id):
-        """Mark a notification as read."""
-        # Integration with notification app
-        try:
-            from apps.notification.models import Notification
-            Notification.objects.filter(
-                id=notification_id,
-                recipient=self.user
-            ).update(is_read=True)
-        except Exception as e:
-            logger.error(f"Failed to mark notification read: {str(e)}")
-
 
 class OnlineStatusConsumer(AsyncWebsocketConsumer):
-    """
-    Consumer for tracking online/offline status.
-    Broadcasts user presence to relevant channels.
-    """
+    """Consumer for tracking online/offline status."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -518,14 +385,12 @@ class OnlineStatusConsumer(AsyncWebsocketConsumer):
         self.presence_group = "presence"
 
     async def connect(self):
-        """Handle connection and broadcast online status."""
         self.user = self.scope.get('user')
         
         if not self.user or not self.user.is_authenticated:
             await self.close(code=4001)
             return
         
-        # Join presence group
         await self.channel_layer.group_add(
             self.presence_group,
             self.channel_name
@@ -533,7 +398,6 @@ class OnlineStatusConsumer(AsyncWebsocketConsumer):
         
         await self.accept()
         
-        # Broadcast online status
         await self.channel_layer.group_send(
             self.presence_group,
             {
@@ -544,7 +408,6 @@ class OnlineStatusConsumer(AsyncWebsocketConsumer):
         )
 
     async def disconnect(self, close_code):
-        """Handle disconnection and broadcast offline status."""
         if self.user and self.user.is_authenticated:
             await self.channel_layer.group_send(
                 self.presence_group,
@@ -561,7 +424,6 @@ class OnlineStatusConsumer(AsyncWebsocketConsumer):
         )
 
     async def user_online(self, event):
-        """Broadcast user online status."""
         if event['user_id'] != self.user.id:
             await self.send(text_data=json.dumps({
                 'type': 'user_online',
@@ -570,9 +432,195 @@ class OnlineStatusConsumer(AsyncWebsocketConsumer):
             }))
 
     async def user_offline(self, event):
-        """Broadcast user offline status."""
         await self.send(text_data=json.dumps({
             'type': 'user_offline',
             'user_id': event['user_id'],
             'username': event['username'],
         }))
+
+class GlobalChatConsumer(AsyncWebsocketConsumer):
+    """
+    Global WebSocket consumer that receives messages from ALL rooms user belongs to.
+    Used for notifications when user is not in chat page.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = None
+        self.user_group_name: Optional[str] = None
+        self.room_groups: list = []
+
+    async def connect(self):
+        """Handle WebSocket connection - join all user's room groups."""
+        self.user = self.scope.get('user')
+        
+        if not self.user or not self.user.is_authenticated:
+            logger.warning("Global WebSocket rejected: Not authenticated")
+            await self.close(code=4001)
+            return
+        
+        # Create user-specific group for direct notifications
+        self.user_group_name = f"user_{self.user.id}"
+        
+        # Join user's personal notification group
+        await self.channel_layer.group_add(
+            self.user_group_name,
+            self.channel_name
+        )
+        
+        # Get all rooms user belongs to and join their groups
+        self.room_groups = await self.get_user_room_groups()
+        
+        for group_name in self.room_groups:
+            await self.channel_layer.group_add(
+                group_name,
+                self.channel_name
+            )
+        
+        await self.accept()
+        
+        logger.info(f"User {self.user.username} connected to global chat ({len(self.room_groups)} rooms)")
+        
+        # Send connection confirmation
+        await self.send(text_data=json.dumps({
+            'type': 'connection_established',
+            'message': 'Connected to global chat',
+            'rooms_count': len(self.room_groups),
+        }))
+
+    async def disconnect(self, close_code):
+        """Leave all room groups on disconnect."""
+        # Leave user group
+        if self.user_group_name:
+            await self.channel_layer.group_discard(
+                self.user_group_name,
+                self.channel_name
+            )
+        
+        # Leave all room groups
+        for group_name in self.room_groups:
+            await self.channel_layer.group_discard(
+                group_name,
+                self.channel_name
+            )
+        
+        logger.info(f"User {self.user.username if self.user else 'Unknown'} disconnected from global chat")
+
+    async def receive(self, text_data):
+        """Handle incoming messages - global doesn't accept messages, only receives."""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
+            
+            if message_type == 'ping':
+                await self.send(text_data=json.dumps({'type': 'pong'}))
+            elif message_type == 'refresh_rooms':
+                # Refresh room subscriptions
+                await self.refresh_room_subscriptions()
+            else:
+                await self.send(text_data=json.dumps({
+                    'type': 'error',
+                    'message': 'Global connection is read-only. Connect to specific room to send messages.'
+                }))
+        except json.JSONDecodeError:
+            pass
+
+    async def refresh_room_subscriptions(self):
+        """Refresh room group subscriptions (when user joins/leaves rooms)."""
+        # Leave old groups
+        for group_name in self.room_groups:
+            await self.channel_layer.group_discard(
+                group_name,
+                self.channel_name
+            )
+        
+        # Get updated room list
+        self.room_groups = await self.get_user_room_groups()
+        
+        # Join new groups
+        for group_name in self.room_groups:
+            await self.channel_layer.group_add(
+                group_name,
+                self.channel_name
+            )
+        
+        await self.send(text_data=json.dumps({
+            'type': 'rooms_refreshed',
+            'rooms_count': len(self.room_groups),
+        }))
+
+    # Message handlers - receive broadcasts from rooms
+    async def chat_message_broadcast(self, event):
+        """Receive chat message from any room."""
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'message': event['message'],
+        }))
+
+    async def typing_broadcast(self, event):
+        """Receive typing indicator."""
+        if event['user_id'] != self.user.id:
+            await self.send(text_data=json.dumps({
+                'type': 'typing',
+                'user_id': event['user_id'],
+                'username': event['username'],
+                'is_typing': event['is_typing'],
+            }))
+
+    async def user_joined(self, event):
+        """Receive user joined notification."""
+        if event['user_id'] != self.user.id:
+            await self.send(text_data=json.dumps({
+                'type': 'user_joined',
+                'user_id': event['user_id'],
+                'username': event['username'],
+            }))
+
+    async def user_left(self, event):
+        """Receive user left notification."""
+        await self.send(text_data=json.dumps({
+            'type': 'user_left',
+            'user_id': event['user_id'],
+            'username': event['username'],
+        }))
+
+    async def message_deleted_broadcast(self, event):
+        """Receive message deletion notification."""
+        await self.send(text_data=json.dumps({
+            'type': 'message_deleted',
+            'message_id': event['message_id'],
+            'deleted_by': event['deleted_by'],
+        }))
+
+    async def new_room_notification(self, event):
+        """Receive notification when added to a new room."""
+        await self.send(text_data=json.dumps({
+            'type': 'new_room',
+            'room_id': event['room_id'],
+            'room_name': event['room_name'],
+            'room_type': event['room_type'],
+        }))
+        
+        # Auto-subscribe to the new room
+        await self.refresh_room_subscriptions()
+
+    @database_sync_to_async
+    def get_user_room_groups(self) -> list:
+        """Get all channel group names for rooms user belongs to."""
+        from .models import ChatRoom, ChatRoomMembership
+        
+        # Get rooms user is a member of
+        room_ids = ChatRoomMembership.objects.filter(
+            user=self.user
+        ).values_list('room_id', flat=True)
+        
+        # Get global rooms (everyone can access)
+        global_rooms = ChatRoom.objects.filter(
+            room_type=ChatRoom.RoomType.GLOBAL,
+            is_active=True
+        ).values_list('id', flat=True)
+        
+        # Combine and create group names
+        all_room_ids = set(room_ids) | set(global_rooms)
+        
+        return [f"chat_{room_id}" for room_id in all_room_ids]

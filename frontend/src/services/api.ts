@@ -637,7 +637,8 @@ export class ChatWebSocketService {
     }
 
     // Construct WS URL with Token
-    const wsUrl = `ws://192.168.1.12:8000/ws/chat/${roomId}/?token=${tokens.access}`;
+    //const wsUrl = `ws://192.168.1.12:8000/ws/chat/${roomId}/?token=${tokens.access}`;
+    const wsUrl = `ws://localhost:8000/ws/chat/${roomId}/?token=${tokens.access}`;
 
     this.ws = new WebSocket(wsUrl);
 
@@ -712,7 +713,8 @@ export class GlobalChatWebSocketService {
     }
 
     // Global WebSocket URL - listens to ALL rooms for this user
-    const wsUrl = `ws://192.168.1.12:8000/ws/chat/global/?token=${tokens.access}`;
+    //const wsUrl = `ws://192.168.1.12:8000/ws/chat/global/?token=${tokens.access}`;
+    const wsUrl = `ws://localhost:8000/ws/chat/global/?token=${tokens.access}`;
 
     this.ws = new WebSocket(wsUrl);
 

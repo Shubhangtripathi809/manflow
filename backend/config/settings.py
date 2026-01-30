@@ -14,7 +14,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key-change-in-production")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,192.168.1.12").split(",")
+# ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,192.168.1.12").split(",")
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "192.168.1.12", "*"]
+
 
 # Application definition
 DJANGO_APPS = [
@@ -33,6 +35,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "drf_spectacular",
     "storages",
+    "channels",
 ]
 
 LOCAL_APPS = [
@@ -46,6 +49,7 @@ LOCAL_APPS = [
     "apps.task_ai",
     "apps.api_testing",
     "apps.notification",
+    "apps.chat",
     
 ]
 
@@ -82,7 +86,18 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+#REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/0")
+REDIS_URL = config("REDIS_URL", default="redis://redis:6379/0")
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    },
+}
 # Database
 # Default to SQLite for easy development, use DATABASE_URL for PostgreSQL
 DATABASE_URL = config(
@@ -139,7 +154,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.11:5173"
+    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.11:5173,ws://192.168.1.12:8000"
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL", default=True, cast=bool)  # For development

@@ -27,6 +27,7 @@ from .views import (
     MarkReadView,
     OnlineUsersView,
     UnreadCountView,
+    UserListView,
 )
 
 urlpatterns = [
@@ -35,6 +36,7 @@ urlpatterns = [
     # ==========================================================================
     
     # List all rooms for current user
+     path('users/', UserListView.as_view(), name='user-list'),
     # GET /api/v1/chat/rooms/
     path(
         'rooms/',
