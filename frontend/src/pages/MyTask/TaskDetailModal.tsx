@@ -7,7 +7,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { taskApi, usersApi, documentsApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { getStatusConfig } from './MyTask';
+import { getStatusConfig } from '@/components/layout/DualView/taskConfig';
 import { Task, TaskAttachment, TaskLink } from '@/types';
 
 const formatDate = (dateString: string) => {

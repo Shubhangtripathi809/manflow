@@ -11,7 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { taskApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { TaskDetailModal } from '../MyTask/TaskDetailModal';
-import { Task, getStatusConfig } from '../MyTask/MyTask';
+import type { Task } from '@/types';
+import { getStatusConfig } from '@/components/layout/DualView/taskConfig';
 
 // --- Types & Constants ---
 type ViewMode = 'month' | 'week';

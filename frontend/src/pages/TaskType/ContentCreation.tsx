@@ -1,15 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeft, Plus, Upload, Search, Film, Loader2, X, Download, ChevronLeft, ChevronRight, FileText, FileJson, Settings, Maximize2, List, Grid3X3 } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
+import type { Task } from '@/types'
 import { CreateTask } from '@/pages/MyTask/CreateTask';
-import { TaskCard, TaskListView } from '../MyTask/MyTask';
+import { DualView } from '@/components/layout/DualView/DualView';
+import { TaskGridCard, createTasksTableColumns } from '@/components/layout/DualView/taskConfig';
 import { TaskDetailModal } from '../MyTask/TaskDetailModal';
 import { Document as PDFDocument, Page as PDFPage, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import './ContentCreation.scss';
+
 
 // pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 //   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -18,27 +22,6 @@ import './ContentCreation.scss';
 
 type TabType = 'tasks' | 'calendar' | 'media';
 type MediaTag = 'final' | 'draft' | 'rawFootage' | 'approved' | 'wip' | 'reference';
-
-interface Task {
-    id: number;
-    heading: string;
-    description: string;
-    start_date: string;
-    end_date: string;
-    priority: string;
-    project: number;
-    project_name: string | null;
-    assigned_to: number[];
-    assigned_to_user_details: Array<{
-        id: number;
-        username: string;
-        first_name: string;
-        last_name: string;
-        email: string;
-        role: string;
-    }>;
-    status: string;
-}
 
 export function MediaPreviewModal({
     doc,
@@ -382,6 +365,7 @@ export function MediaThumbnail({ file, projectId }: { file: any; projectId: numb
 export function ContentCreation() {
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [searchQuery, setSearchQuery] = useState('');
@@ -461,11 +445,19 @@ export function ContentCreation() {
 
             // Step 3: Confirm Upload
             const ext = file.name.split('.').pop()?.toLowerCase() || '';
+            const imageTypes = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+            const docTypes = ['doc', 'docx', 'pdf', 'txt', 'rtf'];
+            const spreadsheetTypes = ['xls', 'xlsx', 'csv'];
+            const presentationTypes = ['ppt', 'pptx'];
+
             let mappedType = 'other';
-            if (['mp4', 'mov', 'avi', 'webm'].includes(ext)) mappedType = 'video';
-            else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) mappedType = 'image';
-            else if (['mp3', 'wav', 'ogg'].includes(ext)) mappedType = 'audio';
+            if (imageTypes.includes(ext)) mappedType = 'image';
             else if (ext === 'pdf') mappedType = 'pdf';
+            else if (ext === 'json') mappedType = 'json';
+            else if (docTypes.includes(ext) || spreadsheetTypes.includes(ext) || presentationTypes.includes(ext)) mappedType = 'document';
+            else if (['mp4', 'mov', 'avi', 'webm'].includes(ext)) mappedType = 'video';
+            else if (['mp3', 'wav', 'ogg'].includes(ext)) mappedType = 'audio';
+            else if (ext === 'zip' || ext === 'xml') mappedType = ext;
 
             const confirmResponse = await documentsApi.confirmUpload(projectIdNum, {
                 file_key: file_key,
@@ -605,15 +597,29 @@ export function ContentCreation() {
                                 <>
                                     {viewMode === 'list' ? (
                                         <div className="bg-white rounded-lg shadow-sm">
-                                            <TaskListView
-                                                tasks={tasks}
-                                                onTaskClick={(t) => setSelectedTask(t as unknown as Task)}
+                                            <DualView
+                                                viewMode="table"
+                                                gridProps={{
+                                                    data: tasks,
+                                                    renderCard: (task: any) => <TaskGridCard task={task} onTaskClick={(t) => setSelectedTask(t as unknown as Task)} />,
+                                                }}
+                                                tableProps={{
+                                                    data: tasks,
+                                                    columns: createTasksTableColumns({
+                                                        onTaskClick: (t) => setSelectedTask(t as unknown as Task),
+                                                        queryClient,
+                                                        user,
+                                                        navigate
+                                                    }),
+                                                    rowKey: (task: any) => task.id,
+                                                    onRowClick: (t) => setSelectedTask(t as unknown as Task),
+                                                }}
                                             />
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {tasks.map((task) => (
-                                                <TaskCard
+                                                <TaskGridCard
                                                     key={task.id}
                                                     task={task as any}
                                                     onTaskClick={(t) => setSelectedTask(t as unknown as Task)}
@@ -669,7 +675,7 @@ export function ContentCreation() {
                                         className="hidden"
                                         onChange={handleFileUpload}
                                         disabled={isUploading}
-                                        accept="video/*,image/*,audio/*,.pdf"
+                                        accept="*"
                                     />
                                     {isUploading ? (
                                         <Loader2 className="content-creation__upload-icon animate-spin" />
