@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeft, Loader2, Upload, FileText, List, Grid3X3, Plus, Settings } from 'lucide-react';
 import { projectsApi, taskApi, documentsApi } from '@/services/api';
-import { TaskCard, TaskListView } from '@/pages/MyTask/MyTask';
+import { DualView } from '@/components/layout/DualView/DualView';
+import { TaskGridCard, createTasksTableColumns } from '@/components/layout/DualView/taskConfig';
 import { TaskDetailModal } from '../MyTask/TaskDetailModal';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
 import { MediaPreviewModal, MediaThumbnail } from './ContentCreation';
@@ -24,6 +26,7 @@ export function TaskDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -82,7 +85,7 @@ export function TaskDetails() {
     const { data: tasksData, isLoading: isLoadingTasks } = useQuery({
         queryKey: ['tasks'],
         queryFn: () => taskApi.list(),
-        staleTime: 60 * 1000,
+        staleTime: 0,
         select: (data) => {
             const allTasks = data.tasks || data.results || [];
             return allTasks.filter((t: any) => String(t.project) === id);
@@ -236,15 +239,29 @@ export function TaskDetails() {
                                 <>
                                     {viewMode === 'list' ? (
                                         <div className="bg-white rounded-lg shadow-sm">
-                                            <TaskListView
-                                                tasks={tasks}
-                                                onTaskClick={setSelectedTask}
+                                            <DualView
+                                                viewMode="table"
+                                                gridProps={{
+                                                    data: tasks,
+                                                    renderCard: (task: Task) => <TaskGridCard task={task} onTaskClick={setSelectedTask} />,
+                                                }}
+                                                tableProps={{
+                                                    data: tasks,
+                                                    columns: createTasksTableColumns({
+                                                        onTaskClick: setSelectedTask,
+                                                        queryClient,
+                                                        user,
+                                                        navigate
+                                                    }),
+                                                    rowKey: (task: Task) => task.id,
+                                                    onRowClick: setSelectedTask,
+                                                }}
                                             />
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {tasks.map(task => (
-                                                <TaskCard key={task.id} task={task} onTaskClick={setSelectedTask} />
+                                                <TaskGridCard key={task.id} task={task} onTaskClick={setSelectedTask} />
                                             ))}
                                         </div>
                                     )}
