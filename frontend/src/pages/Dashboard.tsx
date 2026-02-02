@@ -236,7 +236,7 @@ export function Dashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">
-              Welcome back{user?.first_name ? `, ${user.first_name}` : ''}!
+              Welcome Dost{user?.first_name ? `, ${user.first_name}` : ''}!
             </h1>
             <p className="text-muted-foreground">
               Here’s a quick overview of your workspace.
