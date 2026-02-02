@@ -98,3 +98,21 @@ class SuggestTaskAIView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+class RefineTaskTextView(APIView):
+    authentication_classes = [StaticTokenAuthentication, JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        text = request.data.get('text')
+        # 'optimize_title', 'generate_description', or 'refine_description'
+        refine_type = request.data.get('type') 
+
+        if not text or not refine_type:
+            return Response(
+                {"detail": "Text and type are required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        refined_text = TaskAIService.refine_text(text, refine_type)
+        
+        return Response({"refined_text": refined_text}, status=status.HTTP_200_OK)

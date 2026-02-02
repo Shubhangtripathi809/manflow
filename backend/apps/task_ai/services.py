@@ -172,17 +172,19 @@ Return ONLY a FLAT JSON object with this exact schema:
             response_body = json.loads(response["body"].read())
             raw_text = response_body["output"]["message"]["content"][0]["text"]
 
-            # SANITIZATION: Remove markdown backticks if Nova included them
-            if "```json" in raw_text:
-                raw_text = raw_text.split("```json")[1].split("```")[0]
-            elif "```" in raw_text:
+                # 1. First, handle the markdown backticks (existing logic)
+            if "```" in raw_text:
                 raw_text = raw_text.split("```")[1].split("```")[0]
+                if raw_text.startswith("json"):
+                    raw_text = raw_text[4:]
 
-            return raw_text.strip()
+            # 2. ADD THIS: Strip extra double quotes from the start and end
+            # This prevents the ""Text"" issue in your output
+            return raw_text.strip().strip('"') 
             
         except Exception as e:
-            print(f"Error calling AWS Bedrock (Nova): {e}")
-            return None
+            print(f"Error calling AWS Bedrock: {e}")
+            return raw_text  # Return original if AI fails
 
     @staticmethod
     def fallback_assignment(members_with_skills, task_category='general'):
@@ -222,3 +224,48 @@ Return ONLY a FLAT JSON object with this exact schema:
              matching_members.append(users[0]['id'])
         
         return matching_members if matching_members else []
+    @staticmethod
+    def refine_text(text, task_type):
+        """
+        Refines task title or description using Amazon Bedrock.
+        task_type: 'optimize_title' | 'generate_description' | 'refine_description'
+        """
+        client = boto3.client(
+            "bedrock-runtime",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION
+        )
+
+        prompts = {
+            'optimize_title': f"Professionalize this task title while keeping it concise: '{text}'. Return only the new title.",
+            'generate_description': f"Write a detailed, professional project task description for the title: '{text}'. Use bullet points for clarity.",
+            'refine_description': f"Improve this task description for clarity and professionalism: '{text}'. Keep the original meaning but enhance the tone."
+        }
+
+        system_instruction = "You are a professional project manager. Return ONLY the refined text without any conversational filler."
+
+        native_request = {
+            "system": [{"text": system_instruction}],
+            "messages": [{"role": "user", "content": [{"text": prompts[task_type]}]}],
+            "inferenceConfig": {"maxTokens": 1024, "temperature": 0.3}
+        }
+
+        try:
+            response = client.invoke_model(
+                modelId=settings.BEDROCK_MODEL_ID,
+                body=json.dumps(native_request)
+            )
+            response_body = json.loads(response["body"].read())
+            raw_text = response_body["output"]["message"]["content"][0]["text"]
+
+            # --- UPDATED LOGIC TO REMOVE FORMATTING ---
+            # Remove Markdown symbols like ### and **
+            cleaned_text = raw_text.replace("###", "").replace("**", "")
+            
+            # Strip extra double quotes from start/end
+            return cleaned_text.strip().strip('"')
+            
+        except Exception as e:
+            print(f"Error refining text: {e}")
+            return text

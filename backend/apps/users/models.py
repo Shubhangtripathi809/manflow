@@ -14,21 +14,6 @@ class User(AbstractUser):
         MANAGER = "manager", "Manager"
         ANNOTATOR = "annotator", "Annotator"
         VIEWER = "viewer", "Viewer"
-    class SkillProficiency(models.TextChoices):
-        LEARNING = "Learning", "Learning"
-        BEGINNER = "Beginner", "Beginner"
-        INTERMEDIATE = "Intermediate", "Intermediate"
-        ADVANCE = "Advance", "Advance"
-
-    class SkillCategory(models.TextChoices):
-        FRONTEND = "frontend", "frontend"
-        BACKEND = "backend", "backend"
-        DEVOPS = "Devops", "Devops"
-        SOCIAL_MEDIA = "Social Media", "Social Media"
-        MANAGEMENT = "Management", "Management"
-        MARKETING = "Marketing", "Marketing"
-        CONTENT_CREATOR = "Content creator", "Content creator"
-        OTHER = "other", "other"
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
