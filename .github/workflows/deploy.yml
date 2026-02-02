@@ -19,8 +19,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/manflow
-            git fetch origin
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+            git fetch --all
+            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
             sudo docker-compose down
+            sudo docker system prune -a -f
+            sudo docker volume prune -f
             sudo docker-compose up --build -d
