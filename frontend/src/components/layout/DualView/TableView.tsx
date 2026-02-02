@@ -3,11 +3,21 @@ import { Card, CardContent } from '@/components/common';
 
 export interface TableColumn<T> {
   key: string;
-  label: string;
+  label: React.ReactNode;
   width?: string;
   className?: string;
   render?: (item: T, index: number) => React.ReactNode;
   headerClassName?: string;
+}
+
+export type SortDirection = 'asc' | 'desc' | null;
+
+export interface FilterState {
+  [key: string]: string | string[];
+}
+export interface OpenFilter {
+  key: string;
+  type: 'search' | 'list' | 'date';
 }
 
 export interface TableViewProps<T> {
@@ -15,6 +25,9 @@ export interface TableViewProps<T> {
   columns: TableColumn<T>[];
   rowKey: (item: T) => string | number;
   onRowClick?: (item: T) => void;
+  onSort?: (key: string) => void;
+  onFilter?: (key: string) => void;
+  activeFilterKey?: string | null;
   emptyState?: React.ReactNode;
   isLoading?: boolean;
   className?: string;
@@ -26,24 +39,58 @@ export function TableView<T>({
   columns,
   rowKey,
   onRowClick,
+  onSort,
+  onFilter,
+  activeFilterKey,
   className = '',
   rowClassName,
 }: TableViewProps<T>) {
   return (
     <div className={`bg-white border border-[#dfe1e6] rounded-md shadow-sm font-sans text-[13px] ${className}`}>
       <table className="w-full border-collapse">
-        <thead>
-          {/* Header */}
-          <tr className="bg-[#fafbfc] border-b border-[#dfe1e6]">
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                className={`text-left py-[10px] px-3 font-semibold text-[12px] text-[#5e6c84] border-r border-[#dfe1e6] last:border-r-0 whitespace-nowrap ${column.headerClassName || ''}`}
-                style={column.width ? { width: column.width } : undefined}
-              >
-                {column.label}
-              </th>
-            ))}
+        <thead className="bg-[#fafbfc] border-b border-[#dfe1e6]">
+          <tr>
+            {columns.map((column) => {
+              // Simply check if the label (which contains our FilterHeaderWrapper) is present
+              const hasFilter = !!column.label;
+
+              return (
+                <th
+                  key={column.key}
+                  className={`group/header text-left py-[10px] px-3 font-semibold text-[12px] text-[#5e6c84] border-r border-[#dfe1e6] last:border-r-0 whitespace-nowrap relative ${activeFilterKey === column.key ? 'z-[100]' : ''} ${column.headerClassName || ''}`}
+                  style={column.width ? { width: column.width } : undefined}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    {/* The label now handles the inline Search Input internally */}
+                    <div className="flex-1 min-w-0">{column.label}</div>
+
+                    <div className="flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-opacity">
+                      {onSort && (
+                        <button
+                          className="hover:bg-gray-200 p-0.5 rounded transition-colors"
+                          onClick={(e) => { e.stopPropagation(); onSort(column.key); }}
+                        >
+                          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {onFilter && (
+                        <button
+                          className="hover:bg-gray-200 p-0.5 rounded transition-colors"
+                          onClick={(e) => { e.stopPropagation(); onFilter(column.key); }}
+                        >
+                          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

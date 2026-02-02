@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +7,9 @@ import { projectsApi, taskApi, documentsApi } from '@/services/api';
 import { DualView } from '@/components/layout/DualView/DualView';
 import { TaskGridCard, createTasksTableColumns } from '@/components/layout/DualView/taskConfig';
 import { TaskDetailModal } from '../MyTask/TaskDetailModal';
+import { useTableFilters, ColumnFilterConfig } from '@/hooks/useTableFilters';
+import { SearchFilter, ListFilter, DateFilter, FilterHeaderWrapper } from '@/components/layout/DualView/FilterComponents';
+import { getStatusConfig, priorityOptions, statusOptions } from '@/components/layout/DualView/taskConfig';
 import { CreateTask } from '@/pages/MyTask/CreateTask';
 import { MediaPreviewModal, MediaThumbnail } from './ContentCreation';
 import { pdfjs, Document as PDFDocument, Page as PDFPage } from 'react-pdf';
@@ -28,6 +31,7 @@ export function TaskDetails() {
     const queryClient = useQueryClient();
     const { user } = useAuth();
 
+
     const [activeTab, setActiveTab] = useState<TabType>('tasks');
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -37,6 +41,7 @@ export function TaskDetails() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [selectedMedia, setSelectedMedia] = useState<any | null>(null);
+
 
     const { data: project, isLoading: isProjectLoading } = useQuery({
         queryKey: ['project', id],
@@ -93,6 +98,52 @@ export function TaskDetails() {
     });
 
     const tasks = (tasksData || []) as Task[];
+
+    // Filter configuration for task columns
+    const filterConfig: ColumnFilterConfig[] = [
+        { key: 'project', type: 'search', searchFields: ['project_details', 'name'] },
+        { key: 'heading', type: 'search' },
+        { key: 'labels', type: 'search' },
+        {
+            key: 'status',
+            type: 'list',
+            listOptions: statusOptions.map(opt => ({
+                value: opt.value.toUpperCase(),
+                label: opt.label
+            }))
+        },
+        {
+            key: 'priority',
+            type: 'list',
+            listOptions: priorityOptions.map(opt => ({
+                value: opt.value,
+                label: opt.label
+            }))
+        },
+        { key: 'end_date', type: 'date' },
+    ];
+
+    // Initialize filter hook
+    const {
+        filteredData: filteredTasks,
+        handleSort,
+        columnFilters,
+        setColumnFilters,
+        clearFilter,
+        activeFilterKey,
+        setActiveFilterKey,
+        filterContainerRef,
+    } = useTableFilters<Task>({
+        data: tasks,
+        columns: filterConfig,
+        globalSearchFields: ['heading', 'description'],
+    });
+
+    // Handle filter toggle
+    const handleFilter = useCallback((key: string) => {
+        setActiveFilterKey(prev => prev === key ? null : key);
+    }, [setActiveFilterKey]);
+
 
     // Reusable Upload Flow
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,25 +293,117 @@ export function TaskDetails() {
                                             <DualView
                                                 viewMode="table"
                                                 gridProps={{
-                                                    data: tasks,
+                                                    data: filteredTasks,
                                                     renderCard: (task: Task) => <TaskGridCard task={task} onTaskClick={setSelectedTask} />,
                                                 }}
                                                 tableProps={{
-                                                    data: tasks,
+                                                    data: filteredTasks,
+                                                    activeFilterKey: activeFilterKey,
                                                     columns: createTasksTableColumns({
                                                         onTaskClick: setSelectedTask,
                                                         queryClient,
                                                         user,
                                                         navigate
-                                                    }),
+                                                    }).map(col => ({
+                                                        ...col,
+                                                        headerClassName: `relative ${activeFilterKey === col.key ? 'z-[100]' : ''}`,
+                                                        label: (
+                                                            <div ref={activeFilterKey === col.key ? filterContainerRef : null}>
+                                                                <FilterHeaderWrapper
+                                                                    columnLabel={col.label as string}
+                                                                    filterType={
+                                                                        ['project', 'heading', 'labels'].includes(col.key) ? 'search' :
+                                                                            ['status', 'priority'].includes(col.key) ? 'list' :
+                                                                                col.key === 'end_date' ? 'date' : 'none'
+                                                                    }
+                                                                    isActive={activeFilterKey === col.key}
+                                                                    filterContent={
+                                                                        <>
+                                                                            {col.key === 'status' && (
+                                                                                <ListFilter
+                                                                                    columnKey="status"
+                                                                                    options={statusOptions.map(status => ({
+                                                                                        value: status.value.toUpperCase(),
+                                                                                        label: status.label,
+                                                                                        icon: React.createElement(getStatusConfig(status.value.toUpperCase() as any).icon, { className: "w-3.5 h-3.5" }),
+                                                                                        className: getStatusConfig(status.value.toUpperCase() as any).text,
+                                                                                    }))}
+                                                                                    selectedValue={columnFilters.status || ''}
+                                                                                    onSelect={(value) => {
+                                                                                        setColumnFilters(prev => ({ ...prev, status: value }));
+                                                                                        setActiveFilterKey(null);
+                                                                                    }}
+                                                                                    onClear={() => {
+                                                                                        clearFilter('status');
+                                                                                        setActiveFilterKey(null);
+                                                                                    }}
+                                                                                    isActive={activeFilterKey === 'status'}
+                                                                                    containerRef={filterContainerRef}
+                                                                                />
+                                                                            )}
+                                                                            {col.key === 'priority' && (
+                                                                                <ListFilter
+                                                                                    columnKey="priority"
+                                                                                    options={priorityOptions.map(opt => ({
+                                                                                        value: opt.value,
+                                                                                        label: opt.label,
+                                                                                        icon: <span>{opt.icon}</span>
+                                                                                    }))}
+                                                                                    selectedValue={columnFilters.priority || ''}
+                                                                                    onSelect={(value) => {
+                                                                                        setColumnFilters(prev => ({ ...prev, priority: value }));
+                                                                                        setActiveFilterKey(null);
+                                                                                    }}
+                                                                                    onClear={() => {
+                                                                                        clearFilter('priority');
+                                                                                        setActiveFilterKey(null);
+                                                                                    }}
+                                                                                    isActive={activeFilterKey === 'priority'}
+                                                                                    containerRef={filterContainerRef}
+                                                                                />
+                                                                            )}
+                                                                            {col.key === 'end_date' && (
+                                                                                <DateFilter
+                                                                                    columnKey="end_date"
+                                                                                    value={columnFilters.end_date || ''}
+                                                                                    onChange={(value) => {
+                                                                                        setColumnFilters(prev => ({ ...prev, end_date: value }));
+                                                                                        setActiveFilterKey(null);
+                                                                                    }}
+                                                                                    onClear={() => {
+                                                                                        clearFilter('end_date');
+                                                                                        setActiveFilterKey(null);
+                                                                                    }}
+                                                                                    isActive={activeFilterKey === 'end_date'}
+                                                                                    containerRef={filterContainerRef}
+                                                                                />
+                                                                            )}
+                                                                        </>
+                                                                    }
+                                                                >
+                                                                    {['project', 'heading', 'labels'].includes(col.key) && (
+                                                                        <SearchFilter
+                                                                            columnKey={col.key}
+                                                                            placeholder={`Search...`}
+                                                                            value={columnFilters[col.key] || ''}
+                                                                            onChange={(value) => setColumnFilters(prev => ({ ...prev, [col.key]: value }))}
+                                                                            isActive={activeFilterKey === col.key}
+                                                                        />
+                                                                    )}
+                                                                </FilterHeaderWrapper>
+                                                            </div>
+                                                        )
+                                                    })),
                                                     rowKey: (task: Task) => task.id,
                                                     onRowClick: setSelectedTask,
+                                                    onSort: handleSort,
+                                                    onFilter: handleFilter,
                                                 }}
                                             />
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {tasks.map(task => (
+                                            {filteredTasks.map(task => (
                                                 <TaskGridCard key={task.id} task={task} onTaskClick={setSelectedTask} />
                                             ))}
                                         </div>

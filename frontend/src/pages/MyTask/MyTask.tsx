@@ -1,26 +1,27 @@
 import React, { useState, useCallback } from 'react';
-import { CheckSquare, Plus, Grid3X3, List, Search } from 'lucide-react';
-import { useNavigate, Outlet, useLocation } from 'react-router-dom';
+import { Plus, Grid3X3, List, Search, Bell } from 'lucide-react';
+import { useNavigate, Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { taskApi } from '@/services/api';
+import { notificationsApi, taskApi } from '@/services/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskDetailModal } from './TaskDetailModal';
 import { AITask } from './AITask';
 import { Task } from '@/types';
 import { DualView } from '@/components/layout/DualView/DualView';
-import { createTasksTableColumns, TaskGridCard } from '@/components/layout/DualView/taskConfig';
+import { createTasksTableColumns, TaskGridCard, getStatusConfig, priorityOptions, statusOptions, } from '@/components/layout/DualView/taskConfig';
+import { useTableFilters, ColumnFilterConfig } from '@/hooks/useTableFilters';
+import { SearchFilter, ListFilter, DateFilter, FilterHeaderWrapper } from '@/components/layout/DualView/FilterComponents';
+import { Button } from '@/components/common/Button';
 
 export const MyTask: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
     const queryClient = useQueryClient();
-
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [showAITaskModal, setShowAITaskModal] = useState(false);
-
     const activeFilter = location.pathname.split('/').filter(p => p)[1]?.toUpperCase() || 'ALL';
 
     const { data: tasksData, isLoading: loading } = useQuery({
@@ -46,6 +47,46 @@ export const MyTask: React.FC = () => {
         );
     }, [tasksData, user]);
 
+    // Define filter configuration for columns
+    const filterConfig: ColumnFilterConfig[] = [
+        { key: 'project', type: 'search', searchFields: ['project_details', 'name'] },
+        { key: 'heading', type: 'search' },
+        { key: 'labels', type: 'search' },
+        {
+            key: 'status',
+            type: 'list',
+            listOptions: statusOptions.map(opt => ({
+                value: opt.value.toUpperCase(),
+                label: opt.label
+            }))
+        },
+        {
+            key: 'priority',
+            type: 'list',
+            listOptions: priorityOptions.map(opt => ({
+                value: opt.value,
+                label: opt.label
+            }))
+        },
+        { key: 'end_date', type: 'date' },
+    ];
+
+    // Use the centralized filter hook
+    const {
+        filteredData: hookFilteredTasks,
+        handleSort,
+        columnFilters,
+        setColumnFilters,
+        clearFilter,
+        activeFilterKey,
+        setActiveFilterKey,
+        filterContainerRef,
+    } = useTableFilters<Task>({
+        data: tasks,
+        columns: filterConfig,
+        globalSearchFields: ['heading', 'description'],
+    });
+
     const handleTaskClick = useCallback((task: Task) => setSelectedTask(task), []);
     const handleCloseTaskDetail = useCallback(() => setSelectedTask(null), []);
 
@@ -60,11 +101,18 @@ export const MyTask: React.FC = () => {
         setSelectedTask(null);
     }, [queryClient]);
 
-    const filteredTasks = tasks.filter((task: Task) => {
-        const matchesFilter = activeFilter === 'ALL' || task.status.toUpperCase() === activeFilter;
-        const matchesSearch = searchQuery.trim() === '' || task.heading.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesFilter && matchesSearch;
-    });
+    const filteredTasks = React.useMemo(() => {
+        return hookFilteredTasks.filter((task: Task) => {
+            const matchesFilter = activeFilter === 'ALL' || task.status.toUpperCase() === activeFilter;
+            const matchesSearch = searchQuery.trim() === '' ||
+                task.heading.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesFilter && matchesSearch;
+        });
+    }, [hookFilteredTasks, activeFilter, searchQuery]);
+
+    const handleFilter = useCallback((key: string) => {
+        setActiveFilterKey(prev => prev === key ? null : key);
+    }, [setActiveFilterKey]);
 
     const handleAITaskGenerate = useCallback(async (projectId: number, description: string) => {
         console.log('Generating AI task for project:', projectId, 'with description:', description);
@@ -77,7 +125,15 @@ export const MyTask: React.FC = () => {
         user,
         navigate
     });
-
+    const { data: summary } = useQuery({
+        queryKey: ['notifications-summary'],
+        queryFn: () => notificationsApi.getSummary(),
+        refetchInterval: 30000,
+    });
+    const { isActivityOpen, setIsActivityOpen } = useOutletContext<{
+        isActivityOpen: boolean;
+        setIsActivityOpen: (open: boolean) => void;
+    }>();
     return (
         <div className="w-full p-8 space-y-8">
             {location.pathname.startsWith('/taskboard') && !location.pathname.endsWith('/create') ? (
@@ -113,6 +169,17 @@ export const MyTask: React.FC = () => {
                                             </button>
                                         </>
                                     )}
+                                    <Button
+                                        className="relative bg-[#F7EC8D]"
+                                        onClick={() => setIsActivityOpen(!isActivityOpen)}
+                                    >
+                                        <Bell className="h-5 w-5 text-gray-800" />
+                                        {(summary?.unread ?? 0) > 0 && (
+                                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                                {summary?.unread}
+                                            </span>
+                                        )}
+                                    </Button>
                                 </div>
                             </div>
 
@@ -147,7 +214,7 @@ export const MyTask: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Content Section with DualView */}
+                        {/* Content Section*/}
                         <div className="space-y-0">
                             <DualView
                                 viewMode={viewMode}
@@ -159,13 +226,82 @@ export const MyTask: React.FC = () => {
                                 }}
                                 tableProps={{
                                     data: filteredTasks,
-                                    columns: tableColumns,
+                                    activeFilterKey: activeFilterKey,
+                                    columns: tableColumns.map(col => ({
+                                        ...col,
+                                        headerClassName: `relative ${activeFilterKey === col.key ? 'z-[100]' : ''}`,
+                                        label: (
+                                            /* Auto-Close for both search and dropdowns */
+                                            <div ref={activeFilterKey === col.key ? filterContainerRef : null}>
+                                                <FilterHeaderWrapper
+                                                    columnLabel={col.label as string}
+                                                    filterType={
+                                                        ['project', 'heading', 'labels'].includes(col.key) ? 'search' :
+                                                            ['status', 'priority'].includes(col.key) ? 'list' :
+                                                                col.key === 'end_date' ? 'date' : 'none'
+                                                    }
+                                                    isActive={activeFilterKey === col.key}
+                                                    filterContent={
+                                                        <>
+                                                            {col.key === 'status' && (
+                                                                <ListFilter
+                                                                    columnKey="status"
+                                                                    options={statusOptions.map(status => ({
+                                                                        value: status.value.toUpperCase(),
+                                                                        label: status.label,
+                                                                        icon: React.createElement(getStatusConfig(status.value.toUpperCase() as any).icon, { className: "w-3.5 h-3.5" }),
+                                                                        className: getStatusConfig(status.value.toUpperCase() as any).text,
+                                                                    }))}
+                                                                    selectedValue={columnFilters.status || ''}
+                                                                    onSelect={(value) => { setColumnFilters(prev => ({ ...prev, status: value })); setActiveFilterKey(null); }}
+                                                                    onClear={() => { clearFilter('status'); setActiveFilterKey(null); }}
+                                                                    isActive={activeFilterKey === 'status'}
+                                                                    containerRef={filterContainerRef}
+                                                                />
+                                                            )}
+                                                            {col.key === 'priority' && (
+                                                                <ListFilter
+                                                                    columnKey="priority"
+                                                                    options={priorityOptions.map(opt => ({ value: opt.value, label: opt.label, icon: <span>{opt.icon}</span> }))}
+                                                                    selectedValue={columnFilters.priority || ''}
+                                                                    onSelect={(value) => { setColumnFilters(prev => ({ ...prev, priority: value })); setActiveFilterKey(null); }}
+                                                                    onClear={() => { clearFilter('priority'); setActiveFilterKey(null); }}
+                                                                    isActive={activeFilterKey === 'priority'}
+                                                                    containerRef={filterContainerRef}
+                                                                />
+                                                            )}
+                                                            {col.key === 'end_date' && (
+                                                                <DateFilter
+                                                                    columnKey="end_date"
+                                                                    value={columnFilters.end_date || ''}
+                                                                    onChange={(value) => { setColumnFilters(prev => ({ ...prev, end_date: value })); setActiveFilterKey(null); }}
+                                                                    onClear={() => { clearFilter('end_date'); setActiveFilterKey(null); }}
+                                                                    isActive={activeFilterKey === 'end_date'}
+                                                                    containerRef={filterContainerRef}
+                                                                />
+                                                            )}
+                                                        </>
+                                                    }
+                                                >
+                                                    {['project', 'heading', 'labels'].includes(col.key) && (
+                                                        <SearchFilter
+                                                            columnKey={col.key}
+                                                            placeholder={`Search...`}
+                                                            value={columnFilters[col.key] || ''}
+                                                            onChange={(value) => setColumnFilters(prev => ({ ...prev, [col.key]: value }))}
+                                                            isActive={activeFilterKey === col.key}
+                                                        />
+                                                    )}
+                                                </FilterHeaderWrapper>
+                                            </div>
+                                        )
+                                    })),
                                     rowKey: (task: Task) => task.id,
                                     onRowClick: handleTaskClick,
+                                    onSort: handleSort,
+                                    onFilter: handleFilter,
                                 }}
                             />
-
-                            {/* Add "Create" button at bottom of table view */}
                             {viewMode === 'table' && (
                                 <div
                                     className="p-3 border-t border-[#dfe1e6] bg-white cursor-pointer hover:bg-gray-50 transition-colors rounded-b-md -mt-px"

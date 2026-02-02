@@ -1,40 +1,23 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
-  AuthTokens, User as AppUser, Skill, PaginatedResponse, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload, 
-  ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload, APICollection, 
+  AuthTokens, User as AppUser, PaginatedResponse, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload,
+  ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload, APICollection,
   APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
-  Label, DocumentStatus, ChatMessage, ChatRoom, ChatRoomMessagesResponse, CreatePrivateChatPayload, WebSocketSendMessagePayload, WebSocketGlobalMessage
+  Label, DocumentStatus, ChatMessage, ChatRoom, ChatRoomMessagesResponse, CreatePrivateChatPayload, WebSocketSendMessagePayload, WebSocketGlobalMessage, RefineTextPayload, RefineTextResponse
 } from '@/types';
 
-//const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.10:8000/api/v1';
-//const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
-
-//const API_URL = "http://localhost:8000/api/v1"; most latest
-//import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
-//import.meta.env.VITE_API_URL || 'http://3.233.241.87:8000/api/v1';
-
-//const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000/api/v1';
-//const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.4:8001/';
-
-//const API_BASE_URL = "http://localhost:8000"; most latest
-// import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-//import.meta.env.VITE_API_BASE_URL || 'http://3.233.241.87:8000';
-
+//const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.12:8000/api/v1';
+//const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.12:8001/';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-  
+
+
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-export const fileApi = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
-});
-
 
 // Token management
 const TOKEN_KEY = 'zanflow_tokens';
@@ -103,7 +86,7 @@ api.interceptors.response.use(
         } catch (refreshError) {
           console.error("Token refresh failed:", refreshError);
           clearTokens();
-          window.location.href = '/login?session=expired';
+          window.dispatchEvent(new CustomEvent('auth:token-expired'));
           return Promise.reject(refreshError);
         }
       }
@@ -150,7 +133,8 @@ export const authApi = {
     return response.data;
   },
 
-  updateSkills: async (skills: Skill[]) => {
+  // Skills API
+  updateSkills: async (skills: string[]) => {
     const response = await api.patch('/auth/me/', { skills });
     return response.data;
   },
@@ -190,14 +174,14 @@ export const authApi = {
 export const notificationsApi = {
   list: async (params?: { limit?: number; offset?: number }) => {
     const response = await api.get('/notification/', { params });
-    return response.data; 
+    return response.data;
   },
 
   getSummary: async () => {
     const response = await api.get('/notification/');
     return {
       total: response.data.total,
-      unread: response.data.unread_count 
+      unread: response.data.unread_count
     };
   },
 
@@ -554,6 +538,15 @@ export const taskApi = {
     return response.data;
   },
 
+  //Create AI-refined inside TaskTitle and Description
+  refineText: async (data: RefineTextPayload) => {
+    const response = await api.post<RefineTextResponse>(
+      '/task-ai/refine-text/',
+      data
+    );
+    return response.data;
+  },
+
 };
 
 
@@ -649,10 +642,10 @@ export class ChatWebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         // Handle incoming chat message
         if (data.type === 'chat_message' && data.message && this.messageCallback) {
-            this.messageCallback(data.message);
+          this.messageCallback(data.message);
         }
       } catch (err) {
         console.error('WS Message Parse Error', err);
@@ -726,7 +719,7 @@ export class GlobalChatWebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const data: WebSocketGlobalMessage = JSON.parse(event.data);
-        
+
         if (this.messageCallback) {
           this.messageCallback(data);
         }
@@ -753,9 +746,9 @@ export class GlobalChatWebSocketService {
 
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-    
+
     console.log(`Reconnecting Global WebSocket in ${delay}ms... (Attempt ${this.reconnectAttempts})`);
-    
+
     this.reconnectTimeout = setTimeout(() => {
       this.connect();
     }, delay);
@@ -769,7 +762,7 @@ export class GlobalChatWebSocketService {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
     }
-    
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
