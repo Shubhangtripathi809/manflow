@@ -1,21 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Edit2, X, Plus, Download, Lock, Mail, Building2, Briefcase } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth'
-import { projectsApi } from '@/services/api';
+import { projectsApi, authApi } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 
 export function Profile() {
-  // Sample initial data - replace with actual data from your backend
   const [userData, setUserData] = useState({
     jobTitle: 'Developer',
     department: 'Engineering',
     profileImage: null,
-    projects: ['E-Commerce Platform', 'Mobile App Redesign', 'CRM System'],
-    skills: ['React', 'Node.js', 'Python', 'AWS', 'MongoDB'],
-    certificates: [
-      { id: 1, name: 'AWS Certified Developer.pdf', uploadDate: '2024-01-15' },
-      { id: 2, name: 'React Advanced Certification.pdf', uploadDate: '2023-11-20' }
-    ]
   });
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -23,15 +16,27 @@ export function Profile() {
   const [loading, setLoading] = useState(true);
   const [isEditingSkills, setIsEditingSkills] = useState(false);
   const [newSkill, setNewSkill] = useState('');
-  const [tempSkills, setTempSkills] = useState([...userData.skills]);
+  const [tempSkills, setTempSkills] = useState<string[]>([]);
+
+  // Fetch user skills on mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await authApi.getMe();
+        setTempSkills(userData.skills || []);
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
-        // Fetches the paginated response defined in api.ts
         const response = await projectsApi.list();
-        // Based on your screenshot, the data is in the 'results' property
         setProjects(response.results || []);
       } catch (error) {
         console.error("Failed to fetch projects:", error);
@@ -48,35 +53,21 @@ export function Profile() {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      // reader.onloadend = () => {
-      //   setUserData({ ...userData, profileImage: reader.result });
-      // };
       reader.readAsDataURL(file);
     }
   };
 
-  // Handle certificate upload
+  // Handle certificate upload 
   const handleCertificateUpload = (e: any) => {
     const file = e.target.files[0];
     if (file) {
-      const newCertificate = {
-        id: Date.now(),
-        name: file.name,
-        uploadDate: new Date().toISOString().split('T')[0]
-      };
-      setUserData({
-        ...userData,
-        certificates: [...userData.certificates, newCertificate]
-      });
+      console.log('Certificate upload feature coming soon');
     }
   };
 
-  // Handle certificate delete
+  // Handle certificate delete 
   const handleDeleteCertificate = (id: any) => {
-    setUserData({
-      ...userData,
-      certificates: userData.certificates.filter(cert => cert.id !== id)
-    });
+    console.log('Certificate delete feature coming soon');
   };
 
   // Skills management
@@ -91,15 +82,26 @@ export function Profile() {
     setTempSkills(tempSkills.filter(skill => skill !== skillToRemove));
   };
 
-  const handleSaveSkills = () => {
-    setUserData({ ...userData, skills: tempSkills });
+ const handleSaveSkills = async () => {
+  try {
+    await authApi.updateSkills(tempSkills);
+    const userData = await authApi.getMe();
+    setTempSkills(userData.skills || []);
     setIsEditingSkills(false);
-  };
-
-  const handleCancelEditSkills = () => {
-    setTempSkills([...userData.skills]);
-    setNewSkill('');
-    setIsEditingSkills(false);
+  } catch (error) {
+    console.error("Failed to update skills:", error);
+    alert("Failed to save skills. Please try again.");
+  }
+};
+  const handleCancelEditSkills = async () => {
+    try {
+      const userData = await authApi.getMe();
+      setTempSkills(userData.skills || []);
+      setNewSkill('');
+      setIsEditingSkills(false);
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+    }
   };
 
   // Get initials for profile circle
@@ -116,7 +118,7 @@ export function Profile() {
     <div className="min-h-screen">
       <div className="mx-auto h-full">
 
-        {/* Profile Header Card */}
+        {/* Header Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-6">
           <div className="flex items-start space-x-6">
             {/* Profile Picture */}
@@ -207,7 +209,6 @@ export function Profile() {
                           <p className="text-xs text-gray-600 mt-1">{project.description}</p>
                         )}
                       </div>
-                      {/* Optional: Show priority tag from project_settings */}
                       {project.project_settings?.priority && (
                         <span className="text-[10px] uppercase px-2 py-0.5 bg-white rounded-md border border-indigo-200">
                           {project.project_settings.priority}
@@ -276,7 +277,7 @@ export function Profile() {
               )}
 
               <div className="flex flex-wrap gap-2">
-                {(isEditingSkills ? tempSkills : userData.skills).map((skill, index) => (
+                {tempSkills.map((skill, index) => (
                   <div
                     key={index}
                     className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-900 text-sm font-medium rounded-full border border-indigo-200"
@@ -313,37 +314,12 @@ export function Profile() {
               </div>
 
               <div className="space-y-3">
-                {userData.certificates.length > 0 ? (
-                  userData.certificates.map((cert) => (
-                    <div
-                      key={cert.id}
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl border border-gray-200"
-                    >
-                      <div className="flex items-center space-x-3 flex-1">
-                        <div className="bg-indigo-100 p-3 rounded-xl">
-                          <Download className="w-5 h-5 text-indigo-600" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900">{cert.name}</p>
-                          <p className="text-xs text-gray-500 mt-1">Uploaded on {cert.uploadDate}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteCertificate(cert.id)}
-                        className="ml-3 p-2 text-red-600 hover:bg-red-50 rounded-xl transition"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-2xl mb-3">
-                      <Download className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <p className="text-gray-500 text-sm">No certificates uploaded yet</p>
+                <div className="text-center py-12">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-2xl mb-3">
+                    <Download className="w-8 h-8 text-gray-400" />
                   </div>
-                )}
+                  <p className="text-gray-500 text-sm">No certificates uploaded yet</p>
+                </div>
               </div>
             </div>
           </div>
@@ -352,5 +328,3 @@ export function Profile() {
     </div>
   );
 };
-
-

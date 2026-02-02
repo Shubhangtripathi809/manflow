@@ -9,7 +9,7 @@ export interface User {
   avatar?: string;
   is_active: boolean;
   date_joined: string;
-  skills?: Skill[];
+  skills?: string[];
 }
 
 // Minimal user info for nested references
@@ -18,13 +18,6 @@ export interface UserMinimal {
   username: string;
   full_name: string;
   avatar?: string;
-}
-
-// In profile page skills section
-export interface Skill {
-  name: string;
-  proficiency: 'Learning' | 'Beginner' | 'Intermediate' | 'Advance';
-  category: string;
 }
 
 // Project page  types 

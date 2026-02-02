@@ -1,13 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type {
-  AuthTokens, User as AppUser, Skill, PaginatedResponse, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload,
+  AuthTokens, User as AppUser, PaginatedResponse, PaginatedProjectsResponse, GetUploadUrlPayload, GetUploadUrlResponse, ConfirmUploadPayload,
   ConfirmUploadResponse, GetDownloadUrlPayload, GetDownloadUrlResponse, TaskComment, CreateTaskCommentPayload, AITaskSuggestionResponse, AITaskSuggestionPayload, APICollection,
   APIEndpoint, AuthCredential, ExecutionRun, ExecutionResult, APITestingDashboard, CreateCollectionPayload, CreateEndpointPayload, CreateCredentialPayload, RunCollectionPayload, ProjectCreatePayload,
   Label, DocumentStatus, ChatMessage, ChatRoom, ChatRoomMessagesResponse, CreatePrivateChatPayload, WebSocketSendMessagePayload, WebSocketGlobalMessage, RefineTextPayload, RefineTextResponse
 } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.11:8000/api/v1';
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.12:8001/';
+const API_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.18:8000/api/v1';
 
 
 export const api = axios.create({
@@ -16,12 +15,6 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-// export const fileApi = axios.create({
-//   baseURL: API_BASE_URL,
-//   headers: { "Content-Type": "application/json" },
-// });
-
 
 // Token management
 const TOKEN_KEY = 'zanflow_tokens';
@@ -80,7 +73,7 @@ api.interceptors.response.use(
         } catch (refreshError) {
           console.error("Token refresh failed:", refreshError);
           clearTokens();
-          window.location.href = '/login?session=expired';
+          window.dispatchEvent(new CustomEvent('auth:token-expired'));
           return Promise.reject(refreshError);
         }
       }
@@ -122,7 +115,8 @@ export const authApi = {
     return response.data;
   },
 
-  updateSkills: async (skills: Skill[]) => {
+  // Skills API
+  updateSkills: async (skills: string[]) => {
     const response = await api.patch('/auth/me/', { skills });
     return response.data;
   },

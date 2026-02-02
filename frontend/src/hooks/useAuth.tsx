@@ -43,6 +43,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, []);
 
+  // Listen for token expiry events from API interceptor
+  useEffect(() => {
+    const handleTokenExpired = () => {
+      setUser(null);
+      navigate('/login');
+    };
+
+    window.addEventListener('auth:token-expired', handleTokenExpired);
+    
+    return () => {
+      window.removeEventListener('auth:token-expired', handleTokenExpired);
+    };
+  }, [navigate]);
+
   const login = async (username: string, password: string) => {
     await authApi.login(username, password);
     saveCredentials(username, password);
