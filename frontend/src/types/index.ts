@@ -128,6 +128,17 @@ export interface TaskLink {
   created_at: string;
 }
 
+
+// In CreateTask add AI Refined For TaskTitle and Description
+export interface RefineTextPayload {
+  text: string;
+  type: 'optimize_title' | 'generate_description' | 'refine_description';
+}
+
+export interface RefineTextResponse {
+  refined_text: string;
+}
+
 // In task detail page
 export interface Task {
   id: number;

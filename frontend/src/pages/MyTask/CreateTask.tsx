@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { X, Calendar, CheckCircle, AlertCircle, ArrowLeft, Briefcase, User, Flag, Paperclip, Type, Sparkles, Plus, Link, Trash2} from 'lucide-react';
+import { X, Calendar, CheckCircle, AlertCircle, ArrowLeft, Briefcase, User, Flag, Paperclip, Type, Sparkles, Plus, Link, Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { taskApi, usersApi, projectsApi } from '@/services/api';
 import { ProjectMinimal, AITaskSuggestionResponse, Label } from '@/types';
@@ -61,6 +61,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
     const [assigneeSearchInput, setAssigneeSearchInput] = useState('');
     const [highlightedUserIndex, setHighlightedUserIndex] = useState(0);
+    const [isTitleRefining, setIsTitleRefining] = useState(false);
+    const [isDescRefining, setIsDescRefining] = useState(false);
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -316,6 +318,62 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         }
     }, [description]);
 
+
+    // For Task Title and Description AI refined 
+    const handleRefineTitle = async () => {
+        if (!heading.trim()) return;
+
+        setIsTitleRefining(true);
+        try {
+            const response = await taskApi.refineText({
+                text: heading,
+                type: 'optimize_title'
+            });
+            if (response.refined_text) {
+                setHeading(response.refined_text);
+            }
+        } catch (error) {
+            console.error("Failed to optimize title", error);
+        } finally {
+            setIsTitleRefining(false);
+        }
+    };
+
+    const handleRefineDescription = async () => {
+        // Check current content (stripping HTML for empty check)
+        const currentText = editorRef.current?.innerText || '';
+        const isEmpty = !currentText.trim();
+
+        // If empty, we need a title to generate from
+        if (isEmpty && !heading.trim()) {
+            setError("Please enter a Task Title first to generate a description.");
+            return;
+        }
+
+        setIsDescRefining(true);
+        try {
+            const payload: any = {
+                text: isEmpty ? heading : currentText,
+                type: isEmpty ? 'generate_description' : 'refine_description'
+            };
+
+            const response = await taskApi.refineText(payload);
+
+            if (response.refined_text) {
+                const newText = response.refined_text;
+                setDescription(newText);
+                // Update editor visually
+                if (editorRef.current) {
+                    editorRef.current.innerHTML = newText;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to refine description", error);
+        } finally {
+            setIsDescRefining(false);
+        }
+    };
+
     const handleClose = () => {
         if (isModal && onClose) {
             onClose();
@@ -506,14 +564,29 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                     <Type className="w-4 h-4" />
                                     Task title <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    value={heading}
-                                    onChange={(e) => setHeading(e.target.value)}
-                                    className="w-full p-2.5 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
-                                    placeholder="Enter a concise task title"
-                                    required
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={heading}
+                                        onChange={(e) => setHeading(e.target.value)}
+                                        className="w-full p-2.5 pr-10 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                                        placeholder="Enter a concise task title"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleRefineTitle}
+                                        disabled={isTitleRefining || !heading.trim()}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-purple-600 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50"
+                                        title="Optimize with AI"
+                                    >
+                                        {isTitleRefining ? (
+                                            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <Sparkles className="w-4 h-4" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             {/*  Description Section */}
@@ -658,14 +731,19 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                                             <span className="text-sm">⊞</span>
                                         </button>
 
-                                        {/* Undo/Redo placeholder */}
+                                        {/* Sparkels */}
                                         <button
                                             type="button"
-                                            onClick={() => execCommand('undo')}
-                                            className="p-1.5 hover:bg-gray-100 rounded transition-colors ml-auto"
-                                            title="Undo"
+                                            onClick={handleRefineDescription}
+                                            disabled={isDescRefining}
+                                            className="p-1.5 hover:bg-purple-50 text-purple-600 rounded transition-colors ml-auto flex items-center gap-1"
+                                            title="Refine/Generate Description with AI"
                                         >
-                                            <span className="text-sm">↶</span>
+                                            {isDescRefining ? (
+                                                <div className="w-3.5 h-3.5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                                <Sparkles className="w-4 h-4" />
+                                            )}
                                         </button>
                                     </div>
 
