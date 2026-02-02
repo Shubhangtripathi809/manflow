@@ -4,11 +4,12 @@ on:
   push:
     branches:
       - main
+      - frontend
+      - backend
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
@@ -18,6 +19,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/manflow
-            git pull origin main
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
             sudo docker-compose down
             sudo docker-compose up --build -d
