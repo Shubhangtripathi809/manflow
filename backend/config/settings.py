@@ -15,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-dev-key-change-in-production")
 DEBUG = config("DEBUG", default=True, cast=bool)
 # ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,192.168.1.12").split(",")
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "192.168.1.12", "*"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "192.168.1.18", "*"]
 
 
 # Application definition
@@ -30,6 +30,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     "rest_framework",
+
     "rest_framework_simplejwt",
     "corsheaders",
     "django_filters",
@@ -153,7 +154,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.11:5173,ws://192.168.1.12:8000"
+    default="http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.121:5173,http://192.168.1.12:5173,http://192.168.1.6:5173,ws://192.168.1.11:8000"
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL", default=True, cast=bool)  # For development
@@ -180,7 +181,7 @@ REST_FRAMEWORK = {
 # JWT Settings
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
-        minutes=config("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=60, cast=int)
+        minutes=config("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=1, cast=int)
     ),
     "REFRESH_TOKEN_LIFETIME": timedelta(
         days=config("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=7, cast=int)

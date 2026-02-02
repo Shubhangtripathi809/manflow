@@ -220,23 +220,71 @@ def bulk_create_notifications(
 
 
 # ============================================================================
+# HELPER: GET ALL INVOLVED USERS FOR A TASK
+# ============================================================================
+
+def _get_task_involved_users(task) -> List[User]:
+    """
+    Get ALL users who are actually involved with a task.
+    
+    Involved means:
+      1. Users directly assigned to the task  (assigned_to)
+      2. The user who created/assigned the task (assigned_by)
+      3. If task belongs to a project → all members of THAT project only
+    
+    This NEVER fetches all admins/managers globally.
+    A manager only gets notified if they are a member of the task's project
+    or are directly assigned to the task.
+    """
+    recipients = []
+    
+    # 1. Users assigned to this task
+    assigned_users = list(task.assigned_to.all())
+    recipients.extend(assigned_users)
+    
+    # 2. Task creator (the manager/admin who created it)
+    if task.assigned_by:
+        recipients.append(task.assigned_by)
+    
+    # 3. If task belongs to a project, get that project's members ONLY
+    if task.project:
+        project_members = list(task.project.members.all())
+        recipients.extend(project_members)
+    
+    return recipients
+
+
+def _get_project_involved_users(project) -> List[User]:
+    """
+    Get ALL users who are actually members of a specific project.
+    This NEVER fetches all admins/managers globally.
+    """
+    return list(project.members.all())
+
+
+# ============================================================================
 # TASK-SPECIFIC NOTIFICATION FUNCTIONS
 # ============================================================================
 
 def notify_task_created(task, actor: User) -> List[Notification]:
     """
     Send notifications when a task is created.
-    Notifies all assigned users.
-    """
-    assigned_users = list(task.assigned_to.all())
     
-    if not assigned_users:
+    Notifies:
+      - Users assigned to the task
+      - Members of the task's project (if task belongs to a project)
+    
+    Does NOT notify random admins/managers who aren't involved.
+    """
+    recipients = _get_task_involved_users(task)
+    
+    if not recipients:
         return []
     
     project_name = task.project.name if task.project else "No Project"
     
     return notify(
-        recipients=assigned_users,
+        recipients=recipients,
         title="New Task Assigned",
         message=f"You have been assigned to task '{task.heading}' in project '{project_name}'",
         notification_type=Notification.NotificationType.TASK_ASSIGNED,
@@ -260,26 +308,18 @@ def notify_task_status_updated(
 ) -> List[Notification]:
     """
     Send notifications when a task status is updated.
-    Notifies: Admin, Manager, and relevant team members (assigned users + creator).
+    
+    Notifies ONLY involved users:
+      - Users assigned to this task
+      - The user who created this task (assigned_by)
+      - Members of the task's project (admins/managers who are project members)
+    
+    Does NOT notify:
+      - Admins/Managers who are NOT members of the task's project
+      - Users who have no relation to this task
     """
-    # Build recipient list
-    recipients = []
-    
-    # Add all admins
-    admins = User.objects.filter(is_superuser=True)
-    recipients.extend(list(admins))
-    
-    # Add all managers
-    managers = User.objects.filter(role='manager')
-    recipients.extend(list(managers))
-    
-    # Add assigned users
-    assigned_users = list(task.assigned_to.all())
-    recipients.extend(assigned_users)
-    
-    # Add task creator
-    if task.assigned_by:
-        recipients.append(task.assigned_by)
+    # Only get users who are actually involved with this task
+    recipients = _get_task_involved_users(task)
     
     if not recipients:
         return []
@@ -318,17 +358,13 @@ def notify_task_status_updated(
 def notify_task_comment(task, comment, actor: User) -> List[Notification]:
     """
     Send notifications when a comment is added to a task.
-    Notifies assigned users and task creator.
+    
+    Notifies ONLY:
+      - Users assigned to this task
+      - Task creator (assigned_by)
+      - Members of the task's project
     """
-    recipients = []
-    
-    # Add assigned users
-    assigned_users = list(task.assigned_to.all())
-    recipients.extend(assigned_users)
-    
-    # Add task creator
-    if task.assigned_by:
-        recipients.append(task.assigned_by)
+    recipients = _get_task_involved_users(task)
     
     if not recipients:
         return []
@@ -355,10 +391,10 @@ def notify_task_comment(task, comment, actor: User) -> List[Notification]:
 def notify_project_created(project, actor: User, assigned_members: List[User] = None) -> List[Notification]:
     """
     Send notifications when a project is created.
-    Notifies assigned members.
+    Notifies ONLY members of THIS project.
     """
     if assigned_members is None:
-        assigned_members = list(project.members.all())
+        assigned_members = _get_project_involved_users(project)
     
     if not assigned_members:
         return []
@@ -380,6 +416,7 @@ def notify_project_created(project, actor: User, assigned_members: List[User] = 
 def notify_project_member_added(project, new_member: User, actor: User) -> Optional[Notification]:
     """
     Send notification when a member is added to a project.
+    Only the new member gets notified.
     """
     return create_notification(
         recipient=new_member,
@@ -398,9 +435,9 @@ def notify_project_member_added(project, new_member: User, actor: User) -> Optio
 def notify_project_updated(project, actor: User, changes: Dict[str, Any]) -> List[Notification]:
     """
     Send notifications when a project is updated.
-    Notifies all project members.
+    Notifies ONLY members of THIS project.
     """
-    members = list(project.members.all())
+    members = _get_project_involved_users(project)
     
     if not members:
         return []
