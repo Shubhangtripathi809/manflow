@@ -17,11 +17,11 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
           script: |
             cd ~/manflow
             git fetch --all
             git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
             sudo docker-compose down
-            sudo docker system prune -a -f
-            sudo docker volume prune -f
+            sudo docker system prune -af --volumes
             sudo docker-compose up --build -d
