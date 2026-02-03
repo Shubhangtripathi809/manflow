@@ -17,3 +17,4 @@ export { Calendar } from './Calendar/Calendar';
 export { NotificationsPage } from './NotificationsPage';
 export { Profile } from  './Profile'
 export { ResetPassword } from './ResetPassword'
+export { TeamChatModern } from './TeamsChat/TeamChatModern'

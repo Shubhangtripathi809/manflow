@@ -5,10 +5,8 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer for User model with structured skills.
+    Serializer for User model with simple skills list.
     """
-    # Explicitly defining this isn't strictly necessary for JSONField, 
-    # but it helps with Swagger/API docs if you use them.
     skills = serializers.JSONField(required=False)
 
     class Meta:
@@ -21,58 +19,28 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate_skills(self, value):
         """
-        Validates that skills is a list of dictionaries with specific keys:
-        - name (str)
-        - proficiency (str, choice)
-        - category (str, choice)
+        Validates skills and converts them to a simple list of strings.
+        Accepts: ["Python", "Django"] OR [{"name": "Python"}, ...]
         """
         if not isinstance(value, list):
-            raise serializers.ValidationError("Skills must be a list of skill objects.")
+            raise serializers.ValidationError("Skills must be a list.")
 
-        # Get valid choices from the Model
-        valid_proficiencies = User.SkillProficiency.values
-        valid_categories = User.SkillCategory.values
+        cleaned_skills = []
 
-        validated_skills = []
-
-        for index, item in enumerate(value):
-            if not isinstance(item, dict):
-                raise serializers.ValidationError(f"Item at index {index} must be a dictionary/object.")
-
-            # 1. Validate Skill Name
-            name = item.get("name")
-            if not name or not isinstance(name, str):
-                raise serializers.ValidationError(f"Item at index {index} is missing a valid 'name'.")
+        for item in value:
+            # Case 1: Item is a simple string (e.g., "Python")
+            if isinstance(item, str):
+                cleaned_skills.append(item.strip())
             
-            # 2. Validate Proficiency
-            proficiency = item.get("proficiency")
-            if proficiency not in valid_proficiencies:
-                raise serializers.ValidationError(
-                    f"Invalid proficiency '{proficiency}' for skill '{name}'. "
-                    f"Allowed: {', '.join(valid_proficiencies)}"
-                )
-
-            # 3. Validate Category
-            category = item.get("category")
-            if category not in valid_categories:
-                # Optional: You can default to 'Other' if missing, 
-                # or raise an error. Here we raise an error for strictness.
-                raise serializers.ValidationError(
-                    f"Invalid category '{category}' for skill '{name}'. "
-                    f"Allowed: {', '.join(valid_categories)}"
-                )
-
-            # Clean and append (Title Case for consistency)
-            validated_skills.append({
-                "name": name.strip().title(),
-                "proficiency": proficiency,
-                "category": category
-            })
-
-        return validated_skills
-
-
-
+            # Case 2: Item is an object (e.g., {"name": "Python", "proficiency": "..."})
+            # We extract just the name and ignore the rest
+            elif isinstance(item, dict):
+                name = item.get("name")
+                if name and isinstance(name, str):
+                    cleaned_skills.append(name.strip())
+        
+        # Remove duplicates and return
+        return list(set(cleaned_skills))
 class UserCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating users.

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Calendar, Users, CheckSquare, Clock, PlayCircle, Pause, 
-  Eye, AlertCircle, CheckCircle, ListTodo, Plus 
+import {
+  Calendar, Users, CheckSquare, Clock, PlayCircle, Pause,
+  Eye, AlertCircle, CheckCircle, ListTodo, Plus
 } from 'lucide-react';
 import type { Task } from '@/types';
 import type { TableColumn } from '@/components/layout/DualView/TableView';
@@ -114,14 +114,15 @@ export const getStatusConfig = (status: Task['status']) => {
 };
 
 // Priority options
-const priorityOptions = [
+export const priorityOptions = [
+  { value: 'critical', label: 'Critical', color: 'text-red-700', dotColor: 'bg-red-700', icon: '🚨' },
   { value: 'high', label: 'High', color: 'text-red-600', dotColor: 'bg-red-500', icon: '🔴' },
   { value: 'medium', label: 'Medium', color: 'text-orange-600', dotColor: 'bg-orange-200', icon: '🟡' },
   { value: 'low', label: 'Low', color: 'text-green-600', dotColor: 'bg-green-500', icon: '🟢' },
 ];
 
 // Status options
-const statusOptions = [
+export const statusOptions = [
   { value: 'pending', label: 'PENDING', icon: Clock },
   { value: 'backlog', label: 'BACKLOG', icon: ListTodo },
   { value: 'in_progress', label: 'IN PROGRESS', icon: PlayCircle },
